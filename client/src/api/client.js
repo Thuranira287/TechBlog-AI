@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+// Use environment variable with fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 export const api = axios.create({
@@ -30,7 +31,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken')
-      window.location.href = '/admin/login'
+      // Don't redirect on Netlify to avoid issues
+      if (!window.location.hostname.includes('netlify')) {
+        window.location.href = '/admin/login'
+      }
     }
     return Promise.reject(error)
   }
@@ -63,6 +67,20 @@ export const blogAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
 
   getMe: () => api.get('/auth/me'),
+
+  // Admin methods
+  getAdminDashboard: () => api.get('/admin/dashboard'),
+  getAdminPosts: (page = 1) => api.get(`/admin/posts?page=${page}`),
+  getAdminPost: (id) => api.get(`/admin/posts/${id}`),
+  createAdminPost: (postData) => api.post('/admin/posts', postData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  updateAdminPost: (id, postData) => api.put(`/admin/posts/${id}`, postData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteAdminPost: (id) => api.delete(`/admin/posts/${id}`),
+  getAdminCategories: () => api.get('/admin/categories'),
+  createAdminCategory: (categoryData) => api.post('/admin/categories', categoryData),
 }
 
 export default api

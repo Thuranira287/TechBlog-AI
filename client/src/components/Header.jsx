@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Menu, X } from 'lucide-react'
+import { Search, Menu, X, Lock, User, LogOut } from 'lucide-react'
 import { useBlog } from '../context/BlogContext'
 
 const Header = () => {
@@ -8,6 +8,15 @@ const Header = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const { categories } = useBlog()
   const navigate = useNavigate()
+
+  // Check if user is logged in
+  const isLoggedIn = localStorage.getItem('authToken')
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+
+  // Secret trigger - show admin after 3 quick clicks on logo
+  const [clickCount, setClickCount] = useState(0)
+  const [lastClickTime, setLastClickTime] = useState(0)
+  const [showAdmin, setShowAdmin] = useState(false)
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -18,13 +27,56 @@ const Header = () => {
     }
   }
 
+  const handleLogoClick = (e) => {
+    e.preventDefault()
+    const currentTime = new Date().getTime()
+    
+    if (currentTime - lastClickTime < 1000) { // Within 1 second
+      const newCount = clickCount + 1
+      setClickCount(newCount)
+      
+      if (newCount >= 3) {
+        setShowAdmin(true)
+        setClickCount(0)
+        // Show admin for 30 seconds
+        setTimeout(() => setShowAdmin(false), 30000)
+      }
+    } else {
+      setClickCount(1)
+    }
+    
+    setLastClickTime(currentTime)
+    navigate('/') // Navigate to home after secret trigger
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('user')
+    setShowAdmin(false)
+    window.location.href = '/'
+  }
+
+  const handleAdminAccess = () => {
+    if (isLoggedIn) {
+      navigate('/admin/dashboard')
+    } else {
+      navigate('/admin/login')
+    }
+    setIsMenuOpen(false)
+  }
+
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4">
         {/* Top Bar */}
         <div className="flex items-center justify-between py-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
+          {/* Logo with secret click trigger */}
+          <Link 
+            to="/" 
+            className="flex items-center space-x-2"
+            onClick={handleLogoClick}
+            title={clickCount > 0 ? `${3 - clickCount} more clicks for admin` : 'TechBlog AI'}
+          >
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">TB</span>
             </div>
@@ -45,6 +97,38 @@ const Header = () => {
                 {category.name}
               </Link>
             ))}
+            
+            {/* Hidden Admin Access - Only shows after secret trigger or when logged in */}
+            {(showAdmin || isLoggedIn) && (
+              <div className="flex items-center space-x-4 border-l border-gray-300 pl-4">
+                {isLoggedIn ? (
+                  <>
+                    <Link
+                      to="/admin/dashboard"
+                      className="text-gray-700 hover:text-blue-600 font-medium flex items-center space-x-1"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="text-gray-700 hover:text-blue-600 font-medium flex items-center space-x-1"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/admin/login"
+                    className="text-gray-700 hover:text-blue-600 font-medium flex items-center space-x-1"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Search and Mobile Menu */}
@@ -109,7 +193,58 @@ const Header = () => {
                   {category.name}
                 </Link>
               ))}
+              
+              {/* Hidden Mobile Admin Access */}
+              {(showAdmin || isLoggedIn) && (
+                <div className="border-t border-gray-200 pt-2 mt-2">
+                  {isLoggedIn ? (
+                    <>
+                      <Link
+                        to="/admin/dashboard"
+                        className="block py-2 text-gray-700 hover:text-blue-600 font-medium items-center space-x-2"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <User className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout()
+                          setIsMenuOpen(false)
+                        }}
+                        className="block w-full text-left py-2 text-gray-700 hover:text-blue-600 font-medium items-center space-x-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to="/admin/login"
+                      className="block py-2 text-gray-700 hover:text-blue-600 font-medium items-center space-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>Admin Login</span>
+                    </Link>
+                  )}
+                </div>
+              )}
             </nav>
+          </div>
+        )}
+
+        {/* Secret Access Indicator */}
+        {clickCount > 0 && !showAdmin && (
+          <div className="fixed top-20 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-3 py-1 rounded text-sm z-50">
+            {3 - clickCount} more clicks for admin access
+          </div>
+        )}
+
+        {/* Admin Access Timer */}
+        {showAdmin && (
+          <div className="fixed top-20 right-4 bg-green-100 border border-green-400 text-green-800 px-3 py-1 rounded text-sm z-50">
+            Admin access active - 30s remaining
           </div>
         )}
       </div>

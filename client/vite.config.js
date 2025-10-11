@@ -15,5 +15,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true
-  }
+  },
+
+  //Netlify SPA support
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          utils: ['axios', 'lucide-react']
+        }
+      }
+    }
+  },
+  //client-side routing
+  base: './'
 })
