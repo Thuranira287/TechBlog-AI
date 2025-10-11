@@ -5,7 +5,6 @@ dotenv.config();
 
 const createDatabaseIfNotExists = async () => {
   try {
-    // Temporary connection without specifying database
     const tempConnection = await mysql.createConnection({
       host: process.env.DB_HOST || '127.0.0.1',
       port: process.env.DB_PORT || 3307,
@@ -22,7 +21,6 @@ const createDatabaseIfNotExists = async () => {
   }
 };
 
-// ✅ Run this immediately before pool is created
 await createDatabaseIfNotExists();
 
 const dbConfig = {
@@ -38,13 +36,57 @@ const dbConfig = {
 
 const pool = mysql.createPool(dbConfig);
 
+//function to check existing posts
+const checkAndFixPosts = async () => {
+  try {
+    const connection = await pool.getConnection();
+    
+    console.log('🔍 Checking existing posts...');
+    
+    const [posts] = await connection.execute(`
+      SELECT p.id, p.title, p.status, p.category_id, c.name as category_name, c.slug as category_slug
+      FROM posts p
+      LEFT JOIN categories c ON p.category_id = c.id
+    `);
+    
+    console.log(`📊 Found ${posts.length} total posts:`);
+    posts.forEach(post => {
+      console.log(`   - "${post.title}" (Status: ${post.status}, Category: ${post.category_name || 'None'})`);
+    });
+    
+    const publishedPosts = posts.filter(p => p.status === 'published');
+    const postsWithCategories = publishedPosts.filter(p => p.category_id !== null);
+    
+    console.log(`📈 Published posts: ${publishedPosts.length}`);
+    console.log(`📈 Published posts with categories: ${postsWithCategories.length}`);
+    
+    if (publishedPosts.length > 0 && postsWithCategories.length === 0) {
+      console.log('⚠️  Published posts found but no categories assigned!');
+      console.log('💡 Assigning categories to published posts...');
+      
+      const [categories] = await connection.execute('SELECT id FROM categories LIMIT 1');
+      if (categories.length > 0) {
+        const defaultCategoryId = categories[0].id;
+        await connection.execute(
+          'UPDATE posts SET category_id = ? WHERE status = "published" AND category_id IS NULL',
+          [defaultCategoryId]
+        );
+        console.log('✅ Assigned default category to published posts');
+      }
+    }
+    
+    connection.release();
+  } catch (error) {
+    console.error('Error checking posts:', error);
+  }
+};
+
 export const connectDB = async () => {
   try {
     const connection = await pool.getConnection();
     console.log('✅ MySQL Connected successfully');
     connection.release();
 
-    // Initialize tables
     await initializeTables();
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
@@ -92,8 +134,7 @@ const initializeTables = async () => {
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
       INDEX idx_slug (slug),
       INDEX idx_status (status),
-      INDEX idx_published (published_at),
-      FULLTEXT(title, content, excerpt)
+      INDEX idx_published (published_at)
     );
 
     CREATE TABLE IF NOT EXISTS comments (
@@ -121,6 +162,15 @@ const initializeTables = async () => {
 
   try {
     const connection = await pool.getConnection();
+    
+    // Drop and recreate posts table
+    try {
+      await connection.execute('DROP TABLE IF EXISTS posts');
+      console.log('🔄 Dropped posts table to recreate without FULLTEXT index');
+    } catch (error) {
+      console.log('ℹ️ No posts table to drop or already dropped');
+    }
+
     const statements = createTables.split(';').filter(stmt => stmt.trim());
 
     for (const statement of statements) {
@@ -132,19 +182,23 @@ const initializeTables = async () => {
     connection.release();
     console.log('✅ Database tables initialized');
 
-    // Insert sample data
-    await insertSampleData();
+    await insertEssentialData();
   } catch (error) {
     console.error('Error initializing tables:', error);
   }
 };
 
-const insertSampleData = async () => {
+const insertEssentialData = async () => {
   try {
     const connection = await pool.getConnection();
 
+    console.log('📝 Setting up essential data for admin...');
+
+    // 1. Create categories if they don't exist
     const [categories] = await connection.execute('SELECT COUNT(*) as count FROM categories');
     if (categories[0].count === 0) {
+      console.log('🗂️ Creating categories...');
+      
       const sampleCategories = [
         ['Technology', 'technology', 'Latest tech news and tutorials'],
         ['Artificial Intelligence', 'artificial-intelligence', 'AI and machine learning advancements'],
@@ -154,27 +208,38 @@ const insertSampleData = async () => {
 
       for (const [name, slug, description] of sampleCategories) {
         await connection.execute(
-          'INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)',
+          'INSERT IGNORE INTO categories (name, slug, description) VALUES (?, ?, ?)',
           [name, slug, description]
         );
       }
+      console.log('✅ Categories created');
+    } else {
+      console.log(`📊 Found ${categories[0].count} existing categories`);
     }
 
+    // 2. Create default author if none exists
     const [authors] = await connection.execute('SELECT COUNT(*) as count FROM authors');
     if (authors[0].count === 0) {
+      console.log('👤 Creating default author...');
+      
       await connection.execute(
         'INSERT INTO authors (name, email, bio, avatar_url) VALUES (?, ?, ?, ?)',
         [
-          'John Doe',
-          'john@example.com',
-          'Tech enthusiast and software developer with 10+ years of experience.',
-          '/api/placeholder/100/100'
+          'Admin',
+          'admin@techblog.com',
+          'Technology enthusiast and content creator passionate about AI, web development, and emerging technologies.',
+          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
         ]
       );
+      console.log('✅ Default author created');
+    } else {
+      console.log(`📊 Found ${authors[0].count} existing authors`);
     }
 
+    // 3. Create admin user if none exists
     const [adminUsers] = await connection.execute('SELECT COUNT(*) as count FROM admin_users');
     if (adminUsers[0].count === 0) {
+      console.log('🔐 Creating admin user...');
       const bcrypt = await import('bcryptjs');
       const hashedPassword = await bcrypt.default.hash('admin123', 12);
 
@@ -182,12 +247,33 @@ const insertSampleData = async () => {
         'INSERT INTO admin_users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
         ['admin', 'admin@blog.com', hashedPassword, 'admin']
       );
+      console.log('✅ Admin user created');
+    } else {
+      console.log(`📊 Found ${adminUsers[0].count} existing admin users`);
+    }
+
+    // 4. Display current stats and check posts
+    const [postCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "published"');
+    const [draftCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "draft"');
+    
+    console.log('📊 Current Database Status:');
+    console.log(`- Published Posts: ${postCount[0].count}`);
+    console.log(`- Draft Posts: ${draftCount[0].count}`);
+    
+    // Check and fix existing posts
+    await checkAndFixPosts();
+    
+    if (postCount[0].count === 0) {
+      console.log('💡 Tip: Use the admin panel to create your first blog post!');
+      console.log('🌐 Admin Login: http://localhost:5173/admin/login');
+      console.log('📧 Use: admin@blog.com / admin123');
     }
 
     connection.release();
-    console.log('✅ Sample data inserted');
+    console.log('✅ Essential data setup completed');
+    
   } catch (error) {
-    console.error('Error inserting sample data:', error);
+    console.error('❌ Error setting up essential data:', error);
   }
 };
 

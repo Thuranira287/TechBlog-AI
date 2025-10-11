@@ -10,6 +10,7 @@ const CategoryPage = () => {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [categoryInfo, setCategoryInfo] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchCategoryPosts()
@@ -18,18 +19,32 @@ const CategoryPage = () => {
   const fetchCategoryPosts = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await blogAPI.getCategoryPosts(category)
-      setPosts(response.data.posts)
+      console.log('📄 Category API Response:', response.data)
       
-      // Get category info from first post or categories list
-      if (response.data.posts.length > 0) {
+      setPosts(response.data.posts || [])
+      
+      if (response.data.posts && response.data.posts.length > 0) {
         setCategoryInfo({
           name: response.data.posts[0].category_name,
           description: `Latest ${response.data.posts[0].category_name} articles and news`
         })
+      } else if (response.data.category) {
+        setCategoryInfo({
+          name: response.data.category.name,
+          description: response.data.category.description || `Browse all articles in ${response.data.category.name}`
+        })
+      } else {
+        setCategoryInfo({
+          name: category?.replace(/-/g, ' '),
+          description: `Browse all articles in ${category?.replace(/-/g, ' ')}`
+        })
       }
     } catch (error) {
       console.error('Error fetching category posts:', error)
+      setError(error.response?.data?.error || 'Failed to load category posts')
+      setPosts([])
     } finally {
       setLoading(false)
     }
@@ -43,18 +58,24 @@ const CategoryPage = () => {
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Header Ad */}
         <HeaderAd />
 
         {/* Category Header */}
         <section className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4 capitalize">
-            {categoryInfo?.name || category?.replace('-', ' ')}
+            {categoryInfo?.name || category?.replace(/-/g, ' ')}
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            {categoryInfo?.description || `Browse all articles in ${category?.replace('-', ' ')}`}
+            {categoryInfo?.description || `Browse all articles in ${category?.replace(/-/g, ' ')}`}
           </p>
         </section>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
 
         {/* Posts Grid */}
         <section>
@@ -78,7 +99,17 @@ const CategoryPage = () => {
           ) : (
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">No Posts Found</h2>
-              <p className="text-gray-600">There are no posts in this category yet.</p>
+              <p className="text-gray-600">
+                {error 
+                  ? `Error: ${error}`
+                  : `There are no published posts in this category yet.`
+                }
+              </p>
+              {!error && (
+                <p className="text-gray-500 mt-2">
+                  Check back soon or explore other categories.
+                </p>
+              )}
             </div>
           )}
         </section>

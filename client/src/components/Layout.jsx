@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
 import AdSense from "./AdSense";
+import FloatingAdminButton from './FloatingAdminButton'
 
 const Layout = ({ children }) => {
   useEffect(() => {
@@ -21,6 +22,9 @@ const Layout = ({ children }) => {
       <main className="flex-1">{children}</main>
 
       <Footer />
+
+      {/* Floating Admin Button */}
+      <FloatingAdminButton />
     </div>
   );
 };

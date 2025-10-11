@@ -10,6 +10,7 @@ import postsRouter from './routes/posts.js';
 import categoriesRouter from './routes/categories.js';
 import commentsRouter from './routes/comments.js';
 import authRouter from './routes/auth.js';
+import adminRouter from './routes/admin.js';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use('/api/posts', postsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -46,6 +48,9 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV 
   });
 });
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 // Sitemap generator
 app.get('/sitemap.xml', async (req, res) => {
@@ -120,5 +125,44 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+// Add this route for database testing
+app.get('/api/debug/db', async (req, res) => {
+  try {
+    const [categories] = await pool.execute('SELECT * FROM categories');
+    const [posts] = await pool.execute('SELECT * FROM posts');
+    const [authors] = await pool.execute('SELECT * FROM authors');
+    
+    res.json({
+      categories,
+      posts,
+      authors,
+      stats: {
+        totalCategories: categories.length,
+        totalPosts: posts.length,
+        totalAuthors: authors.length
+      }
+    });
+  } catch (error) {
+    console.error('Database debug error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add this test route to your server/index.js temporarily
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const [posts] = await pool.execute('SELECT COUNT(*) as count FROM posts');
+    const [categories] = await pool.execute('SELECT COUNT(*) as count FROM categories');
+    
+    res.json({
+      posts: posts[0].count,
+      categories: categories[0].count,
+      status: 'Database connection successful'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 startServer();
