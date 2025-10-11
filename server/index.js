@@ -3,9 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { connectDB } from './config/db.js';
-
-// Route imports
+import { connectDB, pool } from './config/db.js';
 import postsRouter from './routes/posts.js';
 import categoriesRouter from './routes/categories.js';
 import commentsRouter from './routes/comments.js';
@@ -126,7 +124,6 @@ const startServer = async () => {
   }
 };
 
-// Add this route for database testing
 app.get('/api/debug/db', async (req, res) => {
   try {
     const [categories] = await pool.execute('SELECT * FROM categories');
@@ -149,7 +146,6 @@ app.get('/api/debug/db', async (req, res) => {
   }
 });
 
-// Add this test route to your server/index.js temporarily
 app.get('/api/test-db', async (req, res) => {
   try {
     const [posts] = await pool.execute('SELECT COUNT(*) as count FROM posts');

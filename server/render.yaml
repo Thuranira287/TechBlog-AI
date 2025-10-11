@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: techblog-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: techblog-db
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: techblog-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: techblog-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: techblog-db
+          property: database
