@@ -6,7 +6,17 @@
   NODE_VERSION = "18"
 
 [[redirects]]
-  from = "/*"
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/category/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/post/*"
   to = "/index.html"
   status = 200
 
