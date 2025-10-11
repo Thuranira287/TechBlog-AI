@@ -276,5 +276,6 @@ const insertEssentialData = async () => {
     console.error('❌ Error setting up essential data:', error);
   }
 };
+export { pool, connectDB };
 
 export default pool;
