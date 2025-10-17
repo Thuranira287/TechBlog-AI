@@ -79,3 +79,13 @@
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+.in-content-ad {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.adsbygoogle {
+  border-radius: 8px;
+  overflow: hidden;
+}
