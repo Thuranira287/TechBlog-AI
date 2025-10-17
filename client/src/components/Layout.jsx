@@ -3,6 +3,7 @@ import Header from "./Header";
 import Footer from "./Footer";
 import AdSense from "./AdSense";
 import FloatingAdminButton from './FloatingAdminButton'
+//import AdInPost from "./AdInPost";
 
 const Layout = ({ children }) => {
   useEffect(() => {

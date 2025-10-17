@@ -35,7 +35,7 @@ const PostPage = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     })
   }
 
@@ -55,16 +55,14 @@ const PostPage = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-            <div className="h-96 bg-gray-200 rounded mb-8"></div>
-            <div className="space-y-4">
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            </div>
+        <div className="max-w-4xl mx-auto animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+          <div className="h-96 bg-gray-200 rounded mb-8"></div>
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           </div>
         </div>
       </div>
@@ -94,29 +92,26 @@ const PostPage = () => {
         <meta property="article:published_time" content={post.published_at} />
         <meta property="article:author" content={post.author_name} />
         <meta property="article:section" content={post.category_name} />
-        
-        {/* Schema.org markup */}
+
+        {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BlogPosting",
-            "headline": post.title,
-            "description": post.meta_description || post.excerpt,
-            "image": post.featured_image,
-            "datePublished": post.published_at,
-            "dateModified": post.updated_at,
-            "author": {
-              "@type": "Person",
-              "name": post.author_name
-            },
-            "publisher": {
+            headline: post.title,
+            description: post.meta_description || post.excerpt,
+            image: post.featured_image,
+            datePublished: post.published_at,
+            dateModified: post.updated_at,
+            author: { "@type": "Person", name: post.author_name },
+            publisher: {
               "@type": "Organization",
-              "name": "TechBlog AI",
-              "logo": {
+              name: "TechBlog AI",
+              logo: {
                 "@type": "ImageObject",
-                "url": `${window.location.origin}/blog-icon.svg`
-              }
-            }
+                url: `${window.location.origin}/blog-icon.svg`,
+              },
+            },
           })}
         </script>
       </Helmet>
@@ -133,11 +128,9 @@ const PostPage = () => {
                 {post.category_name}
               </a>
             )}
-            
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {post.title}
-            </h1>
-            
+
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{post.title}</h1>
+
             <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-6">
               <div className="flex items-center space-x-2">
                 <User className="w-4 h-4" />
@@ -145,9 +138,7 @@ const PostPage = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4" />
-                <time dateTime={post.published_at}>
-                  {formatDate(post.published_at)}
-                </time>
+                <time dateTime={post.published_at}>{formatDate(post.published_at)}</time>
               </div>
               {post.view_count > 0 && (
                 <div className="flex items-center space-x-2">
@@ -165,31 +156,42 @@ const PostPage = () => {
             </div>
 
             {post.featured_image && (
-              <img
-                src={post.featured_image}
-                alt={post.title}
-                className="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
-                loading="eager"
-              />
+              <>
+                <img
+                  src={post.featured_image}
+                  alt={post.title}
+                  className="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
+                  loading="eager"
+                />
+                {/* Ad just below image */}
+                <div className="mt-6">
+                  <InContentAd />
+                </div>
+              </>
             )}
           </header>
 
-          {/* Post Content */}
+          {/* Post Body */}
           <div className="prose prose-lg max-w-none mb-8">
             {post.excerpt && (
               <div className="bg-blue-50 border-l-4 border-blue-500 pl-4 py-2 mb-6 italic">
                 {post.excerpt}
               </div>
             )}
-            
-            <div dangerouslySetInnerHTML={{ __html: post.content }} />
-          </div>
 
-          {/* Mid-content Ad */}
-          <InContentAd />
+            <div dangerouslySetInnerHTML={{ __html: post.content }} />
+
+            {/* Mid-content Ad */}
+            <InContentAd />
+          </div>
 
           {/* Comments Section */}
           <CommentSection postId={post.id} />
+
+          {/* Ad after comments */}
+          <div className="mt-10">
+            <InContentAd />
+          </div>
 
           {/* Related Posts */}
           {post.related_posts && post.related_posts.length > 0 && (
