@@ -11,4 +11,4 @@ services:
       - key: DATABASE_URL
         value: your_database_connection_string_here
       - key: CLIENT_URL
-        value: https://techblogai.netlify.app
+        value: https://techblogai.netlify.app/
