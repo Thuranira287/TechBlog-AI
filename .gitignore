@@ -1,0 +1,8 @@
+# Environment files
+.env*
+!.env.example
+client/.env.production
+
+# Dependencies
+node_modules/
+server/node_modules/
