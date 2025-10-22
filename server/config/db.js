@@ -81,11 +81,20 @@ const checkAndFixPosts = async () => {
         console.log('✅ Assigned default category to published posts');
       }
     }
+  } catch (tableError) {
+      console.log('⚠️  Could not check posts table:', tableError.message);
+      console.log('💡 This is normal if the posts table is empty or being created');
+      return; // Exit gracefully if there's a table issue
+    } try{
     
-    connection.release();
   } catch (error) {
-    console.error('Error checking posts:', error);
+    console.error('❌ Error in checkAndFixPosts:', error.message);
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
+
 };
 
 export const connectDB = async () => {
@@ -261,7 +270,7 @@ const insertEssentialData = async () => {
     }
 
     // 4. Display current stats and check posts
-    const [postCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "published"');
+    /*const [postCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "published"');
     const [draftCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "draft"');
     
     console.log('📊 Current Database Status:');
@@ -275,7 +284,8 @@ const insertEssentialData = async () => {
       console.log('💡 Tip: Use the admin panel to create your first blog post!');
       console.log('🌐 Admin Login: http://localhost:5173/admin/login');
       console.log('📧 Use: admin@blog.com / admin123');
-    }
+    }*/
+
     connection.release();
     console.log('✅ Essential data setup completed');
     
