@@ -3,11 +3,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+console.log("🌍 Loaded DB environment:", {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  name: process.env.DB_NAME,
+});
+
 const createDatabaseIfNotExists = async () => {
   try {
     const tempConnection = await mysql.createConnection({
       host: process.env.DB_HOST || '127.0.0.1',
-      port: process.env.DB_PORT || 3307,
+      port: process.env.DB_PORT || 17165 || 3307,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD
     });
@@ -25,7 +32,7 @@ await createDatabaseIfNotExists();
 
 const dbConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
-  port: process.env.DB_PORT || 3307,
+  port: process.env.DB_PORT ||3307,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -54,7 +61,7 @@ const checkAndFixPosts = async () => {
       console.log(`   - "${post.title}" (Status: ${post.status}, Category: ${post.category_name || 'None'})`);
     });
     
-    const publishedPosts = posts.filter(p => p.status === 'published');
+    const publishedPosts = posts.filter(p => p.status === "published");
     const postsWithCategories = publishedPosts.filter(p => p.category_id !== null);
     
     console.log(`📈 Published posts: ${publishedPosts.length}`);
@@ -164,12 +171,13 @@ const initializeTables = async () => {
     const connection = await pool.getConnection();
     
     // Drop and recreate posts table
-    try {
+    /*try {
       await connection.execute('DROP TABLE IF EXISTS posts');
       console.log('🔄 Dropped posts table to recreate without FULLTEXT index');
     } catch (error) {
       console.log('ℹ️ No posts table to drop or already dropped');
     }
+    */
 
     const statements = createTables.split(';').filter(stmt => stmt.trim());
 
@@ -268,12 +276,14 @@ const insertEssentialData = async () => {
       console.log('🌐 Admin Login: http://localhost:5173/admin/login');
       console.log('📧 Use: admin@blog.com / admin123');
     }
-
     connection.release();
     console.log('✅ Essential data setup completed');
     
   } catch (error) {
     console.error('❌ Error setting up essential data:', error);
+    console.log('📊 Current Database Status:');
+    console.log('- Published Posts: 0');
+    console.log('- Draft Posts: 0');
   }
 };
 export { pool };
