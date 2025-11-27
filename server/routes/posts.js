@@ -3,8 +3,15 @@ import pool from "../config/db.js";
 
 const router = express.Router();
 
+// Add this helper function at the top
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  return `https://techblogai-backend.onrender.com${imagePath}`;
+};
+
 /**
- * ✅ GET all published posts with pagination
+ * ✅ GET all published posts with pagination - UPDATED WITH FULL IMAGE URLS
  */
 router.get("/", async (req, res) => {
   try {
@@ -14,7 +21,6 @@ router.get("/", async (req, res) => {
 
     console.log(`📄 Fetching posts - Page: ${page}, Limit: ${limit}`);
 
-    // Simple query without complex parameter binding
     const query = `
       SELECT p.*, a.name AS author_name, c.name AS category_name, c.slug AS category_slug
       FROM posts p
@@ -39,10 +45,16 @@ router.get("/", async (req, res) => {
     const total = countResult[0].total;
     const totalPages = Math.ceil(total / limit);
 
+    // ✅ FIX: Add full image URLs to each post
+    const postsWithFullUrls = posts.map(post => ({
+      ...post,
+      featured_image: getFullImageUrl(post.featured_image)
+    }));
+
     console.log(`✅ Found ${posts.length} posts out of ${total} total`);
 
     res.json({
-      posts,
+      posts: postsWithFullUrls, // Use the updated posts array
       pagination: {
         current: page,
         totalPages,
@@ -61,7 +73,7 @@ router.get("/", async (req, res) => {
 });
 
 /**
- * ✅ GET posts by category - SIMPLIFIED
+ * ✅ GET posts by category - UPDATED WITH FULL IMAGE URLS
  */
 router.get("/category/:categorySlug", async (req, res) => {
   try {
@@ -71,7 +83,6 @@ router.get("/category/:categorySlug", async (req, res) => {
     const limit = 10;
     const offset = (page - 1) * limit;
 
-    // First get the category ID
     const [categoryCheck] = await pool.execute(
       `SELECT id, name, slug FROM categories WHERE slug = ?`,
       [req.params.categorySlug]
@@ -87,7 +98,6 @@ router.get("/category/:categorySlug", async (req, res) => {
     const categoryId = categoryCheck[0].id;
     console.log(`✅ Category found: ${categoryCheck[0].name} (ID: ${categoryId})`);
 
-    // Use category ID instead of slug for simpler query
     const query = `
       SELECT p.*, a.name AS author_name, c.name AS category_name, c.slug AS category_slug
       FROM posts p
@@ -109,10 +119,16 @@ router.get("/category/:categorySlug", async (req, res) => {
     const [posts] = await pool.execute(query);
     const [countResult] = await pool.execute(countQuery);
 
+    // ✅ FIX: Add full image URLs to each post
+    const postsWithFullUrls = posts.map(post => ({
+      ...post,
+      featured_image: getFullImageUrl(post.featured_image)
+    }));
+
     console.log(`📄 Posts found for category: ${posts.length}`);
 
     res.json({
-      posts,
+      posts: postsWithFullUrls, // Use the updated posts array
       total: countResult[0].total,
       currentPage: page,
       category: categoryCheck[0]
@@ -127,7 +143,7 @@ router.get("/category/:categorySlug", async (req, res) => {
 });
 
 /**
- * ✅ GET single post by slug
+ * ✅ GET single post by slug - UPDATED WITH FULL IMAGE URLS
  */
 router.get("/:slug", async (req, res) => {
   try {
@@ -148,8 +164,15 @@ router.get("/:slug", async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    const post = posts[0];
+    let post = posts[0];
     console.log(`✅ Post found: ${post.title}`);
+
+    // ✅ FIX: Add full image URLs to the post
+    post = {
+      ...post,
+      featured_image: getFullImageUrl(post.featured_image),
+      author_avatar: getFullImageUrl(post.author_avatar)
+    };
 
     // Increment view count
     await pool.execute(
@@ -166,11 +189,17 @@ router.get("/:slug", async (req, res) => {
       [post.category_id, post.id]
     );
 
+    // ✅ FIX: Add full image URLs to related posts too
+    const relatedPostsWithFullUrls = relatedPosts.map(relatedPost => ({
+      ...relatedPost,
+      featured_image: getFullImageUrl(relatedPost.featured_image)
+    }));
+
     console.log(`📄 Found ${relatedPosts.length} related posts`);
 
     res.json({ 
       ...post, 
-      related_posts: relatedPosts 
+      related_posts: relatedPostsWithFullUrls 
     });
   } catch (error) {
     console.error("❌ Error fetching post:", error);

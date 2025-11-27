@@ -1,6 +1,7 @@
 {
   "name": "blog-platform-backend",
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "start": "node index.js",
