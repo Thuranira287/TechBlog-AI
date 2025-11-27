@@ -6,7 +6,12 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
-# SMART REDIRECTS: Only redirect non-asset routes
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+  force = false
+
 [[redirects]]
   from = "/category/*"
   to = "/index.html"
@@ -32,7 +37,7 @@
   to = "/index.html"
   status = 200
 
-# Catch-all
+# FINAL catch-all
 [[redirects]]
   from = "/*"
   to = "/index.html"
