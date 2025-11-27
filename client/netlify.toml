@@ -6,9 +6,28 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
+# REDIRECTS FOR CLIENT-SIDE ROUTING
 [[redirects]]
-  from = "/"
+  from = "/*"
   to = "/index.html"
   status = 200
 
-#functions = "netlify/functions"
+[[redirects]]
+  from = "/category/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/post/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/search"
+  to = "/index.html"
+  status = 200
