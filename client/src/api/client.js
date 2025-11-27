@@ -3,6 +3,11 @@ import axios from 'axios'
 // Use environment variable with fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
+// Add at the top of client/src/api/client.js
+console.log('🚀 API Configuration Loaded!');
+console.log('🔗 API Base URL:', import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
+console.log('🌐 Environment:', import.meta.env.MODE);
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
