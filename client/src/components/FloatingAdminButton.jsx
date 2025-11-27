@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Settings, X, LogOut, LayoutDashboard } from 'lucide-react';
@@ -29,14 +30,14 @@ const FloatingAdminButton = () => {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-3 right-6 z-50">
       {/* Main Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+        className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
         title="Admin Menu"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Settings className="w-6 h-6" />}
+        {isOpen ? <X className="w-6 h-6" /> : <Settings className="w-2 h-2" />}
       </button>
 
       {/* Dropdown Menu */}
@@ -78,5 +79,4 @@ const FloatingAdminButton = () => {
     </div>
   );
 };
-
 export default FloatingAdminButton;

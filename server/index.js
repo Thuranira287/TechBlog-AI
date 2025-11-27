@@ -25,7 +25,8 @@ const limiter = rateLimit({
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://techblogai.netlify.app'
+  'https://aitechblogs.netlify.app',
+  'https://techblog-ai.onrender.com'
 ];
 
 const corsOptions = {

@@ -1,15 +1,26 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useBlog } from '../context/BlogContext'
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Instagram,
+  Github,
+  MessageCircle,
+} from "lucide-react";
 
 const Footer = () => {
   const { categories } = useBlog()
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-gray-900 text-white py-2">
+      <div className="container mx-auto px-4 py-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Brand */}
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center space-x-2 mb-4">
@@ -26,7 +37,7 @@ const Footer = () => {
           {/* Categories */}
           <div>
             <h3 className="text-lg font-semibold mb-4">Categories</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {categories.slice(0, 5).map((category) => (
                 <li key={category.id}>
                   <Link 
@@ -63,17 +74,65 @@ const Footer = () => {
           </div>
 
           {/* Contact */}
-          <div>
+          <div className='contact'>
             <h3 className="text-lg font-semibold mb-4">Connect</h3>
             <ul className="space-y-2 text-gray-400">
-              <li>Email: contact@techblogai.com</li>
+              <li className='flex items-center space-x-1'>
+                <Mail className='text-gray-400 w-5 h-5 text-xl mr-2'/>
+                <a href="mailto:contact@techblogai.com" className='hover:underline text-blue-400 text-center'>
+                  contact@techblogai.com
+                </a>
+                </li>
               <li>Follow us on social media</li>
             </ul>
+            <div className="flex space-x-4">
+              
+              <a
+                href="https://www.facebook.com/alexander.thuranira.1044"
+                aria-label="Facebook"
+                title="Facebook"
+                className="text-blue-400 hover:text-brand-gold transition-colors"
+              >
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a
+                href="https://x.com/ranviah?s=09"
+                aria-label="Twitter"
+                title="Twitter"
+                className="text-gray-400 hover:text-brand-gold transition-colors"
+              >
+                <Twitter className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.linkedin.com/"
+                aria-label="LinkedIn"
+                title="LinkedIn"
+                className="text-blue-400 hover:text-brand-gold transition-colors"
+              >
+                <Linkedin className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.instagram.com"
+                aria-label="Instagram"
+                title="Instagram"
+                className="text-pink-400 hover:text-brand-gold transition-colors"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a
+                href="https://github.com/Thuranira287"
+                aria-label="Github"
+                title="Github"
+                className="text-gray-400 hover:text-brand-gold transition-colors"
+              >
+                <Github className="h-5 w-5" />
+              </a>
+            </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-800 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
             © {currentYear} TechBlog AI. All rights reserved.
           </p>
