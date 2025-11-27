@@ -6,14 +6,71 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
-# Serve all hashed JS/CSS assets correctly
+# Serve static assets with correct caching
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    "Cache-Control" = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    "Content-Type" = "text/css"
+    "Cache-Control" = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    "Cache-Control" = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.woff2"
+  [headers.values]
+    "Cache-Control" = "public, max-age=31536000"
+
+# Serve static assets directly - THIS MUST COME FIRST
 [[redirects]]
   from = "/assets/*"
   to = "/assets/:splat"
   status = 200
-  force = false
 
-# SPA fallback for other routes
+# Explicitly serve CSS, JS, font, and image files
+[[redirects]]
+  from = "/*.css"
+  to = "/:splat.css"
+  status = 200
+
+[[redirects]]
+  from = "/*.js"
+  to = "/:splat.js"
+  status = 200
+
+[[redirects]]
+  from = "/*.woff2"
+  to = "/:splat.woff2"
+  status = 200
+
+[[redirects]]
+  from = "/*.png"
+  to = "/:splat.png"
+  status = 200
+
+[[redirects]]
+  from = "/*.jpg"
+  to = "/:splat.jpg"
+  status = 200
+
+[[redirects]]
+  from = "/*.ico"
+  to = "/:splat.ico"
+  status = 200
+
+[[redirects]]
+  from = "/*.svg"
+  to = "/:splat.svg"
+  status = 200
+
+# SPA routes - these should come after static file redirects
 [[redirects]]
   from = "/category/*"
   to = "/index.html"
@@ -39,7 +96,7 @@
   to = "/index.html"
   status = 200
 
-# Catch-all LAST
+# Catch-all for SPA - THIS MUST BE LAST
 [[redirects]]
   from = "/*"
   to = "/index.html"
