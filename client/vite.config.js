@@ -31,5 +31,5 @@ export default defineConfig({
     }
   },
   //client-side routing
-  base: './'
+  base: '/'
 })
