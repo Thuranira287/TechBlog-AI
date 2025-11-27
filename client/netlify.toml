@@ -5,3 +5,36 @@
 [build.environment]
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
+
+# ✅ SMART REDIRECTS: Only redirect non-asset routes
+[[redirects]]
+  from = "/category/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/post/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/search"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/policy/*"
+  to = "/index.html"
+  status = 200
+
+# Catch-all but exclude assets
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = {Language = ["en"]}
