@@ -6,17 +6,9 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
-[functions]
-  external_node_modules = ["express"]
-  node_bundler = "esbuild"
-  
-[[redirects]]
-  force = true
-  from = "/api/*"
-  status = 200
-  to = "/.netlify/functions/api/:splat"
-#refreshing the redirects
+# Netlify's built-in SPA handling
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false 
