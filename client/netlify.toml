@@ -6,11 +6,11 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
+# Do NOT redirect JS/CSS assets
 [[redirects]]
   from = "/assets/*"
   to = "/assets/:splat"
   status = 200
-  force = false
 
 [[redirects]]
   from = "/category/*"
@@ -37,7 +37,7 @@
   to = "/index.html"
   status = 200
 
-# FINAL catch-all
+# Catch-all LAST
 [[redirects]]
   from = "/*"
   to = "/index.html"
