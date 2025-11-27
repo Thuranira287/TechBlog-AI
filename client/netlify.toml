@@ -5,10 +5,3 @@
 [build.environment]
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
-
-# Netlify's built-in SPA handling
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false 
