@@ -1,0 +1,39 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+  VITE_API_URL = "https://techblogai-backend.onrender.com/api"
+
+# ✅ SMART REDIRECTS for client-side routing
+[[redirects]]
+  from = "/category/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/post/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/search"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/policy/*"
+  to = "/index.html"
+  status = 200
+
+# Catch-all for other routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
