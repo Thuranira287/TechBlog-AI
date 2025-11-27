@@ -15,45 +15,36 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.set('trust proxy', 1);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100 // limit each IP to 100 requests per windowMs
 });
 
-// CORS configuration - Allow both localhost and Netlify
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'https://aitechblogs.netlify.app',
-  'https://techblog-ai.onrender.com'
-];
-
+// ✅ FIXED CORS Configuration - Simplified
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('🚫 Blocked by CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    'https://aitechblogs.netlify.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
-// Middleware
+// Middleware - IMPORTANT: Order matters!
 app.use(helmet());
 app.use(limiter);
-app.use(cors(corsOptions)); // Use the defined corsOptions
+app.use(cors(corsOptions)); // Use CORS before other middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+
+// Remove these duplicate lines:
+// app.use(express.json({ limit: '10mb' }));
+// app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/posts', postsRouter);
@@ -77,12 +68,11 @@ app.use('/uploads', express.static('uploads'));
 // Sitemap generator
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const pool = await import('./config/db.js').then(mod => mod.default);
     const [posts] = await pool.execute(
       'SELECT slug, updated_at FROM posts WHERE status = "published" ORDER BY published_at DESC'
     );
     
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
     
     let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -116,38 +106,13 @@ app.get('/sitemap.xml', async (req, res) => {
 app.get('/robots.txt', (req, res) => {
   const robots = `User-agent: *
 Allow: /
-Sitemap: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/sitemap.xml`;
+Sitemap: ${process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app'}/sitemap.xml`;
   
   res.set('Content-Type', 'text/plain');
   res.send(robots);
 });
 
-// Error handling
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Start server
-const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📝 API available at http://localhost:${PORT}/api`);
-      console.log(`🗺️ Sitemap at http://localhost:${PORT}/sitemap.xml`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
-
+// Debug endpoints
 app.get('/api/debug/db', async (req, res) => {
   try {
     const [categories] = await pool.execute('SELECT * FROM categories');
@@ -184,5 +149,31 @@ app.get('/api/test-db', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Start server
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📝 API available at http://localhost:${PORT}/api`);
+      console.log(`🗺️ Sitemap at http://localhost:${PORT}/sitemap.xml`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
 
 startServer();
