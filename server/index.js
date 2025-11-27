@@ -19,11 +19,11 @@ app.set('trust proxy', 1);
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100 
 });
 
-// ✅ FIXED CORS Configuration - Simplified
+// CORS Configuration
 const corsOptions = {
   origin: [
     'https://aitechblogs.netlify.app',
@@ -35,16 +35,30 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
-// Middleware - IMPORTANT: Order matters!
+// Middleware by Order matters!
 app.use(helmet());
 app.use(limiter);
-app.use(cors(corsOptions)); // Use CORS before other middleware
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Remove these duplicate lines:
-// app.use(express.json({ limit: '10mb' }));
-// app.use(express.urlencoded({ extended: true }));
+// CORS handling for images
+app.use('/uploads', (req, res, next) => {
+  // CORS headers specifically for images
+  res.header('Access-Control-Allow-Origin', 'https://aitechblogs.netlify.app');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// Serve uploaded files statically - AFTER the CORS middleware
+app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/posts', postsRouter);
@@ -61,9 +75,6 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV 
   });
 });
-
-// Serve uploaded files statically
-app.use('/uploads', express.static('uploads'));
 
 // Sitemap generator
 app.get('/sitemap.xml', async (req, res) => {
