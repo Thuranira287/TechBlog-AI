@@ -28,7 +28,8 @@ router.get('/dashboard', async (req, res) => {
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
       },
-      posts: posts
+      posts: recentPosts,
+      pagination:{ totalPages: postsCount[0].count}
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);

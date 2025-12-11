@@ -4,7 +4,11 @@ import { blogAPI } from '../../api/client';
 import { Plus, FileText, Folder, MessageSquare, Eye, Trash2 } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    totalPosts: 0,
+    totalCategories: 0,
+    totalComments: 0
+  });
   const [recentPosts, setRecentPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
@@ -17,17 +21,33 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async (pageNum = 1) => {
     try {
+      setLoading(true);
       const response = await blogAPI.getAdminDashboard({ page: pageNum, limit: 50 });
-      console.log("ADMIN DASHBOARD RESPONSE:", response.data);
+      
+      // Safely handle the response
+      if (response.data) {
+        setStats(response.data.stats || {
+          totalPosts: 0,
+          totalCategories: 0,
+          totalComments: 0
+        });
+        
+        const postsData = response.data.posts || [];
+        
+        if (pageNum === 1) {
+          setRecentPosts(postsData);
+        } else {
+          setRecentPosts((prev) => [...prev, ...postsData]);
+        }
 
-      setStats(response.data.stats);
-      if (pageNum === 1) {
-        setRecentPosts(response.data.posts);
-      } else {
-        setRecentPosts((prev) => [...prev, ...response.data.posts]);
+        // Handle pagination safely
+        if (response.data.pagination) {
+          setHasMore(pageNum < (response.data.pagination.totalPages || 0));
+        } else {
+          // If no pagination in response, assume no more posts
+          setHasMore(postsData.length > 0);
+        }
       }
-
-      setHasMore(pageNum < response.data.pagination.totalPages);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -45,6 +65,11 @@ const AdminDashboard = () => {
       setDeletingId(postId);
       await blogAPI.deleteAdminPost(postId);
       setRecentPosts((prev) => prev.filter((p) => p.id !== postId));
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        totalPosts: prev.totalPosts - 1
+      }));
     } catch (error) {
       console.error('Error deleting post:', error);
     } finally {
@@ -52,10 +77,12 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
+  if (loading && page === 1) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
-        <div className="animate-pulse">Loading...</div>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-gray-600">Loading dashboard...</div>
+        </div>
       </div>
     );
   }
@@ -77,9 +104,24 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard icon={<FileText className="w-6 h-6 text-blue-600" />} label="Total Posts" value={stats?.totalPosts} bg="bg-blue-100" />
-          <StatCard icon={<Folder className="w-6 h-6 text-green-600" />} label="Categories" value={stats?.totalCategories} bg="bg-green-100" />
-          <StatCard icon={<MessageSquare className="w-6 h-6 text-purple-600" />} label="Comments" value={stats?.totalComments} bg="bg-purple-100" />
+          <StatCard 
+            icon={<FileText className="w-6 h-6 text-blue-600" />} 
+            label="Total Posts" 
+            value={stats.totalPosts} 
+            bg="bg-blue-100" 
+          />
+          <StatCard 
+            icon={<Folder className="w-6 h-6 text-green-600" />} 
+            label="Categories" 
+            value={stats.totalCategories} 
+            bg="bg-green-100" 
+          />
+          <StatCard 
+            icon={<MessageSquare className="w-6 h-6 text-purple-600" />} 
+            label="Comments" 
+            value={stats.totalComments} 
+            bg="bg-purple-100" 
+          />
         </div>
 
         {/* Recent Posts */}
@@ -88,49 +130,53 @@ const AdminDashboard = () => {
             <h2 className="text-lg font-medium text-gray-900">Recent Posts</h2>
           </div>
           <div className="divide-y divide-gray-200">
-            {recentPosts.map((post) => (
-              <div key={post.id} className="px-6 py-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900">{post.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {post.category_name} • {new Date(post.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    post.status === 'published'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {post.status}
-                  </span>
-                  {user?.isAdmin && (
+            {recentPosts.length === 0 ? (
+              <div className="px-6 py-8 text-center text-gray-500">
+                No posts found
+              </div>
+            ) : (
+              recentPosts.map((post) => (
+                <div key={post.id} className="px-6 py-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-900">{post.title}</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {post.category_name || 'Uncategorized'} • {new Date(post.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      post.status === 'published'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {post.status || 'draft'}
+                    </span>
                     <Link
                       to={`/admin/posts/edit/${post.id}`}
                       className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                     >
                       Edit
                     </Link>
-                  )}
-                  <a
-                    href={`/post/${post.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </a>
-                  <button
-                    onClick={() => handleDeletePost(post.id)}
-                    disabled={deletingId === post.id}
-                    className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                    title="Delete post"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <a
+                      href={`/post/${post.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </a>
+                    <button
+                      onClick={() => handleDeletePost(post.id)}
+                      disabled={deletingId === post.id}
+                      className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                      title="Delete post"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Load More Button */}
@@ -138,9 +184,10 @@ const AdminDashboard = () => {
             <div className="px-6 py-4 text-center">
               <button
                 onClick={loadMorePosts}
-                className="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"
+                className="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                disabled={loading}
               >
-                Load More Posts
+                {loading ? 'Loading...' : 'Load More Posts'}
               </button>
             </div>
           )}
