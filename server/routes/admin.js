@@ -15,16 +15,17 @@ router.get('/dashboard', async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
-    // Get stats
+    // Stats
     const [postsCount] = await pool.execute('SELECT COUNT(*) as count FROM posts');
     const [categoriesCount] = await pool.execute('SELECT COUNT(*) as count FROM categories');
     const [commentsCount] = await pool.execute('SELECT COUNT(*) as count FROM comments');
 
-    // Get recent posts with pagination
+    // Recent posts with category + author
     const [recentPosts] = await pool.execute(`
-      SELECT p.*, c.name as category_name
+      SELECT p.*, c.name as category_name, a.name as author_name
       FROM posts p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN authors a ON p.author_id = a.id
       ORDER BY p.created_at DESC
       LIMIT ? OFFSET ?
     `, [limit, offset]);
@@ -35,18 +36,24 @@ router.get('/dashboard', async (req, res) => {
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
       },
-      posts: recentPosts || [],
+      posts: Array.isArray(recentPosts) ? recentPosts : [],
       pagination: {
-        currentPage: page,
+        current: page,
         totalPages: Math.ceil(postsCount[0].count / limit),
         totalPosts: postsCount[0].count
       }
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.json({
+      stats: { totalPosts: 0, totalCategories: 0, totalComments: 0 },
+      posts: [],
+      pagination: { current: 1, totalPages: 1, totalPosts: 0 },
+      error: 'Internal server error'
+    });
   }
 });
+
 
 
 // -------------------- POSTS --------------------
