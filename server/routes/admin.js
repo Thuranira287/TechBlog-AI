@@ -35,7 +35,7 @@ router.get('/dashboard', async (req, res) => {
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
       },
-      posts: recentPosts,
+      posts: recentPosts || [],
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(postsCount[0].count / limit),

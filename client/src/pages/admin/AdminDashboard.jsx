@@ -35,14 +35,14 @@ const AdminDashboard = () => {
         return;
       }
 
-      const { data } = await blogAPI.getAdminDashboard();
+      const { data } = await blogAPI.getAdminDashboard({ page: 1, limit: 1000 });
 
       if (!data?.posts || !Array.isArray(data.posts)) {
         throw new Error("Invalid posts data from server");
       }
 
       setStats(data.stats ?? stats);
-      setRecentPosts(data.posts);
+      setRecentPosts(Array.isArray(data.posts) ? data.posts : []);
       setHasMore(data.posts.length >= 1000); // backend limit
     } catch (err) {
       console.error("Dashboard fetch failed:", err);
