@@ -4,7 +4,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
 //import path from 'path';
 import cloudinary from "../config/cloudinary.js";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
+//import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 
 const router = express.Router();
