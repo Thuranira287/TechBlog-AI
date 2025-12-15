@@ -11,24 +11,15 @@ router.use(authenticateToken);
 // -------------------- DASHBOARD --------------------
 router.get('/dashboard', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = (page - 1) * limit;
-
-    // Stats
     const [postsCount] = await pool.execute('SELECT COUNT(*) as count FROM posts');
     const [categoriesCount] = await pool.execute('SELECT COUNT(*) as count FROM categories');
     const [commentsCount] = await pool.execute('SELECT COUNT(*) as count FROM comments');
-
-    // Recent posts with category + author
     const [recentPosts] = await pool.execute(`
-      SELECT p.*, c.name as category_name, a.name as author_name
-      FROM posts p
-      LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN authors a ON p.author_id = a.id
-      ORDER BY p.created_at DESC
-      LIMIT ? OFFSET ?
-    `, [limit, offset]);
+      SELECT p.*, c.name as category_name 
+      FROM posts p 
+      LEFT JOIN categories c ON p.category_id = c.id 
+      ORDER BY p.created_at DESC 
+    `);
 
     res.json({
       stats: {
@@ -36,25 +27,13 @@ router.get('/dashboard', async (req, res) => {
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
       },
-      posts: Array.isArray(recentPosts) ? recentPosts : [],
-      pagination: {
-        current: page,
-        totalPages: Math.ceil(postsCount[0].count / limit),
-        totalPosts: postsCount[0].count
-      }
+      posts: posts
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
-    res.json({
-      stats: { totalPosts: 0, totalCategories: 0, totalComments: 0 },
-      posts: [],
-      pagination: { current: 1, totalPages: 1, totalPosts: 0 },
-      error: 'Internal server error'
-    });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
 
 // -------------------- POSTS --------------------
 
@@ -62,7 +41,7 @@ router.get('/dashboard', async (req, res) => {
 router.get('/posts', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
     const [posts] = await pool.execute(`

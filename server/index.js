@@ -45,7 +45,7 @@ app.use(helmet({
       baseUri: ["'self'"],
       fontSrc: ["'self'", "https:", "data:"],
       formAction: ["'self'"],
-      frameAncestors: ["'self'"],
+      frameAncestors: ["'self'", "https://www.google.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       objectSrc: ["'none'"],
       scriptSrc: ["'self'"],
