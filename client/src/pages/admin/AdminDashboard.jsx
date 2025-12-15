@@ -17,7 +17,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async (pageNum = 1) => {
     try {
-      const response = await blogAPI.getAdminDashboard({ page: pageNum, limit: 10 });
+      const response = await blogAPI.getAllPosts({ page: pageNum, limit: 50 });
       console.log("ADMIN DASHBOARD RESPONSE:", response.data);
 
       setStats(response.data.stats);

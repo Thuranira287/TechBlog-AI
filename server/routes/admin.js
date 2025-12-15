@@ -18,7 +18,8 @@ router.get('/dashboard', async (req, res) => {
       SELECT p.*, c.name as category_name 
       FROM posts p 
       LEFT JOIN categories c ON p.category_id = c.id 
-      ORDER BY p.created_at DESC 
+      ORDER BY p.created_at DESC
+      LIMIT 1000
     `);
 
     res.json({
@@ -41,7 +42,7 @@ router.get('/dashboard', async (req, res) => {
 router.get('/posts', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
     const [posts] = await pool.execute(`
