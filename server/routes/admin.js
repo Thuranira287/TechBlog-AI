@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
-import multer from 'multer';
+import parser from '../config/cloudinary.js'; 
 //import path from 'path';
 import cloudinary from "../config/cloudinary.js";
 //import { CloudinaryStorage } from "multer-storage-cloudinary";
@@ -129,7 +129,7 @@ router.get('/posts/:id', async (req, res) => {
 });
 
 // CREATE new post
-router.post('/posts', upload.single('featured_image'), async (req, res) => {
+router.post('/posts', parser.single('featured_image'), async (req, res) => {
   try {
     const {
       title,
@@ -172,7 +172,7 @@ router.post('/posts', upload.single('featured_image'), async (req, res) => {
 });
 
 // UPDATE post
-router.put('/posts/:id', upload.single('featured_image'), async (req, res) => {
+router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
   try {
     const {
       title,
