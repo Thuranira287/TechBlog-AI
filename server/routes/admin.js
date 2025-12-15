@@ -1,8 +1,8 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
-import parser from '../config/cloudinary.js'; 
-import cloudinary from "../config/cloudinary.js";
+import parser, { cloudinary } from "../config/cloudinary.js";
+
 
 const router = express.Router();
 
