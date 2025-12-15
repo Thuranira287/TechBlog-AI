@@ -2,12 +2,15 @@ import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
-import path from 'path';
+//import path from 'path';
+import cloudinary from "../config/cloudinary.js";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+
 
 const router = express.Router();
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
+{/*const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
   },
@@ -15,7 +18,17 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
+}); */}
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "techblogai/featured-images",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [{ width: 1200, crop: "limit", quality: "auto" }],
+  },
 });
+
 
 const upload = multer({ 
   storage: storage,
@@ -134,7 +147,8 @@ router.post('/posts', upload.single('featured_image'), async (req, res) => {
     const [authors] = await pool.execute('SELECT id FROM authors LIMIT 1');
     const author_id = authors[0].id;
 
-    const featured_image = req.file ? `/uploads/${req.file.filename}` : null;
+    const featured_image = req.file ? req.file.path : null;
+    //const featured_image = req.file ? `/uploads/${req.file.filename}` : null;
 
     const [result] = await pool.execute(
       `INSERT INTO posts (title, slug, excerpt, content, author_id, category_id, featured_image, meta_title, meta_description, tags, status) 
@@ -174,9 +188,13 @@ router.put('/posts/:id', upload.single('featured_image'), async (req, res) => {
 
     let featured_image = req.body.existing_featured_image;
 
-    if (req.file) {
+    {/*if (req.file) {
       featured_image = `/uploads/${req.file.filename}`;
+    } */}
+    if (req.file) {
+     featured_image = req.file.path;
     }
+
 
     await pool.execute(
       `UPDATE posts 

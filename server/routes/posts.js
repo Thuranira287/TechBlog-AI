@@ -3,12 +3,25 @@ import pool from "../config/db.js";
 
 const router = express.Router();
 
-// Add this helper function at the top
+{/*//Helper function at the top
 const getFullImageUrl = (imagePath) => {
   if (!imagePath) return null;
   if (imagePath.startsWith('http')) return imagePath;
   return `https://techblogai-backend.onrender.com${imagePath}`;
+};*/}
+
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+
+  // Cloudinary or external image
+  if (imagePath.startsWith("http")) {
+    return imagePath;
+  }
+
+  // Legacy local uploads
+  return `https://techblogai-backend.onrender.com${imagePath}`;
 };
+
 
 /**
  * ✅ GET all published posts with pagination - UPDATED WITH FULL IMAGE URLS
