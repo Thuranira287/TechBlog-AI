@@ -2,10 +2,7 @@ import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import parser from '../config/cloudinary.js'; 
-//import path from 'path';
 import cloudinary from "../config/cloudinary.js";
-//import { CloudinaryStorage } from "multer-storage-cloudinary";
-
 
 const router = express.Router();
 

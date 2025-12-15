@@ -1,7 +1,6 @@
-// server/config/cloudinary.js
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
+import streamifier from 'streamifier';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -12,28 +11,39 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Multer storage for uploads
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'techblogai/featured-images', // your Cloudinary folder
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 1200, crop: 'limit', quality: 'auto' }],
-    public_id: (req, file) => `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`
-  },
-});
-
-const parser = multer({ 
+// Multer memory storage
+const storage = multer.memoryStorage();
+const parser = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
       cb(new Error('Only image files are allowed!'), false);
     }
-  }
+  },
 });
 
-export default parser;
-export { cloudinary };
+// Helper to upload to Cloudinary using streams
+const uploadToCloudinary = (buffer, folder = 'techblogai/featured-images', filename = null) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        public_id: filename ? filename : undefined,
+        format: 'auto',
+        quality: 'auto',
+        transformation: [{ width: 1200, crop: 'limit' }],
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
+
+export { cloudinary, parser, uploadToCloudinary };
