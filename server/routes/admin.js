@@ -19,7 +19,6 @@ router.get('/dashboard', async (req, res) => {
       FROM posts p 
       LEFT JOIN categories c ON p.category_id = c.id 
       ORDER BY p.created_at DESC 
-      ORDER BY p.created_at DESC
     `);
 
     res.json({
@@ -28,7 +27,7 @@ router.get('/dashboard', async (req, res) => {
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
       },
-      recentPosts
+      posts
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
