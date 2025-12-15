@@ -79,6 +79,7 @@ export const blogAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   deleteAdminPost: (id) => api.delete(`/admin/posts/${id}`),
+  deletePost: (id) => api.delete(`/admin/posts/${id}`),
   getAdminCategories: () => api.get('/admin/categories'),
   createAdminCategory: (categoryData) => api.post('/admin/categories', categoryData),
 }
