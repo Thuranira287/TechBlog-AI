@@ -92,7 +92,7 @@ const AdminDashboard = () => {
             <h2 className="text-lg font-medium text-gray-900">Recent Posts</h2>
           </div>
           <div className="divide-y divide-gray-200">
-            {recentPosts.map((post) => (
+            {Array.isArray(recentPosts) && recentPosts.map((post) => (
               <div key={post.id} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -109,12 +109,12 @@ const AdminDashboard = () => {
                     }`}>
                       {post.status}
                     </span>
-                    {user.isAdmin &&(<Link
+                    <Link
                       to={`/admin/posts/edit/${post.id}`}
                       className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                     >
                       Edit
-                    </Link>)}
+                    </Link>
                     <a
                       href={`/post/${post.slug}`}
                       target="_blank"
