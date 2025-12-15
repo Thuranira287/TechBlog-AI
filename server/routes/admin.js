@@ -1,50 +1,14 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { parser, cloudinary } from "../config/cloudinary.js";
-
+import { parser, uploadBufferToCloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
-
-// Configure multer for file uploads
-{/*const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-}); */}
-
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "techblogai/featured-images",
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [{ width: 1200, crop: "limit", quality: "auto" }],
-  },
-});
-
-
-const upload = multer({ 
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'), false);
-    }
-  }
-});
 
 // Protect all admin routes
 router.use(authenticateToken);
 
-// GET admin dashboard stats
+// -------------------- DASHBOARD --------------------
 router.get('/dashboard', async (req, res) => {
   try {
     const [postsCount] = await pool.execute('SELECT COUNT(*) as count FROM posts');
@@ -72,7 +36,9 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-// GET all posts for admin
+// -------------------- POSTS --------------------
+
+// Get all posts
 router.get('/posts', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -104,7 +70,7 @@ router.get('/posts', async (req, res) => {
   }
 });
 
-// GET single post for editing
+// Get single post
 router.get('/posts/:id', async (req, res) => {
   try {
     const [posts] = await pool.execute(`
@@ -114,10 +80,7 @@ router.get('/posts/:id', async (req, res) => {
       WHERE p.id = ?
     `, [req.params.id]);
 
-    if (posts.length === 0) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
+    if (!posts.length) return res.status(404).json({ error: 'Post not found' });
     res.json(posts[0]);
   } catch (error) {
     console.error('Error fetching post:', error);
@@ -125,35 +88,26 @@ router.get('/posts/:id', async (req, res) => {
   }
 });
 
-// CREATE new post
+// Create post
 router.post('/posts', parser.single('featured_image'), async (req, res) => {
   try {
-    const {
-      title,
-      slug,
-      excerpt,
-      content,
-      category_id,
-      meta_title,
-      meta_description,
-      tags,
-      status = 'draft'
-    } = req.body;
+    const { title, slug, excerpt, content, category_id, meta_title, meta_description, tags, status = 'draft' } = req.body;
 
-    // Get the first author as default (you can modify this based on logged-in user)
     const [authors] = await pool.execute('SELECT id FROM authors LIMIT 1');
     const author_id = authors[0].id;
 
-    const featured_image = req.file ? req.file.path : null;
-    //const featured_image = req.file ? `/uploads/${req.file.filename}` : null;
+    let featured_image = null;
+    if (req.file) {
+      const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
+      featured_image = uploadResult.secure_url;
+    }
 
-    const [result] = await pool.execute(
-      `INSERT INTO posts (title, slug, excerpt, content, author_id, category_id, featured_image, meta_title, meta_description, tags, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, slug, excerpt, content, author_id, category_id, featured_image, meta_title, meta_description, tags, status]
-    );
+    const [result] = await pool.execute(`
+      INSERT INTO posts 
+      (title, slug, excerpt, content, author_id, category_id, featured_image, meta_title, meta_description, tags, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [title, slug, excerpt, content, author_id, category_id, featured_image, meta_title, meta_description, tags, status]);
 
-    // Fetch the created post with category info
     const [newPost] = await pool.execute(`
       SELECT p.*, c.name as category_name 
       FROM posts p 
@@ -168,44 +122,28 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
   }
 });
 
-// UPDATE post
+// Update post
 router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
   try {
-    const {
-      title,
-      slug,
-      excerpt,
-      content,
-      category_id,
-      meta_title,
-      meta_description,
-      tags,
-      status
-    } = req.body;
+    const { title, slug, excerpt, content, category_id, meta_title, meta_description, tags, status, existing_featured_image } = req.body;
 
-    let featured_image = req.body.existing_featured_image;
-
-    {/*if (req.file) {
-      featured_image = `/uploads/${req.file.filename}`;
-    } */}
+    let featured_image = existing_featured_image || null;
     if (req.file) {
-     featured_image = req.file.path;
+      const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
+      featured_image = uploadResult.secure_url;
     }
 
+    await pool.execute(`
+      UPDATE posts 
+      SET title = ?, slug = ?, excerpt = ?, content = ?, category_id = ?,
+          featured_image = ?, meta_title = ?, meta_description = ?, tags = ?, status = ?
+      WHERE id = ?
+    `, [title, slug, excerpt, content, category_id, featured_image, meta_title, meta_description, tags, status, req.params.id]);
 
-    await pool.execute(
-      `UPDATE posts 
-       SET title = ?, slug = ?, excerpt = ?, content = ?, category_id = ?, 
-           featured_image = ?, meta_title = ?, meta_description = ?, tags = ?, status = ?
-       WHERE id = ?`,
-      [title, slug, excerpt, content, category_id, featured_image, meta_title, meta_description, tags, status, req.params.id]
-    );
-
-    // Fetch the updated post
     const [updatedPost] = await pool.execute(`
       SELECT p.*, c.name as category_name 
       FROM posts p 
-      LEFT JOIN categories c ON p.category_id = c.id 
+      LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.id = ?
     `, [req.params.id]);
 
@@ -216,7 +154,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
   }
 });
 
-// DELETE post
+// Delete post
 router.delete('/posts/:id', async (req, res) => {
   try {
     await pool.execute('DELETE FROM posts WHERE id = ?', [req.params.id]);
@@ -227,9 +165,7 @@ router.delete('/posts/:id', async (req, res) => {
   }
 });
 
-// CATEGORY MANAGEMENT
-
-// Get all categories
+// -------------------- CATEGORIES --------------------
 router.get('/categories', async (req, res) => {
   try {
     const [categories] = await pool.execute('SELECT * FROM categories ORDER BY name');
@@ -240,16 +176,10 @@ router.get('/categories', async (req, res) => {
   }
 });
 
-// Create category
 router.post('/categories', async (req, res) => {
   try {
     const { name, slug, description } = req.body;
-
-    const [result] = await pool.execute(
-      'INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)',
-      [name, slug, description]
-    );
-
+    const [result] = await pool.execute('INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)', [name, slug, description]);
     res.status(201).json({ id: result.insertId, name, slug, description });
   } catch (error) {
     console.error('Error creating category:', error);
