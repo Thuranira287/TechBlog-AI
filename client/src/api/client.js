@@ -69,7 +69,7 @@ export const blogAPI = {
   getMe: () => api.get('/auth/me'),
 
   // Admin methods
-  getAdminDashboard: () => api.get('/admin/dashboard'),
+  getAdminDashboard: (params = {}) => api.get('/admin/dashboard', { params }),
   getAdminPosts: (page = 1) => api.get(`/admin/posts?page=${page}`),
   getAdminPost: (id) => api.get(`/admin/posts/${id}`),
   createAdminPost: (postData) => api.post('/admin/posts', postData, {

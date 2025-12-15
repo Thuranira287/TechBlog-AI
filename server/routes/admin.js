@@ -11,16 +11,23 @@ router.use(authenticateToken);
 // -------------------- DASHBOARD --------------------
 router.get('/dashboard', async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
+    // Get stats
     const [postsCount] = await pool.execute('SELECT COUNT(*) as count FROM posts');
     const [categoriesCount] = await pool.execute('SELECT COUNT(*) as count FROM categories');
     const [commentsCount] = await pool.execute('SELECT COUNT(*) as count FROM comments');
+
+    // Get recent posts with pagination
     const [recentPosts] = await pool.execute(`
-      SELECT p.*, c.name as category_name 
-      FROM posts p 
-      LEFT JOIN categories c ON p.category_id = c.id 
+      SELECT p.*, c.name as category_name
+      FROM posts p
+      LEFT JOIN categories c ON p.category_id = c.id
       ORDER BY p.created_at DESC
-      LIMIT 1000
-    `);
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
 
     res.json({
       stats: {
@@ -28,7 +35,12 @@ router.get('/dashboard', async (req, res) => {
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
       },
-      posts: recentPosts
+      posts: recentPosts,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(postsCount[0].count / limit),
+        totalPosts: postsCount[0].count
+      }
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
@@ -36,13 +48,14 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
+
 // -------------------- POSTS --------------------
 
 // Get all posts
 router.get('/posts', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
     const [posts] = await pool.execute(`

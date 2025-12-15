@@ -19,16 +19,38 @@ const AdminDashboard = () => {
   const [recentPosts, setRecentPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1); // for optional pagination
+  const [hasMore, setHasMore] = useState(true);
 
   /** ---------------- FETCH DASHBOARD DATA ---------------- */
   const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        window.location.href = "/admin/login";
+        return;
+      }
+
       const { data } = await blogAPI.getAdminDashboard();
 
-      setStats(data?.stats ?? stats);
-      setRecentPosts(Array.isArray(data?.posts) ? data.posts : []);
-    } catch (error) {
-      console.error("Dashboard fetch failed:", error);
+      if (!data?.posts || !Array.isArray(data.posts)) {
+        throw new Error("Invalid posts data from server");
+      }
+
+      setStats(data.stats ?? stats);
+      setRecentPosts(data.posts);
+      setHasMore(data.posts.length >= 1000); // backend limit
+    } catch (err) {
+      console.error("Dashboard fetch failed:", err);
+      setError(
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to fetch dashboard data"
+      );
       setRecentPosts([]);
     } finally {
       setLoading(false);
@@ -44,7 +66,6 @@ const AdminDashboard = () => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this post?"
     );
-
     if (!confirmDelete) return;
 
     try {
@@ -57,15 +78,34 @@ const AdminDashboard = () => {
         ...prev,
         totalPosts: Math.max(prev.totalPosts - 1, 0),
       }));
-    } catch (error) {
-      console.error("Delete failed:", error);
+    } catch (err) {
+      console.error("Delete failed:", err);
       alert("Failed to delete post");
     } finally {
       setDeletingId(null);
     }
   };
 
-  /** ---------------- LOADING STATE ---------------- */
+  /** ---------------- LOAD MORE POSTS (OPTIONAL) ---------------- */
+  const loadMorePosts = async () => {
+    try {
+      const nextPage = page + 1;
+      const { data } = await blogAPI.getAdminPosts(nextPage);
+
+      if (data.posts.length === 0) {
+        setHasMore(false);
+        return;
+      }
+
+      setRecentPosts((prev) => [...prev, ...data.posts]);
+      setPage(nextPage);
+    } catch (err) {
+      console.error("Load more failed:", err);
+      alert("Failed to load more posts");
+    }
+  };
+
+  /** ---------------- LOADING OR ERROR STATE ---------------- */
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
@@ -74,6 +114,15 @@ const AdminDashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 text-center text-red-600">
+        {error}
+      </div>
+    );
+  }
+
+  /** ---------------- DASHBOARD UI ---------------- */
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
@@ -177,6 +226,18 @@ const AdminDashboard = () => {
               ))
             )}
           </div>
+
+          {/* Load More Button */}
+          {hasMore && recentPosts.length > 0 && (
+            <div className="px-6 py-4 text-center">
+              <button
+                onClick={loadMorePosts}
+                className="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"
+              >
+                Load More Posts
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
