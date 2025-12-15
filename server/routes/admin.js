@@ -150,7 +150,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
     res.json(updatedPost[0]);
   } catch (error) {
     console.error('Error updating post:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message, stack: error.stack }); 
   }
 });
 
