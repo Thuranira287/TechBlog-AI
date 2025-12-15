@@ -15,6 +15,7 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const response = await blogAPI.getAdminDashboard();
+      console.log("ADMIN DASHBOARD RESPONSE:", response.data);
       setStats(response.data.stats);
       setRecentPosts(response.data.posts);
     } catch (error) {
