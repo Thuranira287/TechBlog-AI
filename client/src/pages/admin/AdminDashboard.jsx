@@ -16,7 +16,7 @@ const AdminDashboard = () => {
     try {
       const response = await blogAPI.getAdminDashboard();
       setStats(response.data.stats);
-      setRecentPosts(response.data.recentPosts);
+      setRecentPosts(response.data.posts);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -108,12 +108,12 @@ const AdminDashboard = () => {
                     }`}>
                       {post.status}
                     </span>
-                    <Link
+                    {user.isAdmin &&(<Link
                       to={`/admin/posts/edit/${post.id}`}
                       className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                     >
                       Edit
-                    </Link>
+                    </Link>)}
                     <a
                       href={`/post/${post.slug}`}
                       target="_blank"

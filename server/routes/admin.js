@@ -19,7 +19,7 @@ router.get('/dashboard', async (req, res) => {
       FROM posts p 
       LEFT JOIN categories c ON p.category_id = c.id 
       ORDER BY p.created_at DESC 
-      LIMIT 5
+      ORDER BY p.created_at DESC
     `);
 
     res.json({
