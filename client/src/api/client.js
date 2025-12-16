@@ -10,6 +10,7 @@ export const api = axios.create({
   baseURL: API_BASE_URL || 'http://localhost:5000/api',
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 // Request interceptor
@@ -82,6 +83,9 @@ export const blogAPI = {
   deleteAdminPost: (id) => api.delete(`/admin/posts/${id}`),
   deletePost: (id) => api.delete(`/admin/posts/${id}`),
   getAdminCategories: () => api.get('/admin/categories'),
+  getAdminComments: () => api.get('/admin/comments'),
+  updateAdminComment: (id, data) => api.put(`/admin/comments/${id}`, data),
+  deleteAdminComment: (id) => api.delete(`/admin/comments/${id}`),
   createAdminCategory: (categoryData) => api.post('/admin/categories', categoryData),
 }
 

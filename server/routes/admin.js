@@ -192,4 +192,56 @@ router.post('/categories', async (req, res) => {
   }
 });
 
+//admin
+router.get('/comments', async (req, res) => {
+  try {
+    const [comments] = await pool.execute(`
+      SELECT c.*, p.title as post_title, p.slug as post_slug
+      FROM comments c
+      LEFT JOIN posts p ON c.post_id = p.id
+      ORDER BY c.created_at DESC
+    `);
+    
+    res.json(comments);
+  } catch (error) {
+    console.error('Error fetching admin comments:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+//comment moderation routes
+router.put('/comments/:id', async (req, res) => {
+  try {
+    const { approved, status } = req.body;
+    
+    // Check what columns exist
+    const [columns] = await pool.execute('SHOW COLUMNS FROM comments');
+    const hasApproved = columns.some(col => col.Field === 'approved');
+    const hasStatus = columns.some(col => col.Field === 'status');
+    
+    if (hasApproved && approved !== undefined) {
+      await pool.execute('UPDATE comments SET approved = ? WHERE id = ?', [approved, req.params.id]);
+    } else if (hasStatus && status) {
+      await pool.execute('UPDATE comments SET status = ? WHERE id = ?', [status, req.params.id]);
+    } else {
+      await pool.execute('UPDATE comments SET approved = ? WHERE id = ?', [approved || 1, req.params.id]);
+    }
+    
+    res.json({ message: 'Comment updated successfully' });
+  } catch (error) {
+    console.error('Error updating comment:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/comments/:id', async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM comments WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

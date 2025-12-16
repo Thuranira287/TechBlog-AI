@@ -1,5 +1,7 @@
 import express from 'express';
 import pool from '../config/db.js';
+import { authenticateToken } from '../middleware/auth.js'; 
+
 
 const router = express.Router();
 
@@ -54,16 +56,19 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Admin: Get all comments (for moderation)
-router.get('/', async (req, res) => {
+// Get all comments (admin only)
+router.get('/admin', authenticateToken, async (req, res) => {
   try {
+    console.log('Fetching all comments for admin');
+    
     const [comments] = await pool.execute(`
-      SELECT c.*, p.title as post_title
+      SELECT c.*, p.title as post_title, p.slug as post_slug
       FROM comments c
       LEFT JOIN posts p ON c.post_id = p.id
       ORDER BY c.created_at DESC
     `);
     
+    console.log(`Found ${comments.length} comments`);
     res.json(comments);
   } catch (error) {
     console.error('Error fetching all comments:', error);
@@ -71,11 +76,24 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Admin: Update comment (approve/unapprove)
-router.put('/:id', async (req, res) => {
+// Update comment status (admin only)
+router.put('/admin/:id', authenticateToken, async (req, res) => {
   try {
-    const { approved } = req.body;
-    await pool.execute('UPDATE comments SET approved = ? WHERE id = ?', [approved, req.params.id]);
+    const { approved, status } = req.body;
+    
+    // Check which column exists
+    const [columns] = await pool.execute('SHOW COLUMNS FROM comments');
+    const hasApprovedColumn = columns.some(col => col.Field === 'approved');
+    const hasStatusColumn = columns.some(col => col.Field === 'status');
+    
+    if (hasApprovedColumn && approved !== undefined) {
+      await pool.execute('UPDATE comments SET approved = ? WHERE id = ?', [approved, req.params.id]);
+    } else if (hasStatusColumn && status) {
+      await pool.execute('UPDATE comments SET status = ? WHERE id = ?', [status, req.params.id]);
+    } else {
+      return res.status(400).json({ error: 'No valid status field provided' });
+    }
+    
     res.json({ message: 'Comment updated successfully' });
   } catch (error) {
     console.error('Error updating comment:', error);
@@ -83,8 +101,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Admin: Delete comment
-router.delete('/:id', async (req, res) => {
+// Delete comment (admin only)
+router.delete('/admin/:id', authenticateToken, async (req, res) => {
   try {
     await pool.execute('DELETE FROM comments WHERE id = ?', [req.params.id]);
     res.json({ message: 'Comment deleted successfully' });
