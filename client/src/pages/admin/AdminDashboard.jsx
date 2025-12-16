@@ -96,7 +96,7 @@ const fetchDashboardData = async (pageNum = 1) => {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-gray-600">Loading dashboard...</div>
+          <div className="text-gray-600 animate-pulse">Loading dashboard...</div>
         </div>
       </div>
     );
