@@ -19,26 +19,41 @@ const AdminDashboard = () => {
     fetchDashboardData(page);
   }, [page]);
 
-  const fetchDashboardData = async (pageNum = 1) => {
-    try {
-      setLoading(true);
-      const response = await blogAPI.getAdminDashboard({ page: pageNum, limit: 50 });
+const fetchDashboardData = async (pageNum = 1) => {
+  try {
+    setLoading(true);
+    const response = await blogAPI.getAdminDashboard({ page: pageNum, limit: 50 });
+    
+    console.log('Response posts:', response.data?.posts);
+    console.log('Post IDs:', response.data?.posts?.map(p => p.id));
+    
+    // Check for duplicates
+    const postIds = response.data?.posts?.map(p => p.id) || [];
+    const uniqueIds = [...new Set(postIds)];
+    if (postIds.length !== uniqueIds.length) {
+      console.warn('DUPLICATE POSTS DETECTED!', postIds);
+    }
+    
+    if (response.data) {
+      setStats(response.data.stats || {
+        totalPosts: 0,
+        totalCategories: 0,
+        totalComments: 0
+      });
       
-      // Safely handle the response
-      if (response.data) {
-        setStats(response.data.stats || {
-          totalPosts: 0,
-          totalCategories: 0,
-          totalComments: 0
-        });
+      const postsData = response.data.posts || [];
+      
+      if (pageNum === 1) {
+        setRecentPosts(postsData);
+      } else {
+        // Filter out duplicates before adding
+        const existingIds = new Set(recentPosts.map(p => p.id));
+        const newPosts = postsData.filter(post => !existingIds.has(post.id));
         
-        const postsData = response.data.posts || [];
+        console.log('Filtered new posts:', newPosts.length, 'out of', postsData.length);
         
-        if (pageNum === 1) {
-          setRecentPosts(postsData);
-        } else {
-          setRecentPosts((prev) => [...prev, ...postsData]);
-        }
+        setRecentPosts((prev) => [...prev, ...newPosts]);
+      }
 
         // Handle pagination safely
         if (response.data.pagination) {
