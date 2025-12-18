@@ -14,6 +14,7 @@ router.get('/dashboard', async (req, res) => {
     const [postsCount] = await pool.execute('SELECT COUNT(*) as count FROM posts');
     const [categoriesCount] = await pool.execute('SELECT COUNT(*) as count FROM categories');
     const [commentsCount] = await pool.execute('SELECT COUNT(*) as count FROM comments');
+    const [reactionsCount] = await pool.execute('SELECT COUNT(*) as count FROM reactions');
     const [recentPosts] = await pool.execute(`
       SELECT p.*, c.name as category_name 
       FROM posts p 
@@ -27,6 +28,7 @@ router.get('/dashboard', async (req, res) => {
         totalPosts: postsCount[0].count,
         totalCategories: categoriesCount[0].count,
         totalComments: commentsCount[0].count,
+        totalReactions: reactionsCount[0].count,
       },
       posts: recentPosts,
       pagination:{ 

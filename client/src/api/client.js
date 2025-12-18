@@ -64,6 +64,17 @@ export const blogAPI = {
   getComments: (postId) => api.get(`/comments/post/${postId}`),
 
   createComment: (commentData) => api.post('/comments', commentData),
+  // Method for reactions
+  reactToComment: (commentId, type) => 
+  api.post(`/comments/${commentId}/reactions`, { 
+    type,
+    user_email: localStorage.getItem('comment_email') || 'anonymous' 
+  }),
+
+  checkUserReaction: (commentId, userEmail) =>
+    api.get(`/comments/${commentId}/reactions/${userEmail}`),
+
+  deleteComment: (commentId) => api.delete(`/admin/comments/${commentId}`),
 
   // Auth
   login: (credentials) => api.post('/auth/login', credentials),
