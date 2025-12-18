@@ -160,7 +160,7 @@ router.post('/:id/reactions', async (req, res) => {
 
     // Check if comment exists
     const [comments] = await connection.execute(
-      'SELECT id FROM comments WHERE id = ? AND status = "approved"',
+      `SELECT id FROM comments WHERE id = ? AND status = 'approved'`,
       [commentId]
     );
     
