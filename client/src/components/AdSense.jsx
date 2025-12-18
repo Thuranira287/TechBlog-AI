@@ -1,5 +1,4 @@
-import React, { useEffect, useRef } from "react";
-
+import React, { useState, useEffect, useRef } from "react";
 /**
  * ✅ Load the Google AdSense script once globally.
  * Place <AdSense /> inside App.jsx (outside Router) or root layout.
@@ -59,13 +58,45 @@ export const AdUnit = ({ slot, format = "auto", responsive = true }) => {
 /**
  * ✅ Header Ad — top banner
  */
-export const HeaderAd = () => (
-  <div className="w-full bg-gray-50 py-4 mb-6">
-    <div className="container mx-auto px-4 text-center">
-      <AdUnit slot="8847382989" format="auto" />
+export const HeaderAd = () => {
+  const [adReady, setAdReady] = useState(false);
+
+  useEffect(() => {
+    // Check ad status periodically
+    const checkAdStatus = () => {
+      const adElement = document.querySelector('[data-ad-slot="8847382989"]');
+      if (adElement) {
+        const status = adElement.getAttribute('data-ad-status') || 
+                      adElement.getAttribute('data-adsbygoogle-status');
+        
+        // If ad is loaded OR if it's been a while, show it
+        if (status === 'filled') {
+          setAdReady(true);
+        } else {
+          // After 3 seconds, show anyway (ad might never load)
+          setTimeout(() => setAdReady(true), 3000);
+        }
+      }
+    };
+
+    // Start checking after component mounts
+    setTimeout(checkAdStatus, 1000);
+    
+    // Cleanup
+    return () => clearTimeout(checkAdStatus);
+  }, []);
+
+  // Don't render anything until we're ready
+  if (!adReady) return null;
+
+  return (
+    <div className="w-full">
+      <div className="container mx-auto px-4 text-center">
+        <AdUnit slot="8847382989" format="auto" />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * ✅ Sidebar Ad — sticky on scroll

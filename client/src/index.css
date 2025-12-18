@@ -89,3 +89,10 @@
   border-radius: 8px;
   overflow: hidden;
 }
+
+ins[data-ad-status="unfilled"]:has(div[id^="aswift_"]:empty),
+ins[data-adsbygoogle-status="unfilled"]:not(:has(iframe)) {
+  height: 0 !important;
+  min-height: 0 !important;
+  display: none !important;
+}
