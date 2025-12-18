@@ -4,13 +4,12 @@ import {
   Send,
   ThumbsUp,
   ThumbsDown,
-  MessageCircle,
-  ChevronDown,
-  ChevronUp,
   ShieldCheck,
   Trash2,
   CheckCircle,
-  Reply
+  Reply,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 
 /* -----------------------------
@@ -35,12 +34,12 @@ const getAvatarColor = (name = '') => {
 }
 
 const isAdmin = (email) => {
-  const ADMINS = ['admin@aitechblogs.netlify.app']
+  const ADMINS = ['admin@blogs.com']
   return ADMINS.includes(email)
 }
 
 /* -----------------------------
-   Component
+   Component: Organize flat array into hierarchy
 ----------------------------- */
 
 const CommentSection = ({ postId }) => {
@@ -73,13 +72,67 @@ const CommentSection = ({ postId }) => {
   const fetchComments = async () => {
     try {
       setLoading(true)
+      console.log(`🔄 Fetching comments for post ${postId}`)
+      
       const res = await blogAPI.getComments(postId)
-      setComments(res.data)
+      console.log('📦 Raw API response:', res.data)
+      
+      if (Array.isArray(res.data)) {
+        // Organize flat array into hierarchy
+        const organizedComments = organizeComments(res.data)
+        console.log('🏗️ Organized comments:', organizedComments)
+        setComments(organizedComments)
+      } else {
+        console.error('❌ Expected array but got:', res.data)
+        setComments([])
+      }
     } catch (err) {
-      console.error('Error fetching comments:', err)
+      console.error('❌ Error fetching comments:', err)
+      alert('Unable to load comments. Please try refreshing.')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Function to organize flat comments array into hierarchy
+  const organizeComments = (flatComments) => {
+    const commentMap = new Map()
+    const rootComments = []
+
+    // First pass: Create map and add replies array
+    flatComments.forEach(comment => {
+      comment.replies = []
+      commentMap.set(comment.id, comment)
+    })
+
+    // Second pass: Build hierarchy
+    flatComments.forEach(comment => {
+      if (comment.parent_id) {
+        // This is a reply - find its parent
+        const parent = commentMap.get(comment.parent_id)
+        if (parent) {
+          parent.replies.push(comment)
+        } else {
+          // Parent not found (shouldn't happen), treat as root
+          rootComments.push(comment)
+        }
+      } else {
+        // This is a root comment
+        rootComments.push(comment)
+      }
+    })
+
+    // Sort root comments by date (newest first)
+    rootComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    
+    // Sort replies within each comment (newest first)
+    rootComments.forEach(comment => {
+      if (comment.replies.length > 0) {
+        comment.replies.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      }
+    })
+
+    return rootComments
   }
 
   /* -----------------------------
@@ -92,20 +145,27 @@ const CommentSection = ({ postId }) => {
     
     try {
       // Get user email
-      const userEmail = formData.author_email || localStorage.getItem('comment_email') || 'anonymous';
-      if (formData.author_email) {
-        localStorage.setItem('comment_email', formData.author_email);
+      const userEmail = formData.author_email || localStorage.getItem('comment_email')
+      if (!userEmail) {
+        alert('Please enter your email in the comment form before reacting')
+        setReacting(null)
+        return
+      }
+
+      // Save email for future use
+      if (formData.author_email && !localStorage.getItem('comment_email')) {
+        localStorage.setItem('comment_email', formData.author_email)
       }
 
       // Optimistic update
-      updateCommentReaction(commentId, type);
+      updateCommentReaction(commentId, type)
 
       // Send to backend
-      await blogAPI.reactToComment(commentId, type);
+      await blogAPI.reactToComment(commentId, type)
       
     } catch (err) {
-      console.error('Error reacting to comment:', err)
-      fetchComments(); // Refresh on error
+      console.error('❌ Error reacting to comment:', err)
+      fetchComments() // Refresh on error
       alert('Failed to save reaction. Please try again.')
     } finally {
       setReacting(null)
@@ -113,51 +173,59 @@ const CommentSection = ({ postId }) => {
   }
 
   const updateCommentReaction = (commentId, type) => {
-    const updateNestedComments = (commentList) => {
+    const updateCommentTree = (commentList) => {
       return commentList.map(comment => {
         if (comment.id === commentId) {
-          const currentLikes = comment.likes || 0;
-          const currentDislikes = comment.dislikes || 0;
-          const userReaction = comment.userReaction;
+          const currentLikes = comment.likes || 0
+          const currentDislikes = comment.dislikes || 0
+          const userReaction = comment.userReaction
           
-          let newLikes = currentLikes;
-          let newDislikes = currentDislikes;
-          let newUserReaction = type;
+          let newLikes = currentLikes
+          let newDislikes = currentDislikes
+          let newUserReaction = type
           
           // Toggle logic
           if (userReaction === 'like' && type === 'like') {
-            newLikes = Math.max(0, currentLikes - 1);
-            newUserReaction = null;
+            newLikes = Math.max(0, currentLikes - 1)
+            newUserReaction = null
           } else if (userReaction === 'dislike' && type === 'dislike') {
-            newDislikes = Math.max(0, currentDislikes - 1);
-            newUserReaction = null;
+            newDislikes = Math.max(0, currentDislikes - 1)
+            newUserReaction = null
           } else if (userReaction === 'like' && type === 'dislike') {
-            newLikes = Math.max(0, currentLikes - 1);
-            newDislikes = currentDislikes + 1;
+            newLikes = Math.max(0, currentLikes - 1)
+            newDislikes = currentDislikes + 1
           } else if (userReaction === 'dislike' && type === 'like') {
-            newDislikes = Math.max(0, currentDislikes - 1);
-            newLikes = currentLikes + 1;
+            newDislikes = Math.max(0, currentDislikes - 1)
+            newLikes = currentLikes + 1
           } else {
             if (type === 'like') {
-              newLikes = currentLikes + 1;
+              newLikes = currentLikes + 1
             } else {
-              newDislikes = currentDislikes + 1;
+              newDislikes = currentDislikes + 1
             }
           }
           
-          return { ...comment, likes: newLikes, dislikes: newDislikes, userReaction: newUserReaction };
+          return { 
+            ...comment, 
+            likes: newLikes, 
+            dislikes: newDislikes, 
+            userReaction: newUserReaction 
+          }
         }
         
         // Check replies recursively
         if (comment.replies && comment.replies.length > 0) {
-          return { ...comment, replies: updateNestedComments(comment.replies) };
+          return { 
+            ...comment, 
+            replies: updateCommentTree(comment.replies) 
+          }
         }
         
-        return comment;
-      });
-    };
+        return comment
+      })
+    }
 
-    setComments(prevComments => updateNestedComments(prevComments));
+    setComments(prevComments => updateCommentTree(prevComments))
   }
 
   /* -----------------------------
@@ -175,7 +243,7 @@ const CommentSection = ({ postId }) => {
       fetchComments()
       return true
     } catch (err) {
-      console.error('Error submitting comment:', err)
+      console.error('❌ Error submitting comment:', err)
       alert('Error submitting comment. Please try again.')
       return false
     }
@@ -233,7 +301,7 @@ const CommentSection = ({ postId }) => {
       fetchComments()
       alert('Comment deleted successfully')
     } catch (err) {
-      console.error('Error deleting comment:', err)
+      console.error('❌ Error deleting comment:', err)
       alert('Failed to delete comment')
     }
   }
@@ -253,7 +321,7 @@ const CommentSection = ({ postId }) => {
   }
 
   /* -----------------------------
-     Render Comment with Hierarchy
+     Render Comment with Replies
   ----------------------------- */
 
   const CommentItem = ({ comment, depth = 0, isReply = false }) => {
@@ -262,61 +330,62 @@ const CommentSection = ({ postId }) => {
     const isReplying = replyingTo === comment.id
 
     return (
-      <div className={`${depth > 0 ? 'ml-10' : ''}`}>
-        <div className={`bg-white border border-gray-200 rounded-lg p-5 mt-4 ${isReply ? 'bg-gray-50/50' : ''}`}>
+      <div className={`${depth > 0 ? 'ml-8 pl-4 border-l-2 border-gray-200' : ''}`}>
+        {/* Comment Card */}
+        <div className={`bg-white rounded-lg p-4 mt-3 ${isReply ? 'bg-gray-50' : 'border border-gray-200'}`}>
           {/* Header */}
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-3">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2">
               <div
-                className={`w-9 h-9 rounded-full text-white flex items-center justify-center font-semibold uppercase ${getAvatarColor(comment.author_name)}`}
+                className={`w-7 h-7 rounded-full text-white flex items-center justify-center font-semibold uppercase ${getAvatarColor(comment.author_name)}`}
               >
                 {comment.author_name.charAt(0)}
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">
-                  {comment.author_name}
-                </span>
-
-                {isAdmin(comment.author_email) && (
-                  <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                    <ShieldCheck className="w-3 h-3" />
-                    Admin
+              
+              <div>
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-gray-900">
+                    {comment.author_name.replace(/\b\w/g, c => c.toUpperCase())}
                   </span>
-                )}
+                  
+                  {isAdmin(comment.author_email) && (
+                    <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                      <ShieldCheck className="w-3 h-3" />
+                      Admin
+                    </span>
+                  )}
+                  
+                  {comment.author_email === formData.author_email && (
+                    <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                      <CheckCircle className="w-3 h-3" />
+                      You
+                    </span>
+                  )}
+                </div>
                 
-                {comment.author_email === formData.author_email && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                    <CheckCircle className="w-3 h-3" />
-                    You
-                  </span>
-                )}
+                <time className="text-xs text-gray-500">
+                  {formatDate(comment.created_at)}
+                </time>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <time className="text-xs text-gray-500">
-                {formatDate(comment.created_at)}
-              </time>
-              
-              {isAdmin(formData.author_email) && (
-                <button
-                  onClick={() => deleteComment(comment.id)}
-                  className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                  title="Delete comment"
-                  disabled={reacting === comment.id}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            
+            {isAdmin(formData.author_email) && (
+              <button
+                onClick={() => deleteComment(comment.id)}
+                className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                title="Delete comment"
+                disabled={reacting === comment.id}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Content */}
-          <p className="text-gray-700 mb-4">{comment.content}</p>
+          <p className="text-gray-700 mb-3">{comment.content}</p>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="flex items-center gap-3 text-sm text-gray-600">
             {/* Like Button */}
             <button
               onClick={() => handleReaction(comment.id, 'like')}
@@ -329,9 +398,6 @@ const CommentSection = ({ postId }) => {
             >
               <ThumbsUp className="w-4 h-4" />
               <span className="min-w-[20px] text-center">{comment.likes || 0}</span>
-              {reacting === comment.id && userReaction === 'like' && (
-                <span className="text-xs animate-pulse">...</span>
-              )}
             </button>
 
             {/* Dislike Button */}
@@ -346,9 +412,6 @@ const CommentSection = ({ postId }) => {
             >
               <ThumbsDown className="w-4 h-4" />
               <span className="min-w-[20px] text-center">{comment.dislikes || 0}</span>
-              {reacting === comment.id && userReaction === 'dislike' && (
-                <span className="text-xs animate-pulse">...</span>
-              )}
             </button>
 
             {/* Reply Button */}
@@ -370,12 +433,7 @@ const CommentSection = ({ postId }) => {
             {/* Show/Hide Replies Toggle */}
             {hasReplies && (
               <button
-                onClick={() =>
-                  setCollapsed(prev => ({
-                    ...prev,
-                    [comment.id]: !prev[comment.id],
-                  }))
-                }
+                onClick={() => setCollapsed(prev => ({ ...prev, [comment.id]: !prev[comment.id] }))}
                 className="flex items-center gap-1 hover:text-gray-800 transition-colors"
               >
                 {collapsed[comment.id] ? (
@@ -395,19 +453,19 @@ const CommentSection = ({ postId }) => {
 
           {/* Reply Form */}
           {isReplying && (
-            <div className="mt-4">
+            <div className="mt-3">
               <textarea
-                rows="3"
+                rows="2"
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 placeholder="Write your reply..."
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 autoFocus
               />
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => handleReplySubmit(comment.id)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
                   disabled={submitting}
                 >
                   {submitting ? 'Posting...' : 'Post Reply'}
@@ -417,7 +475,7 @@ const CommentSection = ({ postId }) => {
                     setReplyingTo(null)
                     setReplyContent('')
                   }}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors"
                   disabled={submitting}
                 >
                   Cancel
@@ -429,7 +487,7 @@ const CommentSection = ({ postId }) => {
 
         {/* Render Replies */}
         {hasReplies && !collapsed[comment.id] && (
-          <div className="space-y-2">
+          <div className="mt-2">
             {comment.replies.map(reply => (
               <CommentItem 
                 key={reply.id} 
@@ -448,17 +506,14 @@ const CommentSection = ({ postId }) => {
      Main Render
   ----------------------------- */
 
+  const totalCommentCount = comments.reduce((acc, comment) => {
+    return acc + 1 + (comment.replies ? comment.replies.length : 0)
+  }, 0)
+
   return (
     <section className="mt-12">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        Comments ({comments.reduce((acc, comment) => {
-          // Count all comments including replies
-          let count = 1;
-          if (comment.replies) {
-            count += comment.replies.length;
-          }
-          return acc + count;
-        }, 0)})
+        Comments ({totalCommentCount})
       </h2>
 
       {/* Comment Form */}
@@ -507,20 +562,20 @@ const CommentSection = ({ postId }) => {
       {loading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-gray-100 p-5 rounded-lg">
+            <div key={i} className="animate-pulse bg-gray-100 p-4 rounded-lg">
               <div className="flex items-center mb-3">
-                <div className="w-9 h-9 rounded-full bg-gray-200 mr-3"></div>
+                <div className="w-8 h-8 rounded-full bg-gray-200 mr-3"></div>
                 <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  <div className="h-3 bg-gray-200 rounded w-24"></div>
+                  <div className="h-3 bg-gray-200 rounded w-32"></div>
+                  <div className="h-2 bg-gray-200 rounded w-24"></div>
                 </div>
               </div>
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-3/4"></div>
             </div>
           ))}
         </div>
       ) : comments.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {comments.map(comment => (
             <CommentItem key={comment.id} comment={comment} />
           ))}
