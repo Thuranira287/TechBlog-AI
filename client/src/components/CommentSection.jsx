@@ -9,7 +9,8 @@ import {
   ChevronUp,
   ShieldCheck,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  Reply
 } from 'lucide-react'
 
 /* -----------------------------
@@ -82,92 +83,82 @@ const CommentSection = ({ postId }) => {
   }
 
   /* -----------------------------
-     Reactions - Proper implementation
+     Reactions
   ----------------------------- */
 
-  // In your CommentSection component, modify the reaction handler:
-
   const handleReaction = async (commentId, type) => {
-  // Prevent multiple clicks
-  if (reacting === commentId) return
-  
-  setReacting(commentId)
-  
+    if (reacting === commentId) return
+    setReacting(commentId)
+    
     try {
-      // Get user email from form or localStorage
+      // Get user email
       const userEmail = formData.author_email || localStorage.getItem('comment_email') || 'anonymous';
-      
-      // Save email for future use
       if (formData.author_email) {
         localStorage.setItem('comment_email', formData.author_email);
       }
 
-      // Optimistically update UI
-      setComments(prevComments => 
-        prevComments.map(comment => {
-          if (comment.id === commentId) {
-            const currentLikes = comment.likes || 0;
-            const currentDislikes = comment.dislikes || 0;
-            const userReaction = comment.userReaction;
-            
-            let newLikes = currentLikes;
-            let newDislikes = currentDislikes;
-            let newUserReaction = type;
-            
-            // If user already liked and clicks like again, remove like
-            if (userReaction === 'like' && type === 'like') {
-              newLikes = Math.max(0, currentLikes - 1);
-              newUserReaction = null;
-            }
-            // If user already disliked and clicks dislike again, remove dislike
-            else if (userReaction === 'dislike' && type === 'dislike') {
-              newDislikes = Math.max(0, currentDislikes - 1);
-              newUserReaction = null;
-            }
-            // If user changes from like to dislike
-            else if (userReaction === 'like' && type === 'dislike') {
-              newLikes = Math.max(0, currentLikes - 1);
-              newDislikes = currentDislikes + 1;
-            }
-            // If user changes from dislike to like
-            else if (userReaction === 'dislike' && type === 'like') {
-              newDislikes = Math.max(0, currentDislikes - 1);
-              newLikes = currentLikes + 1;
-            }
-            // New reaction
-            else {
-              if (type === 'like') {
-                newLikes = currentLikes + 1;
-              } else {
-                newDislikes = currentDislikes + 1;
-              }
-            }
-            
-            return {
-              ...comment,
-              likes: newLikes,
-              dislikes: newDislikes,
-              userReaction: newUserReaction
-            };
-          }
-          return comment;
-        })
-      );
+      // Optimistic update
+      updateCommentReaction(commentId, type);
 
       // Send to backend
       await blogAPI.reactToComment(commentId, type);
       
     } catch (err) {
-      console.error('Error reacting to comment:', err);
-      
-      // Revert optimistic update on error
-      fetchComments();
-      
-      alert('Failed to save reaction. Please try again.');
+      console.error('Error reacting to comment:', err)
+      fetchComments(); // Refresh on error
+      alert('Failed to save reaction. Please try again.')
     } finally {
-      setReacting(null);
+      setReacting(null)
     }
-  };
+  }
+
+  const updateCommentReaction = (commentId, type) => {
+    const updateNestedComments = (commentList) => {
+      return commentList.map(comment => {
+        if (comment.id === commentId) {
+          const currentLikes = comment.likes || 0;
+          const currentDislikes = comment.dislikes || 0;
+          const userReaction = comment.userReaction;
+          
+          let newLikes = currentLikes;
+          let newDislikes = currentDislikes;
+          let newUserReaction = type;
+          
+          // Toggle logic
+          if (userReaction === 'like' && type === 'like') {
+            newLikes = Math.max(0, currentLikes - 1);
+            newUserReaction = null;
+          } else if (userReaction === 'dislike' && type === 'dislike') {
+            newDislikes = Math.max(0, currentDislikes - 1);
+            newUserReaction = null;
+          } else if (userReaction === 'like' && type === 'dislike') {
+            newLikes = Math.max(0, currentLikes - 1);
+            newDislikes = currentDislikes + 1;
+          } else if (userReaction === 'dislike' && type === 'like') {
+            newDislikes = Math.max(0, currentDislikes - 1);
+            newLikes = currentLikes + 1;
+          } else {
+            if (type === 'like') {
+              newLikes = currentLikes + 1;
+            } else {
+              newDislikes = currentDislikes + 1;
+            }
+          }
+          
+          return { ...comment, likes: newLikes, dislikes: newDislikes, userReaction: newUserReaction };
+        }
+        
+        // Check replies recursively
+        if (comment.replies && comment.replies.length > 0) {
+          return { ...comment, replies: updateNestedComments(comment.replies) };
+        }
+        
+        return comment;
+      });
+    };
+
+    setComments(prevComments => updateNestedComments(prevComments));
+  }
 
   /* -----------------------------
      Submit Comment / Reply
@@ -181,7 +172,7 @@ const CommentSection = ({ postId }) => {
 
     try {
       await blogAPI.createComment(payload)
-      fetchComments() // Refresh to get the new comment
+      fetchComments()
       return true
     } catch (err) {
       console.error('Error submitting comment:', err)
@@ -203,6 +194,28 @@ const CommentSection = ({ postId }) => {
       setFormData({ author_name: '', author_email: '', content: '' })
     }
     
+    setSubmitting(false)
+  }
+
+  const handleReplySubmit = async (parentId) => {
+    if (!replyContent.trim()) {
+      alert('Please enter your reply')
+      return
+    }
+
+    setSubmitting(true)
+    const success = await submitComment({
+      post_id: postId,
+      parent_id: parentId,
+      content: replyContent,
+      author_name: formData.author_name,
+      author_email: formData.author_email,
+    })
+
+    if (success) {
+      setReplyingTo(null)
+      setReplyContent('')
+    }
     setSubmitting(false)
   }
 
@@ -240,107 +253,105 @@ const CommentSection = ({ postId }) => {
   }
 
   /* -----------------------------
-     Render Comment (with reactions for both comments and replies)
+     Render Comment with Hierarchy
   ----------------------------- */
 
-  const renderComment = (comment, isReply = false) => {
-    const commentReplies = comments.filter(c => c.parent_id === comment.id)
-    const hasReplies = commentReplies.length > 0
+  const CommentItem = ({ comment, depth = 0, isReply = false }) => {
+    const hasReplies = comment.replies && comment.replies.length > 0
     const userReaction = comment.userReaction
+    const isReplying = replyingTo === comment.id
 
     return (
-      <div className={`bg-white border border-gray-200 rounded-lg p-5 ${isReply ? 'bg-gray-50/50' : ''}`}>
-        {/* Header */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-9 h-9 rounded-full text-white flex items-center justify-center font-semibold uppercase ${getAvatarColor(comment.author_name)}`}
-            >
-              {comment.author_name.charAt(0)}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900">
-                {comment.author_name}
-              </span>
-
-              {isAdmin(comment.author_email) && (
-                <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                  <ShieldCheck className="w-3 h-3" />
-                  Admin
-                </span>
-              )}
-              
-              {/* Verified badge for comment author */}
-              {comment.author_email === formData.author_email && (
-                <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                  <CheckCircle className="w-3 h-3" />
-                  You
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <time className="text-xs text-gray-500">
-              {formatDate(comment.created_at)}
-            </time>
-            
-            {/* Admin delete button */}
-            {isAdmin(formData.author_email) && (
-              <button
-                onClick={() => deleteComment(comment.id)}
-                className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                title="Delete comment"
-                disabled={reacting === comment.id}
+      <div className={`${depth > 0 ? 'ml-10' : ''}`}>
+        <div className={`bg-white border border-gray-200 rounded-lg p-5 mt-4 ${isReply ? 'bg-gray-50/50' : ''}`}>
+          {/* Header */}
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-full text-white flex items-center justify-center font-semibold uppercase ${getAvatarColor(comment.author_name)}`}
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+                {comment.author_name.charAt(0)}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900">
+                  {comment.author_name}
+                </span>
+
+                {isAdmin(comment.author_email) && (
+                  <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                    <ShieldCheck className="w-3 h-3" />
+                    Admin
+                  </span>
+                )}
+                
+                {comment.author_email === formData.author_email && (
+                  <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                    <CheckCircle className="w-3 h-3" />
+                    You
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <time className="text-xs text-gray-500">
+                {formatDate(comment.created_at)}
+              </time>
+              
+              {isAdmin(formData.author_email) && (
+                <button
+                  onClick={() => deleteComment(comment.id)}
+                  className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                  title="Delete comment"
+                  disabled={reacting === comment.id}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <p className="text-gray-700 mb-4">{comment.content}</p>
+          {/* Content */}
+          <p className="text-gray-700 mb-4">{comment.content}</p>
 
-        {/* Action Buttons - AVAILABLE FOR BOTH COMMENTS AND REPLIES */}
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          {/* Like Button */}
-          <button
-            onClick={() => handleReaction(comment.id, 'like')}
-            className={`flex items-center gap-1 transition-colors ${
-              userReaction === 'like' 
-                ? 'text-blue-600 font-semibold' 
-                : 'hover:text-blue-600'
-            }`}
-            disabled={reacting === comment.id}
-          >
-            <ThumbsUp className="w-4 h-4" />
-            <span className="min-w-[20px] text-center">{comment.likes || 0}</span>
-            {reacting === comment.id && userReaction === 'like' && (
-              <span className="text-xs animate-pulse">...</span>
-            )}
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            {/* Like Button */}
+            <button
+              onClick={() => handleReaction(comment.id, 'like')}
+              className={`flex items-center gap-1 transition-colors ${
+                userReaction === 'like' 
+                  ? 'text-blue-600 font-semibold' 
+                  : 'hover:text-blue-600'
+              }`}
+              disabled={reacting === comment.id}
+            >
+              <ThumbsUp className="w-4 h-4" />
+              <span className="min-w-[20px] text-center">{comment.likes || 0}</span>
+              {reacting === comment.id && userReaction === 'like' && (
+                <span className="text-xs animate-pulse">...</span>
+              )}
+            </button>
 
-          {/* Dislike Button */}
-          <button
-            onClick={() => handleReaction(comment.id, 'dislike')}
-            className={`flex items-center gap-1 transition-colors ${
-              userReaction === 'dislike' 
-                ? 'text-red-600 font-semibold' 
-                : 'hover:text-red-600'
-            }`}
-            disabled={reacting === comment.id}
-          >
-            <ThumbsDown className="w-4 h-4" />
-            <span className="min-w-[20px] text-center">{comment.dislikes || 0}</span>
-            {reacting === comment.id && userReaction === 'dislike' && (
-              <span className="text-xs animate-pulse">...</span>
-            )}
-          </button>
+            {/* Dislike Button */}
+            <button
+              onClick={() => handleReaction(comment.id, 'dislike')}
+              className={`flex items-center gap-1 transition-colors ${
+                userReaction === 'dislike' 
+                  ? 'text-red-600 font-semibold' 
+                  : 'hover:text-red-600'
+              }`}
+              disabled={reacting === comment.id}
+            >
+              <ThumbsDown className="w-4 h-4" />
+              <span className="min-w-[20px] text-center">{comment.dislikes || 0}</span>
+              {reacting === comment.id && userReaction === 'dislike' && (
+                <span className="text-xs animate-pulse">...</span>
+              )}
+            </button>
 
-          {/* Reply Button - Only for main comments */}
-          {!isReply && (
+            {/* Reply Button */}
             <button
               onClick={() => {
                 if (!hasIdentity) {
@@ -352,90 +363,80 @@ const CommentSection = ({ postId }) => {
               className="flex items-center gap-1 hover:text-blue-600 transition-colors"
               disabled={reacting === comment.id}
             >
-              <MessageCircle className="w-4 h-4" />
+              <Reply className="w-4 h-4" />
               Reply
             </button>
-          )}
 
-          {/* Show/Hide Replies Toggle - Only for main comments with replies */}
-          {!isReply && hasReplies && (
-            <button
-              onClick={() =>
-                setCollapsed(prev => ({
-                  ...prev,
-                  [comment.id]: !prev[comment.id],
-                }))
-              }
-              className="flex items-center gap-1 hover:text-gray-800 transition-colors"
-            >
-              {collapsed[comment.id] ? (
-                <>
-                  <ChevronDown className="w-4 h-4" />
-                  <span>Show {commentReplies.length} {commentReplies.length === 1 ? 'reply' : 'replies'}</span>
-                </>
-              ) : (
-                <>
-                  <ChevronUp className="w-4 h-4" />
-                  <span>Hide replies</span>
-                </>
-              )}
-            </button>
+            {/* Show/Hide Replies Toggle */}
+            {hasReplies && (
+              <button
+                onClick={() =>
+                  setCollapsed(prev => ({
+                    ...prev,
+                    [comment.id]: !prev[comment.id],
+                  }))
+                }
+                className="flex items-center gap-1 hover:text-gray-800 transition-colors"
+              >
+                {collapsed[comment.id] ? (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    <span>Show {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    <span>Hide replies</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Reply Form */}
+          {isReplying && (
+            <div className="mt-4">
+              <textarea
+                rows="3"
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                placeholder="Write your reply..."
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoFocus
+              />
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => handleReplySubmit(comment.id)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Posting...' : 'Post Reply'}
+                </button>
+                <button
+                  onClick={() => {
+                    setReplyingTo(null)
+                    setReplyContent('')
+                  }}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Reply Form */}
-        {replyingTo === comment.id && (
-          <div className="mt-4 ml-10">
-            <textarea
-              rows="3"
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              placeholder="Write your reply..."
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoFocus
-            />
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={async () => {
-                  const success = await submitComment({
-                    post_id: postId,
-                    parent_id: comment.id,
-                    content: replyContent,
-                    author_name: formData.author_name,
-                    author_email: formData.author_email,
-                  })
-                  
-                  if (success) {
-                    setReplyingTo(null)
-                    setReplyContent('')
-                  }
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                disabled={submitting}
-              >
-                {submitting ? 'Posting...' : 'Post Reply'}
-              </button>
-              <button
-                onClick={() => {
-                  setReplyingTo(null)
-                  setReplyContent('')
-                }}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Replies List */}
-        {!collapsed[comment.id] && commentReplies.length > 0 && (
-          <div className="mt-4 ml-10 space-y-4 border-l-2 border-gray-200 pl-4">
-            {commentReplies.map(reply => (
-              <div key={reply.id}>
-                {renderComment(reply, true)}
-              </div>
+        {/* Render Replies */}
+        {hasReplies && !collapsed[comment.id] && (
+          <div className="space-y-2">
+            {comment.replies.map(reply => (
+              <CommentItem 
+                key={reply.id} 
+                comment={reply} 
+                depth={depth + 1}
+                isReply={true}
+              />
             ))}
           </div>
         )}
@@ -447,12 +448,17 @@ const CommentSection = ({ postId }) => {
      Main Render
   ----------------------------- */
 
-  const rootComments = comments.filter(c => !c.parent_id)
-
   return (
     <section className="mt-12">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        Comments ({comments.length})
+        Comments ({comments.reduce((acc, comment) => {
+          // Count all comments including replies
+          let count = 1;
+          if (comment.replies) {
+            count += comment.replies.length;
+          }
+          return acc + count;
+        }, 0)})
       </h2>
 
       {/* Comment Form */}
@@ -513,12 +519,10 @@ const CommentSection = ({ postId }) => {
             </div>
           ))}
         </div>
-      ) : rootComments.length > 0 ? (
-        <div className="space-y-6">
-          {rootComments.map(comment => (
-            <div key={comment.id}>
-              {renderComment(comment)}
-            </div>
+      ) : comments.length > 0 ? (
+        <div className="space-y-4">
+          {comments.map(comment => (
+            <CommentItem key={comment.id} comment={comment} />
           ))}
         </div>
       ) : (

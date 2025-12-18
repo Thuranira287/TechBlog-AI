@@ -2,19 +2,60 @@ import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js'; 
 
-
 const router = express.Router();
 
-// GET comments for a post
+// Helper function to organize comments hierarchically
+const organizeCommentsHierarchy = (comments) => {
+  const commentMap = {};
+  const rootComments = [];
+  
+  // First pass: Store all comments in a map
+  comments.forEach(comment => {
+    comment.replies = [];
+    commentMap[comment.id] = comment;
+  });
+  
+  // Second pass: Build hierarchy
+  comments.forEach(comment => {
+    if (comment.parent_id) {
+      // This is a reply
+      const parent = commentMap[comment.parent_id];
+      if (parent) {
+        parent.replies.push(comment);
+      } else {
+        // If parent not found, treat as root comment
+        rootComments.push(comment);
+      }
+    } else {
+      // This is a root comment
+      rootComments.push(comment);
+    }
+  });
+  
+  return rootComments;
+};
+
+// ========== PUBLIC ROUTES ==========
+
+// GET comments for a post - UPDATED with hierarchy and reactions
 router.get('/post/:postId', async (req, res) => {
   try {
     const [comments] = await pool.execute(
-      `SELECT * FROM comments 
+      `SELECT c.*, 
+       COALESCE(c.likes, 0) as likes,
+       COALESCE(c.dislikes, 0) as dislikes
+       FROM comments c
        WHERE post_id = ? AND status = 'approved'
-       ORDER BY created_at DESC`,
+       ORDER BY 
+         CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END,
+         created_at ASC`,
       [req.params.postId]
     );
-    res.json(comments);
+    
+    // Organize comments into hierarchy
+    const organizedComments = organizeCommentsHierarchy(comments);
+    
+    res.json(organizedComments);
   } catch (error) {
     console.error('Error fetching comments:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -24,13 +65,12 @@ router.get('/post/:postId', async (req, res) => {
 // POST new comment
 router.post('/', async (req, res) => {
   try {
-    const { post_id, author_name, author_email, content } = req.body;
+    const { post_id, author_name, author_email, content, parent_id = null } = req.body;
 
     if (!post_id || !author_name || !author_email || !content) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Verify post exists
     const [posts] = await pool.execute(
       `SELECT id FROM posts WHERE id = ? AND status = 'published'`,
       [post_id]
@@ -41,9 +81,9 @@ router.post('/', async (req, res) => {
     }
 
     const [result] = await pool.execute(
-      `INSERT INTO comments (post_id, author_name, author_email, content, status)
-       VALUES (?, ?, ?, ?, 'pending')`,
-      [post_id, author_name, author_email, content]
+      `INSERT INTO comments (post_id, author_name, author_email, content, parent_id, status, likes, dislikes)
+       VALUES (?, ?, ?, ?, ?, 'pending', 0, 0)`,
+      [post_id, author_name, author_email, content, parent_id]
     );
 
     res.status(201).json({
@@ -55,6 +95,127 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// POST reaction to comment - KEEP ONLY ONE VERSION
+router.post('/:id/reactions', async (req, res) => {
+  let connection;
+  try {
+    const { type, user_email } = req.body;
+    const commentId = req.params.id;
+
+    if (!type || !user_email) {
+      return res.status(400).json({ error: 'Type and user_email are required' });
+    }
+
+    if (type !== 'like' && type !== 'dislike') {
+      return res.status(400).json({ error: 'Invalid reaction type' });
+    }
+
+    connection = await pool.getConnection();
+    await connection.execute('START TRANSACTION');
+
+    try {
+      const [existingReactions] = await connection.execute(
+        'SELECT type FROM reactions WHERE comment_id = ? AND user_email = ?',
+        [commentId, user_email]
+      );
+
+      if (existingReactions.length > 0) {
+        const existingType = existingReactions[0].type;
+        
+        if (existingType === type) {
+          // Remove reaction
+          await connection.execute(
+            'DELETE FROM reactions WHERE comment_id = ? AND user_email = ?',
+            [commentId, user_email]
+          );
+          
+          const column = type === 'like' ? 'likes' : 'dislikes';
+          await connection.execute(
+            `UPDATE comments SET ${column} = GREATEST(0, ${column} - 1) WHERE id = ?`,
+            [commentId]
+          );
+        } else {
+          // Change reaction
+          await connection.execute(
+            'DELETE FROM reactions WHERE comment_id = ? AND user_email = ?',
+            [commentId, user_email]
+          );
+          
+          const oldColumn = existingType === 'like' ? 'likes' : 'dislikes';
+          await connection.execute(
+            `UPDATE comments SET ${oldColumn} = GREATEST(0, ${oldColumn} - 1) WHERE id = ?`,
+            [commentId]
+          );
+          
+          await connection.execute(
+            'INSERT INTO reactions (comment_id, user_email, type) VALUES (?, ?, ?)',
+            [commentId, user_email, type]
+          );
+          
+          const newColumn = type === 'like' ? 'likes' : 'dislikes';
+          await connection.execute(
+            `UPDATE comments SET ${newColumn} = ${newColumn} + 1 WHERE id = ?`,
+            [commentId]
+          );
+        }
+      } else {
+        // New reaction
+        await connection.execute(
+          'INSERT INTO reactions (comment_id, user_email, type) VALUES (?, ?, ?)',
+          [commentId, user_email, type]
+        );
+        
+        const column = type === 'like' ? 'likes' : 'dislikes';
+        await connection.execute(
+          `UPDATE comments SET ${column} = ${column} + 1 WHERE id = ?`,
+          [commentId]
+        );
+      }
+
+      const [updatedComments] = await connection.execute(
+        'SELECT id, likes, dislikes FROM comments WHERE id = ?',
+        [commentId]
+      );
+
+      await connection.execute('COMMIT');
+      res.json({
+        success: true,
+        comment: updatedComments[0],
+        message: existingReactions.length > 0 ? 'Reaction updated' : 'Reaction added'
+      });
+
+    } catch (error) {
+      await connection.execute('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error handling reaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET reaction status for a user
+router.get('/:id/reactions/:user_email', async (req, res) => {
+  try {
+    const [reactions] = await pool.execute(
+      'SELECT type FROM reactions WHERE comment_id = ? AND user_email = ?',
+      [req.params.id, req.params.user_email]
+    );
+
+    res.json({
+      hasReacted: reactions.length > 0,
+      type: reactions.length > 0 ? reactions[0].type : null
+    });
+  } catch (error) {
+    console.error('Error fetching reaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ========== ADMIN ROUTES (Protected) ==========
 
 // Get all comments (admin only)
 router.get('/admin', authenticateToken, async (req, res) => {
@@ -108,133 +269,6 @@ router.delete('/admin/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
     console.error('Error deleting comment:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// POST reaction to comment
-router.post('/:id/reactions', async (req, res) => {
-  try {
-    const { type, user_email } = req.body;
-    const commentId = req.params.id;
-
-    if (!type || !user_email) {
-      return res.status(400).json({ error: 'Type and user_email are required' });
-    }
-
-    if (type !== 'like' && type !== 'dislike') {
-      return res.status(400).json({ error: 'Invalid reaction type' });
-    }
-
-    // Start transaction
-    await pool.execute('START TRANSACTION');
-
-    try {
-      // Check if user already reacted to this comment
-      const [existingReactions] = await pool.execute(
-        'SELECT type FROM reactions WHERE comment_id = ? AND user_email = ?',
-        [commentId, user_email]
-      );
-
-      if (existingReactions.length > 0) {
-        const existingType = existingReactions[0].type;
-        
-        // If same reaction, remove it
-        if (existingType === type) {
-          // Remove reaction
-          await pool.execute(
-            'DELETE FROM reactions WHERE comment_id = ? AND user_email = ?',
-            [commentId, user_email]
-          );
-          
-          // Decrement count
-          const column = type === 'like' ? 'likes' : 'dislikes';
-          await pool.execute(
-            `UPDATE comments SET ${column} = GREATEST(0, ${column} - 1) WHERE id = ?`,
-            [commentId]
-          );
-        } else {
-          // Change reaction from like to dislike or vice versa
-          // Remove old reaction
-          await pool.execute(
-            'DELETE FROM reactions WHERE comment_id = ? AND user_email = ?',
-            [commentId, user_email]
-          );
-          
-          // Decrement old reaction count
-          const oldColumn = existingType === 'like' ? 'likes' : 'dislikes';
-          await pool.execute(
-            `UPDATE comments SET ${oldColumn} = GREATEST(0, ${oldColumn} - 1) WHERE id = ?`,
-            [commentId]
-          );
-          
-          // Add new reaction
-          await pool.execute(
-            'INSERT INTO reactions (comment_id, user_email, type) VALUES (?, ?, ?)',
-            [commentId, user_email, type]
-          );
-          
-          // Increment new reaction count
-          const newColumn = type === 'like' ? 'likes' : 'dislikes';
-          await pool.execute(
-            `UPDATE comments SET ${newColumn} = ${newColumn} + 1 WHERE id = ?`,
-            [commentId]
-          );
-        }
-      } else {
-        // Add new reaction
-        await pool.execute(
-          'INSERT INTO reactions (comment_id, user_email, type) VALUES (?, ?, ?)',
-          [commentId, user_email, type]
-        );
-        
-        // Increment count
-        const column = type === 'like' ? 'likes' : 'dislikes';
-        await pool.execute(
-          `UPDATE comments SET ${column} = ${column} + 1 WHERE id = ?`,
-          [commentId]
-        );
-      }
-
-      // Get updated comment
-      const [updatedComments] = await pool.execute(
-        'SELECT id, likes, dislikes FROM comments WHERE id = ?',
-        [commentId]
-      );
-
-      await pool.execute('COMMIT');
-
-      res.json({
-        success: true,
-        comment: updatedComments[0],
-        message: existingReactions.length > 0 ? 'Reaction updated' : 'Reaction added'
-      });
-
-    } catch (error) {
-      await pool.execute('ROLLBACK');
-      throw error;
-    }
-
-  } catch (error) {
-    console.error('Error handling reaction:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// GET reaction status for a user
-router.get('/:id/reactions/:user_email', async (req, res) => {
-  try {
-    const [reactions] = await pool.execute(
-      'SELECT type FROM reactions WHERE comment_id = ? AND user_email = ?',
-      [req.params.id, req.params.user_email]
-    );
-
-    res.json({
-      hasReacted: reactions.length > 0,
-      type: reactions.length > 0 ? reactions[0].type : null
-    });
-  } catch (error) {
-    console.error('Error fetching reaction:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
