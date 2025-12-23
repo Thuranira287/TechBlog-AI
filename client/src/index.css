@@ -132,7 +132,7 @@ textarea {
 }
 
 .code-block code {
-    color: #333;
+    color: hwb(54 11% 1%);
     background: transparent;
     display: block;
 }
