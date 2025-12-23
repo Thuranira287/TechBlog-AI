@@ -116,30 +116,29 @@ textarea {
   direction: ltr !important;
 }
 
+/* Enhanced Code Block Styling - W3Schools Style */
 .code-block {
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
+    background: #f8f9fa;
+    border-left: 4px solid #4CAF50;
     border-radius: 4px;
-    padding: 15px;
-    margin: 15px 0;
+    padding: 20px;
+    margin: 20px 0;
     overflow-x: auto;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.4;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 15px;
+    line-height: 1.6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    counter-reset: line;
 }
 
 .code-block code {
     color: #333;
+    background: transparent;
+    display: block;
 }
 
-/* Optional: For syntax highlighting with Prism.js */
-.code-block {
-    background: #2d2d2d;
-    color: #ccc;
-}
-
-.code-block .token.keyword { color: #cc99cd; }
-.code-block .token.string { color: #7ec699; }
-.code-block .token.comment { color: #999; }
-.code-block .token.function { color: #f08d49; }
-.code-block .token.number { color: #f08d49; }
+/* This will color strings and comments if they're properly wrapped */
+.code-block code span.string { color: #a31515; }
+.code-block code span.comment { color: #008000; font-style: italic; }
+.code-block code span.number { color: #098658; font-weight: bold; }
+.code-block code span.keyword { color: #0000ff; font-weight: bold; }
