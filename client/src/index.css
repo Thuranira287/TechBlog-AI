@@ -96,3 +96,50 @@ ins[data-adsbygoogle-status="unfilled"]:not(:has(iframe)) {
   min-height: 0 !important;
   display: none !important;
 }
+
+/* Force LTR for all comment-related elements */
+.comment-section * {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Fix for textarea RTL bug */
+textarea {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: plaintext !important;
+}
+
+/* Prevent any RTL inheritance */
+[class*="comment"], 
+[class*="reply"] {
+  direction: ltr !important;
+}
+
+.code-block {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 15px 0;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.code-block code {
+    color: #333;
+}
+
+/* Optional: For syntax highlighting with Prism.js */
+.code-block {
+    background: #2d2d2d;
+    color: #ccc;
+}
+
+.code-block .token.keyword { color: #cc99cd; }
+.code-block .token.string { color: #7ec699; }
+.code-block .token.comment { color: #999; }
+.code-block .token.function { color: #f08d49; }
+.code-block .token.number { color: #f08d49; }
