@@ -24,7 +24,7 @@ export default defineConfig({
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: https:;
-        connect-src 'self' https://www.google-analytics.com https://api.techblogai.com;
+        connect-src 'self' https://www.google-analytics.com https://techblogai-backend.onrender.com;
         frame-src 'self' https://www.google.com;
         base-uri 'self';
         form-action 'self';
