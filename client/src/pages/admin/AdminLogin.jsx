@@ -17,6 +17,8 @@ const AdminLogin = () => {
       const response = await blogAPI.login(formData);
       localStorage.setItem('authToken', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000);
+      localStorage.setItem('authTokenExpiry', expiryTime.toString());
       navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
