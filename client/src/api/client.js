@@ -4,8 +4,6 @@ import axios from 'axios'
 const API_BASE_URL = import.meta.env.VITE_API_URL
 if (!API_BASE_URL) console.warn("VITE_API_URL not set, using localhost fallback");
 
-console.log('API Base URL:', API_BASE_URL); 
-
 export const api = axios.create({
   baseURL: API_BASE_URL || 'http://localhost:5000/api',
   timeout: 10000,
@@ -31,16 +29,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('authToken')
-      // Don't redirect on Netlify to avoid issues
-      if (!window.location.hostname.includes('netlify')) {
-        window.location.href = '/admin/login'
-      }
+    // Axios timeout
+    if (
+      error.code === 'ECONNABORTED' ||
+      error.message?.includes('timeout')
+    ) {
+      console.warn('⏱️ Request timed out');
     }
-    return Promise.reject(error)
+
+    return Promise.reject(error);
   }
-)
+);
+
 
 // API methods
 export const blogAPI = {

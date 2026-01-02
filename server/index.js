@@ -143,46 +143,55 @@ Sitemap: ${process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app'}/sitema
 });
 
 // Debug endpoints
-app.get('/api/debug/db', async (req, res) => {
-  try {
-    const [categories] = await pool.execute('SELECT * FROM categories');
-    const [posts] = await pool.execute('SELECT * FROM posts');
-    const [authors] = await pool.execute('SELECT * FROM authors');
-    
-    res.json({
-      categories,
-      posts,
-      authors,
-      stats: {
-        totalCategories: categories.length,
-        totalPosts: posts.length,
-        totalAuthors: authors.length
-      }
-    });
-  } catch (error) {
-    console.error('Database debug error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+if (process.env.NODE_ENV === 'development') {
+  app.get('/api/debug/db', async (req, res) => {
+    try {
+      const [categories] = await pool.execute('SELECT * FROM categories');
+      const [posts] = await pool.execute('SELECT * FROM posts');
+      const [authors] = await pool.execute('SELECT * FROM authors');
+      
+      res.json({
+        categories,
+        posts,
+        authors,
+        stats: {
+          totalCategories: categories.length,
+          totalPosts: posts.length,
+          totalAuthors: authors.length
+        }
+      });
+    } catch (error) {
+      console.error('Database debug error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+}
 
-app.get('/api/test-db', async (req, res) => {
-  try {
-    const [posts] = await pool.execute('SELECT COUNT(*) as count FROM posts');
-    const [categories] = await pool.execute('SELECT COUNT(*) as count FROM categories');
-    
-    res.json({
-      posts: posts[0].count,
-      categories: categories[0].count,
-      status: 'Database connection successful'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/test-db', async (req, res) => {
+    try {
+      const [posts] = await pool.execute('SELECT COUNT(*) as count FROM posts');
+      const [categories] = await pool.execute('SELECT COUNT(*) as count FROM categories');
+      
+      res.json({
+        posts: posts[0].count,
+        categories: categories[0].count,
+        status: 'Database connection successful'
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+}
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err.stack);
+  } else {
+    console.error(err.message);
+  }
+
   res.status(500).json({ error: 'Something went wrong!' });
 });
 

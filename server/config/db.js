@@ -3,12 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-console.log("🌍 Loaded DB environment:", {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  name: process.env.DB_NAME,
-});
+if (process.env.NODE_ENV !== 'production') {
+  console.log('🌍 DB environment variables loaded');
+}
 
 const createDatabaseIfNotExists = async () => {
   try {
@@ -28,7 +25,9 @@ const createDatabaseIfNotExists = async () => {
   }
 };
 
-await createDatabaseIfNotExists();
+if (process.env.NODE_ENV !== 'production') {
+  await createDatabaseIfNotExists();
+}
 
 const dbConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
@@ -55,11 +54,11 @@ const checkAndFixPosts = async () => {
       FROM posts p
       LEFT JOIN categories c ON p.category_id = c.id
     `);
-    
-    console.log(`📊 Found ${posts.length} total posts:`);
-    posts.forEach(post => {
-      console.log(`   - "${post.title}" (Status: ${post.status}, Category: ${post.category_name || 'None'})`);
-    });
+
+if (process.env.NODE_ENV !== 'production') {
+  console.log(`📊 Found ${posts.length} posts`);
+}
+
     
     const publishedPosts = posts.filter(p => p.status === "published");
     const postsWithCategories = publishedPosts.filter(p => p.category_id !== null);
@@ -83,13 +82,8 @@ const checkAndFixPosts = async () => {
     }
   } catch (tableError) {
       console.log('⚠️  Could not check posts table:', tableError.message);
-      console.log('💡 This is normal if the posts table is empty or being created');
       return; // Exit gracefully if there's a table issue
-    } try{
-    
-  } catch (error) {
-    console.error('❌ Error in checkAndFixPosts:', error.message);
-  } finally {
+    } finally {
     if (connection) {
       connection.release();
     }
@@ -201,7 +195,7 @@ const initializeTables = async () => {
 
     await insertEssentialData();
   } catch (error) {
-    console.error('Error initializing tables:', error);
+    console.error('Error initializing tables:', error.message);
   }
 };
 
@@ -254,46 +248,27 @@ const insertEssentialData = async () => {
     }
 
     // 3. Create admin user if none exists
-    const [adminUsers] = await connection.execute('SELECT COUNT(*) as count FROM admin_users');
-    if (adminUsers[0].count === 0) {
-      console.log('🔐 Creating admin user...');
-      const bcrypt = await import('bcryptjs');
-      const hashedPassword = await bcrypt.default.hash('admin123', 12);
+    const [adminUsers] = await connection.execute(
+      'SELECT COUNT(*) as count FROM admin_users'
+     );
 
-      await connection.execute(
-        'INSERT INTO admin_users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-        ['admin', 'admin@blog.com', hashedPassword, 'admin']
-      );
-      console.log('✅ Admin user created');
-    } else {
-      console.log(`📊 Found ${adminUsers[0].count} existing admin users`);
-    }
-
-    // 4. Display current stats and check posts
-    /*const [postCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "published"');
-    const [draftCount] = await connection.execute('SELECT COUNT(*) as count FROM posts WHERE status = "draft"');
-    
-    console.log('📊 Current Database Status:');
-    console.log(`- Published Posts: ${postCount[0].count}`);
-    console.log(`- Draft Posts: ${draftCount[0].count}`);
-    
-    // Check and fix existing posts
-    await checkAndFixPosts();
-    
-    if (postCount[0].count === 0) {
-      console.log('💡 Tip: Use the admin panel to create your first blog post!');
-      console.log('🌐 Admin Login: http://localhost:5173/admin/login');
-      console.log('📧 Use: admin@blog.com / admin123');
-    }*/
-
+      if (adminUsers[0].count === 0) {
+        console.warn(
+        '⚠️ No admin user found. Please create one manually using a secure method.'
+        );
+       } else {
+        console.log(`📊 Found ${adminUsers[0].count} existing admin user(s)`);
+      }
     connection.release();
     console.log('✅ Essential data setup completed');
     
   } catch (error) {
-    console.error('❌ Error setting up essential data:', error);
-    console.log('📊 Current Database Status:');
-    console.log('- Published Posts: 0');
-    console.log('- Draft Posts: 0');
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('❌ Error setting up essential data:', error.message);
+      console.log('📊 Current Database Status:');
+      console.log('- Published Posts: 0');
+      console.log('- Draft Posts: 0');
+    }
   }
 };
 export { pool };

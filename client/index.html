@@ -3,29 +3,191 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="AI-Powered Blog Platform with latest technology news, tutorials, and insights." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="TechBlog AI delivers practical AI guides, web development tutorials, and emerging tech insights. Learn to build real projects with step-by-step guides and expert analysis." />
+    <meta name="keywords" content="AI tutorials, web development, JavaScript, React, Python, machine learning, programming guides, tech news, cybersecurity" />
+    <meta name="author" content="TechBlog AI Team" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="theme-color" content="#3b82f6" />
     
-    <!-- Open Graph Meta Tags -->
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://techblogai.netlify.app/" />
+    <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
+    <meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis. Build real projects today." />
+    <!-- Use your screenshot as OG image -->
+    <meta property="og:image" content="https://techblogai.netlify.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TechBlog AI Screenshot - AI & Web Development Tutorials Platform" />
     <meta property="og:site_name" content="TechBlog AI" />
-    <!-- Preload critical fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta property="og:locale" content="en_US" />
     
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://techblogai.netlify.app/" />
+    <meta name="twitter:title" content="TechBlog AI - Practical AI & Web Development Guides" />
+    <meta name="twitter:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis." />
+    <!-- Use same screenshot for Twitter or a placeholder -->
+    <meta name="twitter:image" content="https://techblogai.netlify.app/og-image.png" />
+    <meta name="twitter:site" content="@techblogai" />
+    <meta name="twitter:creator" content="@techblogai" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://techblogai.netlify.app/" />
+    
+    <!-- Favicons - Use simple approach -->
+    <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
+    <link rel="icon" type="image/png" href="/blog-icon.svg" />
+    <link rel="apple-touch-icon" href="/blog-icon.svg" />
+    
+    <!-- Preconnect & Preload -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "TechBlog AI",
+      "url": "https://techblogai.netlify.app/",
+      "description": "Practical AI and web development tutorials, guides, and tech analysis",
+      "publisher": {
+        "@type": "Organization",
+        "name": "TechBlog AI",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://techblogai.netlify.app/blog-icon.svg",
+          "width": 100,
+          "height": 100
+        }
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://techblogai.netlify.app/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
+    <!-- AdSense (Wait for approval before uncommenting) -->
+    <!-- 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922"
      crossorigin="anonymous">
     </script>
-    <script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
+    -->
     
-    <title>TechBlog AI - Latest Technology News & Insights</title>
+    <!-- Google site verification placeholder -->
+    <!-- <meta name="google-site-verification" content="YOUR_GOOGLE_SITE_VERIFICATION_CODE" /> -->
+    
+    <!-- Essential CSS (Critical above-the-fold styles) -->
+    <style>
+      /* Critical CSS for initial load */
+      html { scroll-behavior: smooth; }
+      body { 
+        margin: 0; 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        background: #f8fafc;
+      }
+      #root { 
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .loading { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        z-index: 9999; 
+        transition: opacity 0.3s ease;
+      }
+      .loading-content {
+        text-align: center;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 1rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(59, 130, 246, 0.1);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        margin: 0 auto 1.5rem;
+        animation: spin 1s linear infinite;
+      }
+      .loading-text {
+        color: #1f2937;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      /* Hide loading screen when app loaded */
+      .loading-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+    
+    <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
   </head>
   <body>
+    <!-- Loading screen (removed by React after hydration) -->
+    <div class="loading" id="loading-screen">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Loading TechBlog AI...</p>
+      </div>
+    </div>
+    
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Preload main script -->
+    <script type="module" src="/src/main.jsx" defer></script>
+    
+    <!-- Simple script to hide loading screen after timeout -->
+    <script>
+      // Fallback: Hide loading screen after 3 seconds max
+      setTimeout(function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+          loadingScreen.classList.add('loading-hidden');
+          setTimeout(() => loadingScreen.remove(), 300);
+        }
+      }, 3000);
+      
+      // Hide loading screen when page is fully loaded
+      window.addEventListener('load', function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+          loadingScreen.classList.add('loading-hidden');
+          setTimeout(() => loadingScreen.remove(), 300);
+        }
+      });
+    </script>
+    
+    <!-- Google Analytics placeholder (uncomment after setup) -->
+    <!--
+    <script>
+      // Add your GA4 measurement ID here after setup
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    -->
   </body>
 </html>

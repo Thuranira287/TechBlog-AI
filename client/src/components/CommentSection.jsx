@@ -69,29 +69,23 @@ const CommentSection = ({ postId }) => {
   ----------------------------- */
 
   const fetchComments = async () => {
-    try {
-      setLoading(true);
-      console.log(`🔄 Fetching comments for post ${postId}`);
+  try {
+    setLoading(true);
 
-      const res = await blogAPI.getComments(postId);
-      console.log('📦 Raw API response:', res.data);
+    const res = await blogAPI.getComments(postId);
 
-      if (Array.isArray(res.data)) {
-        // Organize flat array into hierarchy
-        const organizedComments = organizeComments(res.data);
-        console.log('🏗️ Organized comments:', organizedComments);
-        setComments(organizedComments);
-      } else {
-        console.error('❌ Expected array but got:', res.data);
-        setComments([]);
-      }
-    } catch (err) {
-      console.error('❌ Error fetching comments:', err);
-      alert('Unable to load comments. Please try refreshing.');
-    } finally {
-      setLoading(false);
+    if (Array.isArray(res.data)) {
+      setComments(organizeComments(res.data));
+    } else {
+      setComments([]);
     }
-  };
+  } catch (err) {
+    console.error('Error fetching comments');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Function to organize flat comments array into hierarchy
   const organizeComments = (flatComments) => {
