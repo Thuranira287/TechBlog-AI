@@ -1,0 +1,5 @@
+# CORRECT - allows sitemap
+User-agent: *
+Allow: /
+
+Sitemap: https://aitechblogs.netlify.app/sitemap.xml
