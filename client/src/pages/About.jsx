@@ -186,7 +186,7 @@ export default function About() {
             </div>
 
             {/* Quick Links */}
-            <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
               <h3 className="text-xl font-bold text-gray-900 mb-6">Quick Links</h3>
                 {/*<h3 className="text-xl font-bold text-gray-900 mb-6">Categories</h3>*/}
                 <ul className="space-y-4">
@@ -194,7 +194,7 @@ export default function About() {
                     <li key={category.id}>
                       <Link 
                         to={`/category/${category.slug}`}
-                        className="flex items-center text-gray-600 hover:text-blue-900 hover:underline transition-colors"
+                        className="flex items-center text-blue-600 hover:text-blue-700 hover:underline transition-colors"
                       >
                         {/* Optional icon for each category */}
                         <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
