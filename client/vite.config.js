@@ -23,7 +23,8 @@ export default defineConfig({
         script-src 'self' 'unsafe-inline' 'unsafe-eval' 
           https://www.google.com/recaptcha/ 
           https://www.gstatic.com/ 
-          https://www.googletagmanager.com 
+          https://www.googletagmanager.com
+          https://ep2.adtrafficquality.google
           https://pagead2.googlesyndication.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
