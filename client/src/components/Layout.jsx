@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
-//import AdSense from "./AdSense";
+import AdSense from "./AdSense";
 import FloatingAdminButton from './FloatingAdminButton';
 import AdminFooter from "./AdminFooter";
 import { useLocation } from 'react-router-dom';
