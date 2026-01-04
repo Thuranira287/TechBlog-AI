@@ -20,7 +20,7 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Global AdSense Script */}
-     {/* <AdSense /> */}
+      <AdSense /> 
 
       <Header />
 
