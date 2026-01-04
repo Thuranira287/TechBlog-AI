@@ -16,7 +16,7 @@ export default defineConfig({
       }
     }
   },
-  headers: {
+ /* headers: {
       // Modern CSP policy
       'Content-Security-Policy': `
         default-src 'self';
@@ -41,7 +41,7 @@ export default defineConfig({
         form-action 'self';
         frame-ancestors 'self';
       `.replace(/\s+/g, ' ').trim()
-    },
+    }, */
 
   //Netlify SPA support
   build: {
