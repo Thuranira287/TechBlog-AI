@@ -1,5 +1,7 @@
 import React from "react";
 import AuthorBio from "../components/AuthorBio";
+import { Link } from "react-router-dom";
+import { useBlog } from "../context/BlogContext";
 
 const handleDecline = () => {
   const expiryDate = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
@@ -29,6 +31,7 @@ const handleDecline = () => {
 };
 
 export default function About() {
+  const { categories } = useBlog();
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
@@ -185,32 +188,24 @@ export default function About() {
             {/* Quick Links */}
             <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
               <h3 className="text-xl font-bold text-gray-900 mb-6">Quick Links</h3>
-              <ul className="space-y-4">
-                <li>
-                  <a href="/tutorials" className="flex items-center text-blue-600 hover:text-blue-800 hover:underline">
-                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                    </svg>
-                    AI Tutorials
-                  </a>
-                </li>
-                <li>
-                  <a href="/guides" className="flex items-center text-green-600 hover:text-green-800 hover:underline">
-                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    Development Guides
-                  </a>
-                </li>
-                <li>
-                  <a href="/resources" className="flex items-center text-purple-600 hover:text-purple-800 hover:underline">
-                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                    Free Resources
-                  </a>
-                </li>
-              </ul>
+                {/*<h3 className="text-xl font-bold text-gray-900 mb-6">Categories</h3>*/}
+                <ul className="space-y-4">
+                  {categories.slice(0, 5).map((category) => (
+                    <li key={category.id}>
+                      <Link 
+                        to={`/category/${category.slug}`}
+                        className="flex items-center text-gray-600 hover:text-blue-900 hover:underline transition-colors"
+                      >
+                        {/* Optional icon for each category */}
+                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                            </path> 
+                        </svg>
+                        {category.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
             </div>
           </div>
         </div>
