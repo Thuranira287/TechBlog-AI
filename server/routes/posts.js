@@ -319,7 +319,7 @@ router.get('/:slug/meta', async (req, res) => {
       description: post.meta_description || post.excerpt,
       image: featuredImage, // This is the featured_image
       featured_image: featuredImage, // Add this too
-      url: `https://techblogai.netlify.app/post/${post.slug}/`,
+      url: `https://aitechblogs.netlify.app/post/${post.slug}/`,
       type: 'article',
       og_title: post.og_title || post.meta_title || post.title,
       og_description: post.og_description || post.meta_description || post.excerpt,

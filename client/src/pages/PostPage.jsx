@@ -14,7 +14,7 @@ const PostPage = () => {
   const [error, setError] = useState(null)
   
   // Define constants that depend on post AFTER it's loaded
-  const SITE_URL = 'https://techblogai.netlify.app';
+  const SITE_URL = 'https://aitechblogs.netlify.app';
 
   useEffect(() => {
     fetchPost()
@@ -45,7 +45,7 @@ const PostPage = () => {
   const sharePost = () => {
     if (!post) return;
     
-    const shareUrl = `https://techblogai.netlify.app/post/${post.slug}/`;
+    const shareUrl = `https://aitechblogs.netlify.app/post/${post.slug}/`;
     const shareText = post.twitter_title || post.title;
     const shareDescription = post.twitter_description || post.og_description || post.excerpt;
     

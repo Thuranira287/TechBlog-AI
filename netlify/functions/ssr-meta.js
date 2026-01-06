@@ -80,21 +80,21 @@ exports.handler = async (event, context) => {
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article">
-    <meta property="og:url" content="${post.url || `https://techblogai.netlify.app/post/${slug}/`}">
+    <meta property="og:url" content="${post.url || `https://aitechblogs.netlify.app/post/${slug}/`}">
     <meta property="og:title" content="${escapeHtml(post.og_title || post.title)}">
     <meta property="og:description" content="${escapeHtml(post.og_description || post.description)}">
-    <meta property="og:image" content="${post.image || post.featured_image || 'https://techblogai.netlify.app/og-image.png'}">
+    <meta property="og:image" content="${post.image || post.featured_image || 'https://aitechblogs.netlify.app/og-image.png'}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="TechBlog AI">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="${post.url || `https://techblogai.netlify.app/post/${slug}/`}">
+    <meta name="twitter:url" content="${post.url || `https://aitechblogs.netlify.app/post/${slug}/`}">
     <meta name="twitter:title" content="${escapeHtml(post.twitter_title || post.og_title || post.title)}">
     <meta name="twitter:description" content="${escapeHtml(post.twitter_description || post.og_description || post.description)}">
-    <meta name="twitter:image" content="${post.image || post.featured_image || 'https://techblogai.netlify.app/og-image.png'}">
-    <meta name="twitter:image" content="${post.image || 'https://techblogai.netlify.app/og-image.png'}">
+    <meta name="twitter:image" content="${post.image || post.featured_image || 'https://aitechblogs.netlify.app/og-image.png'}">
+    <meta name="twitter:image" content="${post.image || 'https://aitechblogs.netlify.app/og-image.png'}">
     <meta name="twitter:site" content="@techblogai">
     <meta name="twitter:creator" content="@techblogai">
     
@@ -105,7 +105,7 @@ exports.handler = async (event, context) => {
       "@type": "BlogPosting",
       "headline": "${escapeHtml(post.title)}",
       "description": "${escapeHtml(post.description)}",
-      "image": "${post.image || 'https://techblogai.netlify.app/og-image.png'}",
+      "image": "${post.image || 'https://aitechblogs.netlify.app/og-image.png'}",
       "author": {
         "@type": "Person",
         "name": "${escapeHtml(post.author_name || 'TechBlog AI')}"
@@ -115,7 +115,7 @@ exports.handler = async (event, context) => {
         "name": "TechBlog AI",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://techblogai.netlify.app/blog-icon.svg"
+          "url": "https://aitechblogs.netlify.app/blog-icon.svg"
         }
       },
       "datePublished": "${post.datePublished || new Date().toISOString()}",
@@ -126,13 +126,13 @@ exports.handler = async (event, context) => {
     <!-- Redirect to React app after 1 second -->
     <script>
         setTimeout(function() {
-            window.location.href = "${post.url || `https://techblogai.netlify.app/post/${slug}/`}";
+            window.location.href = "${post.url || `https://aitechblogs.netlify.app/post/${slug}/`}";
         }, 100);
     </script>
     
     <!-- Fallback for non-JS -->
     <noscript>
-        <meta http-equiv="refresh" content="0;url=${post.url || `https://techblogai.netlify.app/post/${slug}/`}">
+        <meta http-equiv="refresh" content="0;url=${post.url || `https://aitechblogs.netlify.app/post/${slug}/`}">
     </noscript>
 </head>
 <body>
@@ -140,7 +140,7 @@ exports.handler = async (event, context) => {
         <h1>${escapeHtml(post.title)}</h1>
         <p>${escapeHtml(post.description)}</p>
         <p>Redirecting to full article...</p>
-        <p><a href="${post.url || `https://techblogai.netlify.app/post/${slug}/`}">Click here if not redirected</a></p>
+        <p><a href="${post.url || `https://aitechblogs.netlify.app/post/${slug}/`}">Click here if not redirected</a></p>
     </div>
 </body>
 </html>`;
@@ -175,13 +175,13 @@ function getDefaultHTML() {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides">
     <meta property="og:description" content="Master AI and web development with our practical tutorials">
-    <meta property="og:image" content="https://techblogai.netlify.app/og-image.png">
+    <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="TechBlog AI">
     <meta name="twitter:description" content="AI and Web Development Tutorials">
-    <meta name="twitter:image" content="https://techblogai.netlify.app/og-image.png">
+    <meta name="twitter:image" content="https://aitechblogs.netlify.app/og-image.png">
     <script>
-        window.location.href = "https://techblogai.netlify.app";
+        window.location.href = "https://aitechblogs.netlify.app";
     </script>
 </head>
 <body>
@@ -199,10 +199,10 @@ function getErrorHTML(slug) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta property="og:title" content="TechBlog AI Article">
     <meta property="og:description" content="Read this article on TechBlog AI">
-    <meta property="og:image" content="https://techblogai.netlify.app/og-image.png">
+    <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <script>
-        window.location.href = "https://techblogai.netlify.app/post/${slug || ''}";
+        window.location.href = "https://aitechblogs.netlify.app/post/${slug || ''}";
     </script>
 </head>
 <body>
