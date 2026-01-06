@@ -12,5 +12,8 @@
     "express-validator": "^7.3.1",
     "multer": "^2.0.2",
     "streamifier": "^0.1.1"
+  },
+  "devDependencies": {
+    "vite": "^7.3.0"
   }
 }
