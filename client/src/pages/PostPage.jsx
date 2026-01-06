@@ -12,6 +12,9 @@ const PostPage = () => {
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  
+  // Define constants that depend on post AFTER it's loaded
+  const SITE_URL = 'https://techblogai.netlify.app';
 
   useEffect(() => {
     fetchPost()
@@ -40,17 +43,24 @@ const PostPage = () => {
   }
 
   const sharePost = () => {
+    if (!post) return;
+    
+    const shareUrl = `https://techblogai.netlify.app/post/${post.slug}/`;
+    const shareText = post.twitter_title || post.title;
+    const shareDescription = post.twitter_description || post.og_description || post.excerpt;
+    
     if (navigator.share) {
       navigator.share({
-        title: post.title,
-        text: post.excerpt,
-        url: window.location.href,
-      })
+        title: shareText,
+        text: shareDescription,
+        url: shareUrl,
+      });
     } else {
-      navigator.clipboard.writeText(window.location.href)
-      alert('Link copied to clipboard!')
+      // Twitter-specific sharing
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+      window.open(twitterUrl, '_blank', 'noopener,noreferrer');
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -80,38 +90,86 @@ const PostPage = () => {
     )
   }
 
+  // Calculate URLs AFTER post is loaded
+  const postUrl = `${SITE_URL}/post/${post.slug}/`;
+  const imageUrl = post.featured_image 
+    ? (post.featured_image.startsWith('http') ? post.featured_image : `${SITE_URL}${post.featured_image}`)
+    : `${SITE_URL}/og-image.png`;
+
   return (
     <>
       <Helmet>
         <title>{post.meta_title || post.title} | TechBlog AI</title>
         <meta name="description" content={post.meta_description || post.excerpt} />
-        <meta property="og:title" content={post.meta_title || post.title} />
-        <meta property="og:description" content={post.meta_description || post.excerpt} />
-        <meta property="og:image" content={post.featured_image} />
+        
+        {/* Keywords */}
+        <meta name="keywords" content={post.keywords || (post.tags && post.tags.join(', ')) || post.category_name} />
+        <meta name="author" content={post.author_name || "Admin"} />
+        
+        {/* Open Graph / Facebook */}
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={postUrl} />
+        <meta property="og:title" content={post.og_title || post.meta_title || post.title} />
+        <meta property="og:description" content={post.og_description || post.meta_description || post.excerpt} />
+        <meta property="og:image" content={imageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={post.title} />
+        <meta property="og:site_name" content="TechBlog AI" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={postUrl} />
+        <meta name="twitter:title" content={post.twitter_title || post.og_title || post.meta_title || post.title} />
+        <meta name="twitter:description" content={post.twitter_description || post.og_description || post.meta_description || post.excerpt} />
+        <meta name="twitter:image" content={imageUrl} />
+        <meta name="twitter:image:alt" content={post.title} />
+        <meta name="twitter:site" content="@techblogai" />
+        <meta name="twitter:creator" content="@techblogai" />
+        
+        {/* Article Specific */}
         <meta property="article:published_time" content={post.published_at} />
+        <meta property="article:modified_time" content={post.updated_at} />
         <meta property="article:author" content={post.author_name} />
         <meta property="article:section" content={post.category_name} />
-
+        
+        {/* Article Tags */}
+        {post.tags && post.tags.map((tag, index) => (
+          <meta key={index} property="article:tag" content={tag} />
+        ))}
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={postUrl} />
+        
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BlogPosting",
-            headline: post.title,
+            headline: post.meta_title || post.title,
             description: post.meta_description || post.excerpt,
-            image: post.featured_image,
+            image: imageUrl,
             datePublished: post.published_at,
             dateModified: post.updated_at,
-            author: { "@type": "Person", name: post.author_name },
+            author: { 
+              "@type": "Person", 
+              name: post.author_name,
+              url: post.author_id ? `${SITE_URL}/author/${post.author_id}` : SITE_URL
+            },
             publisher: {
               "@type": "Organization",
               name: "TechBlog AI",
               logo: {
                 "@type": "ImageObject",
-                url: `${window.location.origin}/blog-icon.svg`,
+                url: `${SITE_URL}/blog-icon.svg`,
               },
             },
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": postUrl
+            },
+            keywords: post.keywords || (post.tags && post.tags.join(', ')),
+            articleSection: post.category_name
           })}
         </script>
       </Helmet>

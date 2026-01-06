@@ -6,6 +6,12 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_ENV = "production"
+
 # Serve static assets with correct caching
 [[headers]]
   for = "/assets/*"
