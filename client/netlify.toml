@@ -1,12 +1,10 @@
 [build]
-  command = "npm install && npm run build"
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18"
-  NODE_ENV = "production"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
-
 
 # Serve static assets with correct caching
 [[headers]]
