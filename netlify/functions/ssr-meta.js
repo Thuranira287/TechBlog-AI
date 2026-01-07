@@ -94,7 +94,6 @@ exports.handler = async (event, context) => {
     <meta name="twitter:title" content="${escapeHtml(post.twitter_title || post.og_title || post.title)}">
     <meta name="twitter:description" content="${escapeHtml(post.twitter_description || post.og_description || post.description)}">
     <meta name="twitter:image" content="${post.image || post.featured_image || 'https://aitechblogs.netlify.app/og-image.png'}">
-    <meta name="twitter:image" content="${post.image || 'https://aitechblogs.netlify.app/og-image.png'}">
     <meta name="twitter:site" content="@techblogai">
     <meta name="twitter:creator" content="@techblogai">
     
