@@ -20,7 +20,7 @@
       https://googleads.g.doubleclick.net
       https://tpc.googlesyndication.com
       https://ep2.adtrafficquality.google;
-    img-src 'self' data: https:blob;
+    img-src 'self' data: https:blob:;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     connect-src
