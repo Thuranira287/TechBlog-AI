@@ -305,10 +305,11 @@ router.get('/:slug/meta', async (req, res) => {
       [req.params.slug]
     );
 
-    if (posts.length === 0) {
-      return res.status(404).json({ error: 'Post not found' });
+    if (!rows.length) {
+      return res.status(404).json({ message: "Post not found" });
     }
 
+    res.json(rows[0]);
     const post = posts[0];
     
     // Get full image URL
