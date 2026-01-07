@@ -13,6 +13,22 @@
   [headers.values]
     "Cache-Control" = "public, max-age=31536000, immutable"
 
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    "Content-Type" = "text/css"
+    "Cache-Control" = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    "Cache-Control" = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.woff2"
+  [headers.values]
+    "Cache-Control" = "public, max-age=31536000"
+
 # Serve static assets directly - THIS MUST COME FIRST
 [[redirects]]
   from = "/assets/*"
@@ -55,7 +71,17 @@
   to = "/:splat.svg"
   status = 200
 
+[[redirects]]
+  from = "/post/*/meta"  # For crawlers to get meta data
+  to = "/.netlify/functions/ssr-meta"
+  status = 200
+
 # SPA routes - these should come after static file redirects
+[[redirects]]
+  from = "/post/*/?_escaped_fragment_="
+  to = "/.netlify/functions/ssr-meta"
+  status = 200
+  
 [[redirects]]
   from = "/category/*"
   to = "/index.html"

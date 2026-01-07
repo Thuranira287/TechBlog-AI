@@ -9,7 +9,7 @@ exports.handler = async (event, context) => {
   
   try {
     // Extract slug from URL
-    let slug = event.path;
+    const rawPath = event.rawPath || event.path;
     
     // Remove function path prefix
     if (slug.startsWith('/.netlify/functions/ssr-meta')) {
@@ -17,8 +17,9 @@ exports.handler = async (event, context) => {
     }
     
     // Remove /post/ prefix and trailing slash
-    slug = slug.replace('/post/', '').replace(/\/$/, '');
+    let slug = rawPath.replace(/^\/post\//, '').replace(/\/$/, '');
     
+    console.log('Raw path:', rawPath);
     console.log('Extracted slug:', slug);
     
     // If no slug or just empty, return default
