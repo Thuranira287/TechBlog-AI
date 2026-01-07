@@ -79,7 +79,7 @@
 
 [[redirects]]
   from = "/post/*"
-  to = "/index.html"
+  to = "/.netlify/functions/ssr-meta"
   status = 200
 
 [[redirects]]
