@@ -81,7 +81,7 @@ exports.handler = async (event) => {
 <title>${esc(post.title || post.meta_title || 'TechBlog AI')}</title>
 
 <!-- Facebook App ID -->
-<meta property="fb:app_id" content="1829393764607774" />
+<meta property="fb:app_id" content="1829393364607774" />
 <meta name="description" content="${esc(post.description || post.excerpt || post.meta_description || 'TechBlog AI articles')}" />
 
 <!-- Open Graph -->
@@ -154,7 +154,7 @@ function errorHTML(slug = "") {
 <head>
 <meta charset="utf-8" />
 <title>TechBlog AI</title>
-<meta property="fb:app_id" content="1829393764607774" />
+<meta property="fb:app_id" content="1829393364607774" />
 <meta property="og:title" content="TechBlog AI Article" />
 <meta property="og:description" content="Read this article on TechBlog AI" />
 <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
