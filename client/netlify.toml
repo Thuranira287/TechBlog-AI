@@ -1,7 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "client/netlify/functions"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -85,11 +85,13 @@
 # -------------------------------------------------
 # SSR META ROUTES (FOR BOTS)
 # -------------------------------------------------
+# For direct meta requests
 [[redirects]]
   from = "/post/*/meta"
   to = "/.netlify/functions/ssr-meta"
   status = 200
 
+# For social media bots
 [[redirects]]
   from = "/post/*"
   to = "/.netlify/functions/ssr-meta"
@@ -100,14 +102,10 @@
     "WhatsApp",
     "TelegramBot",
     "Slackbot",
-    "Discordbot",
-    "googlebot",
-    "bingbot",
-    "yandexbot",
-    "baidubot"]}
+    "Discordbot"]}
 
 # -------------------------------------------------
-# REAL USERS GO TO SPA
+# REAL USERS GO TO SPA (MUST COME AFTER BOT RULES)
 # -------------------------------------------------
 [[redirects]]
   from = "/post/*"
@@ -135,6 +133,19 @@
 [[redirects]]
   from = "/policy/*"
   to = "/index.html"
+  status = 200
+
+# -------------------------------------------------
+# SITEMAP & ROBOTS
+# -------------------------------------------------
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/sitemap.xml"
+  status = 200
+
+[[redirects]]
+  from = "/robots.txt"
+  to = "/robots.txt"
   status = 200
 
 # -------------------------------------------------

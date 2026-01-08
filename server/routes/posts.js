@@ -56,7 +56,8 @@ router.get("/", async (req, res) => {
 
     console.log(`🔍 Executing main query`);
     
-    const [posts] = await pool.execute(query, [limit, offset]);
+    //const [posts] = await pool.execute(query, [limit, offset]);
+    const [posts] = await pool.execute(query, [limit.toString(), offset.toString()])
     const [countResult] = await pool.execute(countQuery);
 
     const total = countResult[0].total;
@@ -296,41 +297,65 @@ router.get("/:slug", async (req, res) => {
 //the /:slug/meta endpoint
 router.get('/:slug/meta', async (req, res) => {
   try {
-    const [posts] = await pool.execute(
-      `SELECT p.*, a.name AS author_name, c.name AS category_name
-       FROM posts p
-       LEFT JOIN authors a ON p.author_id = a.id
-       LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.slug = ? AND p.status = 'published'`,
-      [req.params.slug]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({ message: "Post not found" });
+    console.log(`🔍 Fetching meta for post slug: "${req.params.slug}"`);
+    
+    const query = `
+      SELECT 
+        p.id,
+        p.title,
+        p.slug,
+        p.excerpt,
+        p.featured_image,
+        p.meta_title,
+        p.meta_description,
+        p.keywords,
+        p.og_title,
+        p.og_description,
+        p.twitter_title,
+        p.twitter_description,
+        a.name AS author_name
+      FROM posts p
+      LEFT JOIN authors a ON p.author_id = a.id
+      WHERE p.slug = ? AND p.status = 'published'
+      LIMIT 1
+    `;
+    
+    const [rows] = await pool.execute(query, [req.params.slug]);
+    
+    if (!rows || rows.length === 0) {
+      console.log(`❌ Post not found for meta: ${req.params.slug}`);
+      return res.status(404).json({ error: 'Post not found' });
     }
-
-    res.json(rows[0]);
-    const post = posts[0];
+    
+    const post = rows[0];
+    console.log(`✅ Meta found for: ${post.title}`);
     
     // Get full image URL
     const featuredImage = getFullImageUrl(post.featured_image);
     
     res.json({
-      title: post.meta_title || post.title,
-      description: post.meta_description || post.excerpt,
-      image: featuredImage, // This is the featured_image
-      featured_image: featuredImage, // Add this too
-      url: `https://aitechblogs.netlify.app/post/${post.slug}/`,
-      type: 'article',
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      featured_image: featuredImage,
+      meta_title: post.meta_title || post.title,
+      meta_description: post.meta_description || post.excerpt,
+      keywords: post.keywords,
       og_title: post.og_title || post.meta_title || post.title,
       og_description: post.og_description || post.meta_description || post.excerpt,
       twitter_title: post.twitter_title || post.og_title || post.meta_title || post.title,
       twitter_description: post.twitter_description || post.og_description || post.meta_description || post.excerpt,
-      keywords: post.keywords,
-      author_name: post.author_name
+      author_name: post.author_name,
+      url: `https://aitechblogs.netlify.app/post/${post.slug}`
     });
+    
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Meta endpoint error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    });
   }
 });
 
