@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run copy-functions",
-    "copy-functions": "if exist netlify\\functions\\ssr-meta.js (mkdir dist\\_netlify\\functions 2>nul && copy netlify\\functions\\ssr-meta.js dist\\_netlify\\functions\\) else (echo Function file not found && exit 1)",
+    "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "netlify-build": "npm run build"
   },
