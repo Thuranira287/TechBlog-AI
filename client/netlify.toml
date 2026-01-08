@@ -1,7 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
+  functions = "_netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -75,37 +75,47 @@
   status = 200
 
 # -------------------------------------------------
-# 🔥 NEW: TRAILING SLASH NORMALIZATION (CRITICAL)
+# TRAILING SLASH NORMALIZATION
 # -------------------------------------------------
 [[redirects]]
   from = "/post/*/"
   to = "/post/:splat"
   status = 301
-  force = true
 
 # -------------------------------------------------
-# SSR META ROUTES
+# SSR META ROUTES (FOR BOTS)
 # -------------------------------------------------
 [[redirects]]
   from = "/post/*/meta"
   to = "/.netlify/functions/ssr-meta"
   status = 200
-  force = true
-
-[[redirects]]
-  from = "/post/*/?_escaped_fragment_="
-  to = "/.netlify/functions/ssr-meta"
-  status = 200
-  force = true
 
 [[redirects]]
   from = "/post/*"
   to = "/.netlify/functions/ssr-meta"
   status = 200
-  force = true
+  conditions = {UserAgent = ["facebookexternalhit/*",
+    "Twitterbot/*",
+    "LinkedInBot/*",
+    "WhatsApp",
+    "TelegramBot",
+    "Slackbot",
+    "Discordbot",
+    "googlebot",
+    "bingbot",
+    "yandexbot",
+    "baidubot"]}
 
 # -------------------------------------------------
-# SPA ROUTES
+# REAL USERS GO TO SPA
+# -------------------------------------------------
+[[redirects]]
+  from = "/post/*"
+  to = "/index.html"
+  status = 200
+
+# -------------------------------------------------
+# OTHER SPA ROUTES
 # -------------------------------------------------
 [[redirects]]
   from = "/category/*"

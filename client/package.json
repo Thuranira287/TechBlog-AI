@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run copy-functions",
+    "copy-functions": "mkdir dist\\_netlify\\functions 2>nul && copy netlify\\functions\\*.js dist\\_netlify\\functions\\",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "netlify-build": "npm run build"
