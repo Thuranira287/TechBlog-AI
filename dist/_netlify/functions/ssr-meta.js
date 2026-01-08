@@ -54,7 +54,7 @@ exports.handler = async (event) => {
 <meta charset="utf-8" />
 <title>${esc(post.title)}</title>
 
-<meta property="fb:app_id" content="1829393764607774" />
+<meta property="fb:app_id" content="1829393364607774" />
 <meta name="description" content="${esc(post.description || post.excerpt)}" />
 
 <!-- Open Graph -->
