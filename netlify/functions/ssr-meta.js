@@ -9,6 +9,9 @@ exports.handler = async (event) => {
       .replace("/.netlify/functions/ssr-meta", "")
       .replace(/^\/post\//, "")
       .replace(/\/$/, "");
+    console.log("DEBUG - Raw path:", event.rawPath);
+    console.log("DEBUG - Query params:", event.queryStringParameters);
+    console.log("DEBUG - Final slug:", slug);
 
     if (!slug) {
       return redirectHome();
@@ -51,6 +54,7 @@ exports.handler = async (event) => {
 <meta charset="utf-8" />
 <title>${esc(post.title)}</title>
 
+<meta property="fb:app_id" content="1829393764607774" />
 <meta name="description" content="${esc(post.description || post.excerpt)}" />
 
 <!-- Open Graph -->

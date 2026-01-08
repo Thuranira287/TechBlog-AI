@@ -6,7 +6,7 @@ if (!API_BASE_URL) console.warn("VITE_API_URL not set, using localhost fallback"
 
 export const api = axios.create({
   baseURL: API_BASE_URL || 'http://localhost:5000/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -78,7 +78,6 @@ export const blogAPI = {
 
   // Auth
   login: (credentials) => api.post('/auth/login', credentials),
-
   getMe: () => api.get('/auth/me'),
 
   // Admin methods
