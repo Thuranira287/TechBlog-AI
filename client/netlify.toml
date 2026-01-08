@@ -7,7 +7,9 @@
   NODE_VERSION = "18"
   VITE_API_URL = "https://techblogai-backend.onrender.com/api"
 
-# Serve static assets with correct caching
+# -------------------------------------------------
+# HEADERS
+# -------------------------------------------------
 [[headers]]
   for = "/assets/*"
   [headers.values]
@@ -29,13 +31,14 @@
   [headers.values]
     "Cache-Control" = "public, max-age=31536000"
 
-# Serve static assets directly - THIS MUST COME FIRST
+# -------------------------------------------------
+# STATIC FILE REDIRECTS (FIRST)
+# -------------------------------------------------
 [[redirects]]
   from = "/assets/*"
   to = "/assets/:splat"
   status = 200
 
-# Explicitly serve CSS, JS, font, and image files
 [[redirects]]
   from = "/*.css"
   to = "/:splat.css"
@@ -71,25 +74,42 @@
   to = "/:splat.svg"
   status = 200
 
+# -------------------------------------------------
+# 🔥 NEW: TRAILING SLASH NORMALIZATION (CRITICAL)
+# -------------------------------------------------
 [[redirects]]
-  from = "/post/*/meta"  # For crawlers to get meta data
+  from = "/post/*/"
+  to = "/post/:splat"
+  status = 301
+  force = true
+
+# -------------------------------------------------
+# SSR META ROUTES
+# -------------------------------------------------
+[[redirects]]
+  from = "/post/*/meta"
   to = "/.netlify/functions/ssr-meta"
   status = 200
+  force = true
 
-# SPA routes - these should come after static file redirects
 [[redirects]]
   from = "/post/*/?_escaped_fragment_="
   to = "/.netlify/functions/ssr-meta"
   status = 200
-  
-[[redirects]]
-  from = "/category/*"
-  to = "/index.html"
-  status = 200
+  force = true
 
 [[redirects]]
   from = "/post/*"
   to = "/.netlify/functions/ssr-meta"
+  status = 200
+  force = true
+
+# -------------------------------------------------
+# SPA ROUTES
+# -------------------------------------------------
+[[redirects]]
+  from = "/category/*"
+  to = "/index.html"
   status = 200
 
 [[redirects]]
@@ -107,7 +127,9 @@
   to = "/index.html"
   status = 200
 
-# Catch-all for SPA - THIS MUST BE LAST
+# -------------------------------------------------
+# CATCH-ALL (LAST)
+# -------------------------------------------------
 [[redirects]]
   from = "/*"
   to = "/index.html"
