@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+// Node.js 18+ has built-in fetch, no need to import!
 
 exports.handler = async (event) => {
   console.log("=== SSR FUNCTION START ===");
@@ -37,14 +37,14 @@ exports.handler = async (event) => {
       return redirectHome();
     }
 
-    // Detect bots (VERY IMPORTANT)
+    // Detect bots
     const userAgent = event.headers["user-agent"] || "";
     const isBot = /facebook|twitter|whatsapp|linkedin|telegram|bot|crawler|spider|facebookexternalhit/i.test(userAgent);
     
     console.log("DEBUG - User Agent:", userAgent.substring(0, 100));
     console.log("DEBUG - Is bot?", isBot);
 
-    // Fetch meta from backend
+    // Fetch meta from backend - using built-in fetch
     const metaUrl = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
     console.log("DEBUG - Fetching from:", metaUrl);
     
@@ -70,7 +70,6 @@ exports.handler = async (event) => {
        .replace(/>/g, "&gt;")
        .replace(/"/g, "&quot;");
 
-    // FIX: Use correct URL format (no trailing slash)
     const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
     console.log("DEBUG - Post URL:", postUrl);
 
@@ -105,7 +104,7 @@ exports.handler = async (event) => {
 <meta name="twitter:site" content="@AiTechBlogs" />
 
 ${
-  // 🚨 Redirect ONLY humans (NOT bots)
+  // Redirect ONLY humans (NOT bots)
   isBot
     ? "<!-- Bot detected, showing meta tags -->"
     : `<meta http-equiv="refresh" content="0;url=${postUrl}" />`
