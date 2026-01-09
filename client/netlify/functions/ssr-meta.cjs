@@ -164,7 +164,7 @@ function notFoundResponse(isBot, slug) {
       statusCode: 302,
       headers: {
         "Location": homepageUrl,
-        "Cache-Control": "public, max-age=300"
+        "Cache-Control": "public, max-age=3600"
       }
     };
   }

@@ -16,15 +16,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
-    
-    # Modern CSP Policy (applied to all pages)
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://www.google-analytics.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google; frame-src 'self' https://www.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';"
-
-# Additional CSP for SSR function responses (bot pages)
-[[headers]]
-  for = "/.netlify/functions/ssr-meta"
-  [headers.values]
-    Content-Security-Policy = "default-src 'none'; script-src 'none'; style-src 'none'; img-src 'self' https: data:; connect-src 'self' https://techblogai-backend.onrender.com; frame-src 'none';"
 
 # ================= REDIRECTS =================
 # 1. Remove trailing slashes from post URLs
@@ -33,66 +25,25 @@
   to = "/post/:splat"
   status = 301
 
-# 2. Known bots → SSR function (with specific user agents)
+# 2. ALL post URLs go to SSR function first
 [[redirects]]
   from = "/post/*"
   to = "/.netlify/functions/ssr-meta"
   status = 200
-  conditions = {UserAgent = [
-    "facebookexternalhit", 
-    "Twitterbot", 
-    "LinkedInBot", 
-    "WhatsApp",
-    "TelegramBot", 
-    "Slackbot", 
-    "Discordbot",
-    "googlebot", 
-    "bingbot", 
-    "duckduckbot",
-    "baiduspider", 
-    "yandexbot",
-    "slurp", # Yahoo
-    "ia_archiver", # Alexa
-    "archive.org_bot",
-    "msnbot"
-  ]}
 
-# 3. Bot pattern matching (catch-all for other bots)
-[[redirects]]
-  from = "/post/*"
-  to = "/.netlify/functions/ssr-meta"
-  status = 200
-  conditions = {UserAgent = ["*bot*", "*crawler*", "*spider*"]}
-
-# 4. Human visitors → SPA (React handles routing)
-# Note: This runs AFTER the bot checks due to Netlify's order
-[[redirects]]
-  from = "/post/*"
-  to = "/index.html"
-  status = 200
-
-# 5. SPA catch-all (must be last)
+# 3. SPA catch-all (for other routes)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# ================= CUSTOM 404 =================
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 404
-  force = true
-
-# ================= SECURITY & PERFORMANCE =================
-# Cache SSR function responses (bots benefit from caching)
+# ================= CACHE HEADERS =================
 [[headers]]
   for = "/.netlify/functions/ssr-meta"
   [headers.values]
     Cache-Control = "public, max-age=3600, s-maxage=7200"
     Vary = "User-Agent"
 
-# Cache static assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
