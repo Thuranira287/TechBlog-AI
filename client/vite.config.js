@@ -30,7 +30,7 @@ export default defineConfig({
           https://pagead2.googlesyndication.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
-        img-src 'self' data: https:;
+        img-src 'self' data: https:blob:;
         connect-src 'self' 
           https://www.google-analytics.com 
           https://techblogai-backend.onrender.com
