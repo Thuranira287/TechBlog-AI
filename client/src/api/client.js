@@ -84,7 +84,7 @@ const responseInterceptor = (error) => {
   
   // Timeout handling
   if (code === 'ECONNABORTED' || message?.includes('timeout')) {
-    console.warn('⏱️ Request timed out. Will retry if configured.');
+    window.alert('⏱️ Request timed out. Will retry if configured.');
     return Promise.reject({
       ...error,
       isTimeout: true,
@@ -94,7 +94,7 @@ const responseInterceptor = (error) => {
   
   // Network error
   if (!response) {
-    console.error('🌐 Network error:', error.message);
+    window.alert('🌐 Network error:', error.message);
     return Promise.reject({
       ...error,
       isNetworkError: true,
@@ -109,7 +109,7 @@ const responseInterceptor = (error) => {
   }
   
   if (response.status === 429) {
-    console.warn('⚠️ Too many requests');
+    window.alert('⚠️ Too many requests');
   }
   
   return Promise.reject(error);
@@ -179,8 +179,7 @@ export const blogAPI = {
         const percentCompleted = Math.round(
           (progressEvent.loaded * 100) / progressEvent.total
         );
-        console.log(`Upload progress: ${percentCompleted}%`);
-        // You can dispatch this to a progress store/state
+        window.alert(`Upload progress: ${percentCompleted}%`);
       }
     });
   },
@@ -200,7 +199,7 @@ export const blogAPI = {
         const percentCompleted = Math.round(
           (progressEvent.loaded * 100) / progressEvent.total
         );
-        console.log(`Update upload progress: ${percentCompleted}%`);
+        window.alert(`Update upload progress: ${percentCompleted}%`);
       }
     });
   },
@@ -219,6 +218,4 @@ export const blogAPI = {
   createAdminCategory: (categoryData) => adminApi.post('/admin/categories', categoryData, { timeout: 20000 }),
 }
 
-// Export all instances
-export { adminApi, ssrApi };
 export default api;
