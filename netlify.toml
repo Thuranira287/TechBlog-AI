@@ -1,6 +1,12 @@
 [build]
+  base = "client"
   command = "npm run build"
   publish = "dist"
+  functions = "../netlify/functions"
+
+[dev]
+  framework = "#static"
+  port = 8888
   functions = "netlify/functions"
 
 [build.environment]
@@ -99,11 +105,6 @@
 # -------------------------------------------------
 # SSR META ROUTES (FOR BOTS)
 # -------------------------------------------------
-# For direct meta requests
-[[redirects]]
-  from = "/post/*/meta"
-  to = "/.netlify/functions/ssr-meta"
-  status = 200
 
 # For social media bots
 [[redirects]]
@@ -119,7 +120,7 @@
     "Discordbot"]}
 
 # -------------------------------------------------
-# REAL USERS GO TO SPA (MUST COME AFTER BOT RULES)
+# REAL USERS GO TO SPA
 # -------------------------------------------------
 [[redirects]]
   from = "/post/*"

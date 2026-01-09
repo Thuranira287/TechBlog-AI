@@ -4,7 +4,7 @@
   "license": "MIT",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "cd server && node index.js"
   },
   "dependencies": {
     "cloudinary": "^2.8.0",

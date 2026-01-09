@@ -1,17 +1,8 @@
-// Node.js 18+ has built-in fetch, no need to import!
+// ONLY ONE exports.handler! Remove the duplicate at the bottom.
 
 exports.handler = async (event) => {
   console.log("=== SSR FUNCTION START ===");
-  console.log("Event:", JSON.stringify({
-    rawPath: event.rawPath,
-    path: event.path,
-    queryStringParameters: event.queryStringParameters,
-    headers: {
-      'user-agent': event.headers['user-agent'],
-      referer: event.headers['referer']
-    }
-  }, null, 2));
-
+  
   try {
     const rawPath = event.rawPath || event.path || "";
 
@@ -33,8 +24,8 @@ exports.handler = async (event) => {
     console.log("DEBUG - Final slug:", slug);
 
     if (!slug) {
-      console.log("DEBUG - No slug, redirecting home");
-      return redirectHome();
+      console.log("DEBUG - No slug, returning homepage meta");
+      return getHomepageMeta();
     }
 
     // Detect bots
@@ -44,7 +35,7 @@ exports.handler = async (event) => {
     console.log("DEBUG - User Agent:", userAgent.substring(0, 100));
     console.log("DEBUG - Is bot?", isBot);
 
-    // Fetch meta from backend - using built-in fetch
+    // Fetch meta from backend
     const metaUrl = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
     console.log("DEBUG - Fetching from:", metaUrl);
     
@@ -134,11 +125,23 @@ ${
   }
 };
 
-function redirectHome() {
-  console.log("DEBUG - Redirecting to homepage");
+function getHomepageMeta() {
+  console.log("DEBUG - Returning homepage meta");
   return {
-    statusCode: 302,
-    headers: { Location: "https://aitechblogs.netlify.app" },
+    statusCode: 200,
+    headers: { "Content-Type": "text/html" },
+    body: `<!DOCTYPE html>
+<html>
+<head>
+<title>TechBlog AI</title>
+<meta property="fb:app_id" content="1829393364607774" />
+<meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
+<meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis." />
+<meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
+<meta property="og:url" content="https://aitechblogs.netlify.app/" />
+</head>
+<body></body>
+</html>`
   };
 }
 
