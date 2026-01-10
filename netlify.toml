@@ -1,12 +1,12 @@
 [build]
   base = "client"
   publish = "dist"
-  functions = "client/netlify/functions"
+  functions = "netlify/functions"
 
 [dev]
   framework = "#static"
   port = 8888
-  functions = "client/netlify/functions"
+  functions = "netlify/functions"
 
 # ================= SECURITY HEADERS =================
 [[headers]]
