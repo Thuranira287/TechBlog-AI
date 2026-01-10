@@ -30,13 +30,15 @@
   from = "/post/*"
   to = "/.netlify/functions/ssr-meta"
   status = 200
+  force = true
 
 # 3. SPA catch-all (for other routes)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
+  force = true
+  
 # ================= CACHE HEADERS =================
 [[headers]]
   for = "/.netlify/functions/ssr-meta"
