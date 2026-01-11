@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /api/
+Allow: /api/categories  
+Allow: /api/posts
+Allow: /api/posts?*
+Allow: /api/comments
+Disallow: /admin/
+Disallow: /api/admin
+
+# You can point to either, but frontend is already validated
+Sitemap: https://aitechblogs.netlify.app/sitemap.xml
+https://techblogai-backend.onrender.com/sitemap.xml

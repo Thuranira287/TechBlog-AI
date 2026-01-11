@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
-Disallow: /api/
 
 Sitemap: https://aitechblogs.netlify.app/sitemap.xml
