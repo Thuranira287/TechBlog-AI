@@ -249,14 +249,13 @@ const path = require("path");
 
 function humanResponse() {
   const indexPath = path.resolve(__dirname, "../client/dist/index.html");
-  const html = fs.readFileSync(indexPath, "utf-8");
+  let html = fs.readFileSync(indexPath, "utf-8");
 
   return {
     statusCode: 200,
     headers: {
       "Content-Type": "text/html",
       "Cache-Control": "public, max-age=3600",
-      "X-Robots-Tag": "noindex",
       "Vary": "User-Agent",
     },
     body: html,
