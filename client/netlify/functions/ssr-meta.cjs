@@ -33,10 +33,7 @@ module.exports.handler = async (event) => {
     if (isBot) {
       // FOR BOTS: Return SEO meta tags
       return botResponse(post, postUrl);
-    } else {
-      // FOR HUMANS: Redirect to homepage (SPA will handle routing)
-      return humanResponse(slug);
-    }
+    } 
     
   } catch (err) {
     console.error("SSR ERROR:", err);
@@ -240,31 +237,6 @@ function botResponse(post, postUrl) {
       "X-Robots-Tag": "index, follow"
     },
     body: html
-  };
-}
-
-function humanResponse() {
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/html",
-      "Cache-Control": "no-cache",
-      "X-Robots-Tag": "noindex",
-      "Vary": "User-Agent"
-    },
-    body: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>TechBlog AI</title>
-</head>
-<body>
-  <div id="root"></div>
-
-  <!-- IMPORTANT: load the REAL Vite entry -->
-  <script type="module" src="/assets/index-caf3a617.js"></script>
-</body>
-</html>`
   };
 }
 

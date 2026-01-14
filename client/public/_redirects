@@ -1,2 +1,2 @@
-/post/*  /.netlify/functions/ssr-meta  200
-/*       /index.html                  200
+/post/*   /.netlify/functions/ssr-meta   200
+/*        /index.html                    200
