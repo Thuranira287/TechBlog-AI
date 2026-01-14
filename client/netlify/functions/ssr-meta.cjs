@@ -35,7 +35,7 @@ module.exports.handler = async (event) => {
       return botResponse(post, postUrl);
     } else {
       // FOR HUMANS: Redirect to homepage (SPA will handle routing)
-      return humanResponse();
+      return humanResponse(slug);
     }
     
   } catch (err) {
@@ -130,7 +130,7 @@ async function fetchPostMeta(slug) {
   }
 }
 
-function notFoundResponse(isBot) {
+function notFoundResponse(isBot, slug) {
   const homepageUrl = "https://aitechblogs.netlify.app/";
   
   if (isBot) {
@@ -243,30 +243,16 @@ function botResponse(post, postUrl) {
   };
 }
 
-function humanResponse() {
+function humanResponse(slug) {
   return {
-    statusCode: 200,
+    statusCode: 302,
     headers: {
-      "Content-Type": "text/html",
+      Location: `/post/${slug}`,
       "Cache-Control": "public, max-age=3600",
-      "X-Robots-Tag": "noindex",
-      "Vary": "User-Agent"
-
-    },
-    body: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>TechBlog AI</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script src="/assets/index.js"></script>
-</body>
-</html>`
+      "X-Robots-Tag": "noindex"
+    }
   };
 }
-
 
 function getHomepageMeta() {
   console.log("DEBUG - Serving homepage meta");
