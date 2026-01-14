@@ -245,10 +245,10 @@ function botResponse(post, postUrl) {
 
 function humanResponse(slug) {
   return {
-    statusCode: 302,
+    statusCode: 200,
+    body: "", 
     headers: {
-      Location: `/post/${slug}`,
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=0, must-revalidate",
       "X-Robots-Tag": "noindex"
     }
   };
