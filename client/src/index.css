@@ -198,3 +198,107 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Marquee animation with mobile support */
+@keyframes marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes marquee-mobile {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+/* Desktop animation - slower and smoother */
+.animate-marquee {
+  animation: marquee 60s linear infinite;
+  animation-play-state: running;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Mobile animation - faster and simpler */
+@media (max-width: 768px) {
+  .animate-marquee {
+    animation: marquee-mobile 6s linear infinite;
+    animation-play-state: running;
+  }
+}
+
+/* Pause animation on hover/touch */
+.paused {
+  animation-play-state: paused;
+}
+
+/* Better touch handling for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .animate-marquee {
+    /* Continue animation on mobile touch */
+    animation-play-state: running;
+  }
+}
+
+/* Hardware acceleration for smoother animation */
+.filter {
+  transition: filter 0.3s ease;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.grayscale {
+  filter: grayscale(100%);
+}
+
+.grayscale-0 {
+  filter: grayscale(0%);
+}
+
+/* Prevent content flashing during animation */
+.marquee-container {
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  -webkit-perspective: 1000;
+  perspective: 1000;
+}
+
+/* Footer Marquee Animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 50s linear infinite;
+  animation-play-state: running;
+}
+
+.paused {
+  animation-play-state: paused;
+}
+
+/* Grayscale filter transition */
+.filter {
+  transition: filter 0.3s ease;
+}
+
+.grayscale {
+  filter: grayscale(100%);
+}
+
+.grayscale-0 {
+  filter: grayscale(0%);
+}

@@ -15,11 +15,15 @@ import PolicyPage from "./pages/PolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AdminLogin from './pages/admin/AdminLogin';
 import About from "./pages/About";
+import Advertise from "./pages/Advertise";
+import JobsPage from "./pages/JobsPage";
+import JobDetails from "./pages/JobDetails";
 
 // Lazy load admin pages (better performance)
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const PostEditor = lazy(() => import('./pages/admin/PostEditor'));
 const CommentsPage = lazy(() => import('./pages/admin/CommentsPage'));
+const JobManager = lazy(() => import('./pages/admin/JobManager'));
 
 // Context and Components
 import { BlogProvider } from "./context/BlogContext";
@@ -169,6 +173,9 @@ function App() {
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/about" element={<About />} />
               <Route path="/author" element={<AuthorBio compact={false} />} />
+              <Route path="/advertise" element={<Advertise />} />
+              <Route path="/jobs" element={<JobsPage />} />
+              <Route path="/jobs/:id" element={<JobDetails />} />
               
               {/* Protected Admin Routes with Lazy Loading */}
               <Route 
@@ -211,7 +218,14 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              
+              <Route 
+                  path="/admin/jobs" 
+                  element={
+                    <ProtectedRoute>
+                      <JobManager />
+                    </ProtectedRoute>
+                  } 
+              />
               {/* 404 Catch-all */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

@@ -46,9 +46,9 @@
     <meta name="twitter:site" content="@AiTechBlogs" />
     <meta name="twitter:creator" content="@AiTechBlogs" />
     
-    <!-- Canonical URL -->
+    <!-- Canonical URL 
     <link rel="canonical" href="https://aitechblogs.netlify.app/" />
-    
+    -->
     <!-- Favicons - Use simple approach -->
     <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
     <link rel="icon" type="image/png" href="/blog-icon.svg" />
@@ -59,29 +59,44 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     
-    <!-- Schema.org structured data -->
+    <!-- Schema.org structured data (Combined) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "TechBlog AI",
-      "url": "https://aitechblogs.netlify.app/",
-      "description": "Practical AI and web development tutorials, guides, and tech analysis",
-      "publisher": {
-        "@type": "Organization",
-        "name": "TechBlog AI",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://aitechblogs.netlify.app/blog-icon.svg",
-          "width": 100,
-          "height": 100
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://aitechblogs.netlify.app/#website",
+          "name": "TechBlog AI",
+          "url": "https://aitechblogs.netlify.app/",
+          "description": "Practical AI and web development tutorials, guides, and tech analysis",
+          "publisher": {
+            "@type": "Organization",
+            "name": "TechBlog AI",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://aitechblogs.netlify.app/blog-icon.svg",
+              "width": 100,
+              "height": 100
+            }
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://aitechblogs.netlify.app/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://aitechblogs.netlify.app/jobs/#webpage",
+          "name": "Tech Jobs & Careers",
+          "url": "https://aitechblogs.netlify.app/jobs",
+          "description": "Find tech jobs, internships, and career opportunities at leading companies.",
+          "isPartOf": {
+            "@id": "https://aitechblogs.netlify.app/#website"
+          }
         }
-      },
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://aitechblogs.netlify.app/search?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+      ]
     }
     </script>
     

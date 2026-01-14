@@ -122,165 +122,329 @@ router.get('/posts/:id', async (req, res) => {
 });
 
 // Create post - UPDATED WITH SEO FIELDS
+// Create post - UPDATED TO MATCH YOUR ACTUAL SCHEMA
 router.post('/posts', parser.single('featured_image'), async (req, res) => {
   try {
     const { 
       title, slug, excerpt, content, category_id, 
       meta_title, meta_description, keywords,
       og_title, og_description, twitter_title, twitter_description,
+      fb_title, fb_description, twitter_image, fb_image,
       tags, status = 'draft' 
     } = req.body;
 
-    const [authors] = await pool.execute('SELECT id FROM authors LIMIT 1');
-    const author_id = authors[0].id;
+    // Debug logging
+    console.log('📝 Received post data:', {
+      title: title?.substring(0, 50),
+      slug,
+      category_id,
+      hasFile: !!req.file,
+      tags: tags?.substring(0, 100)
+    });
 
+    // Validate required fields
+    if (!title || !slug || !content || !category_id) {
+      console.error('❌ Missing required fields');
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['title', 'slug', 'content', 'category_id'],
+        received: { title: !!title, slug: !!slug, content: !!content, category_id: !!category_id }
+      });
+    }
+
+    // Get default author
+    const [authors] = await pool.execute('SELECT id FROM authors LIMIT 1');
+    const author_id = authors[0]?.id;
+    
+    if (!author_id) {
+      console.error('❌ No author found in database');
+      return res.status(500).json({ error: 'No author configured in system' });
+    }
+
+    // Handle featured image
     let featured_image = null;
     if (req.file) {
-      const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
-      featured_image = uploadResult.secure_url;
+      try {
+        console.log('📸 Uploading featured image...');
+        const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
+        featured_image = uploadResult.secure_url;
+        console.log('✅ Image uploaded:', featured_image);
+      } catch (uploadError) {
+        console.error('❌ Image upload failed:', uploadError);
+        // Continue without image
+      }
     }
 
-    // Parse tags
+    // Parse tags safely - handle both JSON string and comma-separated
     let parsedTags = [];
-    try {
-      parsedTags = tags ? JSON.parse(tags) : [];
-    } catch (e) {
-      parsedTags = tags ? tags.split(',').map(t => t.trim()) : [];
+    if (tags) {
+      try {
+        if (typeof tags === 'string' && tags.trim().startsWith('[')) {
+          parsedTags = JSON.parse(tags);
+        } else {
+          parsedTags = tags.split(',').map(t => t.trim()).filter(t => t);
+        }
+      } catch (e) {
+        console.warn('⚠️ Tag parsing failed, using as is:', e.message);
+        parsedTags = [tags];
+      }
     }
 
-    // Set fallbacks for SEO fields
-    const finalMetaTitle = meta_title || title;
-    const finalMetaDescription = meta_description || excerpt || null;
-    const finalOgTitle = og_title || finalMetaTitle;
-    const finalOgDescription = og_description || finalMetaDescription;
-    const finalTwitterTitle = twitter_title || finalOgTitle;
-    const finalTwitterDescription = twitter_description || finalOgDescription;
+    // CONVERT ALL UNDEFINED VALUES TO NULL
+    const safeValues = {
+      title: title || null,
+      slug: slug || null,
+      excerpt: excerpt || null,
+      content: content || null,
+      author_id: parseInt(author_id),
+      category_id: parseInt(category_id),
+      featured_image: featured_image || null,
+      meta_title: meta_title || null,
+      meta_description: meta_description || null,
+      keywords: keywords || null,
+      og_title: og_title || null,
+      og_description: og_description || null,
+      twitter_title: twitter_title || null,
+      twitter_description: twitter_description || null,
+      twitter_image: twitter_image || null,
+      fb_title: fb_title || null,
+      fb_description: fb_description || null,
+      fb_image: fb_image || null,
+      tags: JSON.stringify(parsedTags),
+      status: status || 'draft',
+      view_count: 0
+    };
 
+    console.log('🛠️ Prepared values for insertion:');
+    Object.entries(safeValues).forEach(([key, value]) => {
+      console.log(`  ${key}: ${value === null ? 'NULL' : typeof value === 'string' ? `"${value.substring(0, 30)}..."` : value}`);
+    });
+
+    // INSERT QUERY THAT MATCHES YOUR EXACT TABLE STRUCTURE
     const [result] = await pool.execute(`
       INSERT INTO posts 
       (title, slug, excerpt, content, author_id, category_id, featured_image, 
        meta_title, meta_description, keywords,
        og_title, og_description, twitter_title, twitter_description,
-       tags, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+       twitter_image, fb_title, fb_description, fb_image,
+       tags, status, view_count, published_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+              CASE WHEN ? = 'published' THEN NOW() ELSE NULL END, 
+              NOW(), NOW())
     `, [
-      title, slug, excerpt, content, author_id, category_id, featured_image,
-      finalMetaTitle, finalMetaDescription, keywords,
-      finalOgTitle, finalOgDescription, finalTwitterTitle, finalTwitterDescription,
-      JSON.stringify(parsedTags), status
+      safeValues.title,
+      safeValues.slug,
+      safeValues.excerpt,
+      safeValues.content,
+      safeValues.author_id,
+      safeValues.category_id,
+      safeValues.featured_image,
+      safeValues.meta_title,
+      safeValues.meta_description,
+      safeValues.keywords,
+      safeValues.og_title,
+      safeValues.og_description,
+      safeValues.twitter_title,
+      safeValues.twitter_description,
+      safeValues.twitter_image,
+      safeValues.fb_title,
+      safeValues.fb_description,
+      safeValues.fb_image,
+      safeValues.tags,
+      safeValues.status,
+      safeValues.view_count,
+      safeValues.status  // For published_at conditional
     ]);
 
+    console.log(`✅ Post created with ID: ${result.insertId}`);
+
+    // Fetch the created post with joins
     const [newPost] = await pool.execute(`
       SELECT p.*, 
-             p.meta_title, p.meta_description, p.keywords,
-             p.og_title, p.og_description, p.twitter_title, p.twitter_description,
-             c.name as category_name 
+             c.name as category_name, 
+             c.slug as category_slug,
+             a.name as author_name,
+             a.email as author_email
       FROM posts p 
       LEFT JOIN categories c ON p.category_id = c.id 
+      LEFT JOIN authors a ON p.author_id = a.id
       WHERE p.id = ?
     `, [result.insertId]);
 
-    res.status(201).json({
+    if (!newPost.length) {
+      throw new Error('Failed to retrieve created post');
+    }
+
+    // Parse tags back
+    const postWithTags = {
       ...newPost[0],
-      tags: parsedTags
+      tags: typeof newPost[0].tags === 'string' ? JSON.parse(newPost[0].tags) : newPost[0].tags || []
+    };
+
+    res.status(201).json({
+      success: true,
+      message: 'Post created successfully',
+      post: postWithTags
     });
+
   } catch (error) {
-    console.error('Error creating post:', error);
+    console.error('❌ Error creating post:', error);
+    
+    // Enhanced error handling
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        error: 'Duplicate entry',
+        details: 'A post with this slug already exists',
+        suggestion: 'Try a different slug'
+      });
+    } else if (error.message.includes('Bind parameters must not contain undefined')) {
+      return res.status(400).json({
+        error: 'Invalid data',
+        details: 'Some fields contain undefined values',
+        solution: 'Ensure all optional fields are either provided or omitted (not undefined)'
+      });
+    } else if (error.message.includes('foreign key constraint')) {
+      return res.status(400).json({
+        error: 'Invalid reference',
+        details: 'The category or author does not exist',
+        solution: 'Check that category_id and author_id are valid'
+      });
+    }
+
     res.status(500).json({ 
-      error: 'Internal server error',
-      details: error.message 
+      error: 'Failed to create post',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
 
-// Update post - UPDATED WITH SEO FIELDS
+// Update post - MATCH YOUR SCHEMA
 router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
   try {
     const { 
       title, slug, excerpt, content, category_id, 
       meta_title, meta_description, keywords,
       og_title, og_description, twitter_title, twitter_description,
+      fb_title, fb_description, twitter_image, fb_image,
       tags, status, existing_featured_image 
     } = req.body;
 
-    // First get existing post to preserve values not provided
+    console.log('🔄 Updating post ID:', req.params.id);
+
+    // Get existing post first
     const [existingPosts] = await pool.execute('SELECT * FROM posts WHERE id = ?', [req.params.id]);
-    if (!existingPosts.length) return res.status(404).json({ error: 'Post not found' });
+    if (!existingPosts.length) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
     
     const existingPost = existingPosts[0];
 
     // Handle featured image
     let featured_image = existing_featured_image || existingPost.featured_image;
     if (req.file) {
-      const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
-      featured_image = uploadResult.secure_url;
+      try {
+        const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
+        featured_image = uploadResult.secure_url;
+      } catch (uploadError) {
+        console.error('Image upload failed:', uploadError);
+        // Keep existing image
+      }
     }
 
     // Parse tags
     let parsedTags = [];
     if (tags !== undefined) {
       try {
-        parsedTags = tags ? JSON.parse(tags) : [];
+        if (typeof tags === 'string' && tags.trim().startsWith('[')) {
+          parsedTags = JSON.parse(tags);
+        } else {
+          parsedTags = tags.split(',').map(t => t.trim()).filter(t => t);
+        }
       } catch (e) {
-        parsedTags = tags ? tags.split(',').map(t => t.trim()) : [];
+        parsedTags = typeof existingPost.tags === 'string' ? JSON.parse(existingPost.tags) : existingPost.tags || [];
       }
     } else {
       parsedTags = typeof existingPost.tags === 'string' ? JSON.parse(existingPost.tags) : existingPost.tags || [];
     }
 
-    // Set SEO fields with fallbacks
-    const finalMetaTitle = meta_title !== undefined ? meta_title : existingPost.meta_title || title;
-    const finalMetaDescription = meta_description !== undefined ? meta_description : existingPost.meta_description || excerpt;
-    const finalKeywords = keywords !== undefined ? keywords : existingPost.keywords;
-    const finalOgTitle = og_title !== undefined ? og_title : existingPost.og_title || finalMetaTitle;
-    const finalOgDescription = og_description !== undefined ? og_description : existingPost.og_description || finalMetaDescription;
-    const finalTwitterTitle = twitter_title !== undefined ? twitter_title : existingPost.twitter_title || finalOgTitle;
-    const finalTwitterDescription = twitter_description !== undefined ? twitter_description : existingPost.twitter_description || finalOgDescription;
+    // Prepare update values - use existing values if not provided
+    const updateValues = {
+      title: title || existingPost.title,
+      slug: slug || existingPost.slug,
+      excerpt: excerpt !== undefined ? excerpt : existingPost.excerpt,
+      content: content || existingPost.content,
+      category_id: category_id || existingPost.category_id,
+      featured_image: featured_image,
+      meta_title: meta_title !== undefined ? meta_title : existingPost.meta_title,
+      meta_description: meta_description !== undefined ? meta_description : existingPost.meta_description,
+      keywords: keywords !== undefined ? keywords : existingPost.keywords,
+      og_title: og_title !== undefined ? og_title : existingPost.og_title,
+      og_description: og_description !== undefined ? og_description : existingPost.og_description,
+      twitter_title: twitter_title !== undefined ? twitter_title : existingPost.twitter_title,
+      twitter_description: twitter_description !== undefined ? twitter_description : existingPost.twitter_description,
+      twitter_image: twitter_image !== undefined ? twitter_image : existingPost.twitter_image,
+      fb_title: fb_title !== undefined ? fb_title : existingPost.fb_title,
+      fb_description: fb_description !== undefined ? fb_description : existingPost.fb_description,
+      fb_image: fb_image !== undefined ? fb_image : existingPost.fb_image,
+      tags: JSON.stringify(parsedTags),
+      status: status || existingPost.status
+    };
 
+    // Update query matching your schema
     await pool.execute(`
       UPDATE posts 
       SET title = ?, slug = ?, excerpt = ?, content = ?, category_id = ?,
-          featured_image = ?, 
-          meta_title = ?, meta_description = ?, keywords = ?,
-          og_title = ?, og_description = ?,
-          twitter_title = ?, twitter_description = ?,
+          featured_image = ?, meta_title = ?, meta_description = ?, keywords = ?,
+          og_title = ?, og_description = ?, twitter_title = ?, twitter_description = ?,
+          twitter_image = ?, fb_title = ?, fb_description = ?, fb_image = ?,
           tags = ?, status = ?, updated_at = NOW()
       WHERE id = ?
     `, [
-      title || existingPost.title, 
-      slug || existingPost.slug, 
-      excerpt !== undefined ? excerpt : existingPost.excerpt, 
-      content || existingPost.content, 
-      category_id || existingPost.category_id,
-      featured_image,
-      finalMetaTitle, finalMetaDescription, finalKeywords,
-      finalOgTitle, finalOgDescription,
-      finalTwitterTitle, finalTwitterDescription,
-      JSON.stringify(parsedTags), 
-      status || existingPost.status,
+      updateValues.title,
+      updateValues.slug,
+      updateValues.excerpt,
+      updateValues.content,
+      updateValues.category_id,
+      updateValues.featured_image,
+      updateValues.meta_title,
+      updateValues.meta_description,
+      updateValues.keywords,
+      updateValues.og_title,
+      updateValues.og_description,
+      updateValues.twitter_title,
+      updateValues.twitter_description,
+      updateValues.twitter_image,
+      updateValues.fb_title,
+      updateValues.fb_description,
+      updateValues.fb_image,
+      updateValues.tags,
+      updateValues.status,
       req.params.id
     ]);
 
+    // Fetch updated post
     const [updatedPost] = await pool.execute(`
-      SELECT p.*, 
-             p.meta_title, p.meta_description, p.keywords,
-             p.og_title, p.og_description, p.twitter_title, p.twitter_description,
-             c.name as category_name 
+      SELECT p.*, c.name as category_name 
       FROM posts p 
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.id = ?
     `, [req.params.id]);
 
     res.json({
-      ...updatedPost[0],
-      tags: parsedTags
+      success: true,
+      message: 'Post updated successfully',
+      post: {
+        ...updatedPost[0],
+        tags: parsedTags
+      }
     });
   } catch (error) {
     console.error('Error updating post:', error);
     res.status(500).json({ 
-      error: error.message, 
-      stack: error.stack 
-    }); 
+      error: 'Failed to update post',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

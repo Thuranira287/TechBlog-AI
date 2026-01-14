@@ -172,15 +172,6 @@ const initializeTables = async () => {
 
   try {
     const connection = await pool.getConnection();
-    
-    // Drop and recreate posts table
-    /*try {
-      await connection.execute('DROP TABLE IF EXISTS posts');
-      console.log('🔄 Dropped posts table to recreate without FULLTEXT index');
-    } catch (error) {
-      console.log('ℹ️ No posts table to drop or already dropped');
-    }
-    */
 
     const statements = createTables.split(';').filter(stmt => stmt.trim());
 

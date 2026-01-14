@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { blogAPI } from '../../api/client';
 import { 
   Plus, FileText, Folder, MessageSquare, Eye, Trash2, 
-  Users, CheckCircle, XCircle, MessageCircle, RefreshCw 
+  Users, CheckCircle, XCircle, MessageCircle, RefreshCw,
+  Briefcase,
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -206,6 +207,10 @@ const AdminDashboard = () => {
               <RefreshCw className="w-4 h-4" />
               <span>Refresh</span>
             </button>
+            <Link to="/admin/jobs" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+              <Briefcase className="w-5 h-5" />
+              <span>Job Listings</span>
+            </Link>
             <Link
               to="/admin/posts/new"
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"

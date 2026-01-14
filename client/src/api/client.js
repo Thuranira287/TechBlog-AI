@@ -11,7 +11,6 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
-
 // Special instance for admin operations (uploads take longer)
 export const adminApi = axios.create({
   baseURL: API_BASE_URL || 'http://localhost:5000/api',
@@ -94,7 +93,7 @@ const responseInterceptor = (error) => {
   
   // Network error
   if (!response) {
-    window.alert('🌐 Network error:', error.message);
+    console.log('🌐 Network error:', error.message);
     return Promise.reject({
       ...error,
       isNetworkError: true,
@@ -125,13 +124,13 @@ export const blogAPI = {
     const params = { page, limit }
     if (category) params.category = category
     if (search) params.search = search
-    return api.get('/posts', { params, timeout: 30000 })
+    return api.get('/posts', { params, timeout: 20000 })
   },
 
-  getPost: (slug) => api.get(`/posts/${slug}`, { timeout: 30000 }),
+  getPost: (slug) => api.get(`/posts/${slug}`, { timeout: 20000 }),
 
   getCategoryPosts: (categorySlug, page = 1) => 
-    api.get(`/posts/category/${categorySlug}?page=${page}`, { timeout: 30000 }),
+    api.get(`/posts/category/${categorySlug}?page=${page}`, { timeout: 20000 }),
 
   // Categories - faster
   getCategories: () => api.get('/categories', { timeout: 10000 }),
@@ -158,64 +157,68 @@ export const blogAPI = {
   getMe: () => api.get('/auth/me', { timeout: 10000 }),
 
   // Admin methods - use adminApi with longer timeouts
-  getAdminDashboard: (params = {}) => adminApi.get('/admin/dashboard', { params, timeout: 30000 }),
+  getAdminDashboard: (params = {}) => adminApi.get('/admin/dashboard', { params, timeout: 10000 }),
   
-  getAdminPosts: (page = 1) => adminApi.get(`/admin/posts?page=${page}`, { timeout: 30000 }),
+  getAdminPosts: (page = 1) => adminApi.get(`/admin/posts?page=${page}`, { timeout: 10000 }),
   
-  getAdminPost: (id) => adminApi.get(`/admin/posts/${id}`, { timeout: 30000 }),
+  getAdminPost: (id) => adminApi.get(`/admin/posts/${id}`, { timeout: 10000 }),
   
   createAdminPost: (postData) => {
-    const formData = new FormData();
-    Object.keys(postData).forEach(key => {
-      if (postData[key] !== null && postData[key] !== undefined) {
-        formData.append(key, postData[key]);
-      }
-    });
-    
-    return adminApi.post('/admin/posts', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000, // 2 minutes for large uploads
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        window.alert(`Upload progress: ${percentCompleted}%`);
-      }
-    });
+    // Check if postData is FormData or regular object
+    if (postData instanceof FormData) {
+      return adminApi.post('/admin/posts', postData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      });
+    } else {
+      // Convert object to FormData
+      const formData = new FormData();
+      Object.keys(postData).forEach(key => {
+        if (postData[key] !== null && postData[key] !== undefined) {
+          formData.append(key, postData[key]);
+        }
+      });
+      
+      return adminApi.post('/admin/posts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      });
+    }
   },
-  
+
   updateAdminPost: (id, postData) => {
-    const formData = new FormData();
-    Object.keys(postData).forEach(key => {
-      if (postData[key] !== null && postData[key] !== undefined) {
-        formData.append(key, postData[key]);
-      }
-    });
-    
-    return adminApi.put(`/admin/posts/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000,
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        window.alert(`Update upload progress: ${percentCompleted}%`);
-      }
-    });
+    if (postData instanceof FormData) {
+      return adminApi.put(`/admin/posts/${id}`, postData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      });
+    } else {
+      const formData = new FormData();
+      Object.keys(postData).forEach(key => {
+        if (postData[key] !== null && postData[key] !== undefined) {
+          formData.append(key, postData[key]);
+        }
+      });
+      
+      return adminApi.put(`/admin/posts/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      });
+    }
   },
   
-  deleteAdminPost: (id) => adminApi.delete(`/admin/posts/${id}`, { timeout: 30000 }),
-  deletePost: (id) => adminApi.delete(`/admin/posts/${id}`, { timeout: 30000 }),
+  deleteAdminPost: (id) => adminApi.delete(`/admin/posts/${id}`),
+  deletePost: (id) => adminApi.delete(`/admin/posts/${id}`),
+
+  getAdminCategories: () => adminApi.get(`/admin/categories`),
+
+  getAdminComments: () => adminApi.get(`/admin/comments`),
   
-  getAdminCategories: () => adminApi.get('/admin/categories', { timeout: 15000 }),
+  updateAdminComment: (id, data) => adminApi.put(`/admin/comments/${id}`, data, ),
   
-  getAdminComments: () => adminApi.get('/admin/comments', { timeout: 30000 }),
+  deleteAdminComment: (id) => adminApi.delete(`/admin/comments/${id}`),
   
-  updateAdminComment: (id, data) => adminApi.put(`/admin/comments/${id}`, data, { timeout: 15000 }),
-  
-  deleteAdminComment: (id) => adminApi.delete(`/admin/comments/${id}`, { timeout: 15000 }),
-  
-  createAdminCategory: (categoryData) => adminApi.post('/admin/categories', categoryData, { timeout: 20000 }),
+  createAdminCategory: (categoryData) => adminApi.post('/admin/categories', categoryData),
 }
 
 export default api;

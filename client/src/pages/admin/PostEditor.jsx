@@ -75,36 +75,86 @@ const PostEditor = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  
+  // Validate required fields
+  if (!formData.title || !formData.slug || !formData.content || !formData.category_id) {
+    alert('Please fill in all required fields: Title, Slug, Content, and Category');
+    return;
+  }
+  
+  setLoading(true);
 
-    try {
-      const submitData = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === 'tags') {
-          submitData.append(key, JSON.stringify(formData[key].split(',').map(tag => tag.trim()).filter(tag => tag)));
-        } else if (key === 'featured_image' && formData[key]) {
-          submitData.append(key, formData[key]);
-        } else {
-          submitData.append(key, formData[key]);
-        }
-      });
-
-      if (isEditing) {
-        submitData.append('existing_featured_image', imagePreview);
-        await blogAPI.updateAdminPost(id, submitData);
-      } else {
-        await blogAPI.createAdminPost(submitData);
-      }
-
-      navigate('/admin/dashboard');
-    } catch (error) {
-      console.error('Error saving post:', error);
-      alert('Error saving post. Please try again.');
-    } finally {
-      setLoading(false);
+  try {
+    // Create FormData object
+    const postData = new FormData();
+    
+    // Append all text fields
+    postData.append('title', formData.title || '');
+    postData.append('slug', formData.slug || '');
+    postData.append('excerpt', formData.excerpt || '');
+    postData.append('content', formData.content || '');
+    postData.append('category_id', formData.category_id || '');
+    postData.append('meta_title', formData.meta_title || formData.title || '');
+    postData.append('meta_description', formData.meta_description || formData.excerpt || '');
+    postData.append('keywords', formData.keywords || '');
+    postData.append('og_title', formData.og_title || formData.meta_title || formData.title || '');
+    postData.append('og_description', formData.og_description || formData.meta_description || formData.excerpt || '');
+    postData.append('twitter_title', formData.twitter_title || formData.og_title || formData.meta_title || formData.title || '');
+    postData.append('twitter_description', formData.twitter_description || formData.og_description || formData.meta_description || formData.excerpt || '');
+    postData.append('status', formData.status || 'draft');
+    
+    // Handle tags - convert to JSON array string
+    const tagsArray = formData.tags 
+      ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      : [];
+    postData.append('tags', JSON.stringify(tagsArray));
+    
+    // Append featured image if it's a File object
+    if (formData.featured_image instanceof File) {
+      postData.append('featured_image', formData.featured_image);
     }
-  };
+    
+    // Debug: Log what's being sent
+    console.log('📤 FormData contents:');
+    for (let [key, value] of postData.entries()) {
+      console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);
+    }
+
+    let response;
+    if (isEditing) {
+      // For editing, include existing image if available
+      if (imagePreview && !imagePreview.startsWith('blob:')) {
+        postData.append('existing_featured_image', imagePreview);
+      }
+      console.log(`🔄 Updating post ID: ${id}`);
+      response = await blogAPI.updateAdminPost(id, postData);
+    } else {
+      console.log('🆕 Creating new post');
+      response = await blogAPI.createAdminPost(postData);
+    }
+
+    console.log('✅ Success:', response.data);
+    navigate('/admin/dashboard');
+  } catch (error) {
+    console.error('❌ Error saving post:', error);
+    console.error('Full error:', error);
+    
+    let errorMessage = 'Error saving post. Please try again.';
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+      if (error.response.data.details) {
+        errorMessage += `\n\nDetails: ${error.response.data.details}`;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    alert(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];

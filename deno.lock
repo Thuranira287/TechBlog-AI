@@ -14,7 +14,9 @@
         "npm:cloudinary@^2.8.0",
         "npm:express-rate-limit@^8.2.1",
         "npm:express-validator@^7.3.1",
+        "npm:jspdf@4",
         "npm:multer@^2.0.2",
+        "npm:react-icons@^5.5.0",
         "npm:shx@0.4",
         "npm:streamifier@~0.1.1",
         "npm:vite@^7.3.0"
