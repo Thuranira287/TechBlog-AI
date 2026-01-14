@@ -167,7 +167,6 @@ export default function Advertise() {
       }
     } catch (error) {
       console.log('Using default logos:', error.message);
-      // Keep using default logos defined below
     }
   };
 

@@ -12,7 +12,7 @@ import Vercel from "../assets/Vercel.png";
 import Netlify from "../assets/Netlify.png";
 import GoogleCloud from "../assets/GoogleCloud.png";
 import Cisco from "../assets/Cisco.png";
-import Microsoft from "../assets/Microsoft.png";
+import MicroSoft from "../assets/MicroSoft.png";
 import TechBlogAI from "../assets/TechBlogAI.jpg";
 
 const Footer = () => {
@@ -30,7 +30,7 @@ const Footer = () => {
     { id: 6, name: "Netlify", logo: Netlify },
     { id: 7, name: "Google Cloud", logo: GoogleCloud },
     { id: 8, name: "Cisco", logo: Cisco },
-    { id: 9, name: "Microsoft", logo: Microsoft },
+    { id: 9, name: "MicroSoft", logo: MicroSoft },
   ]
 
   // Duplicate for seamless animation
