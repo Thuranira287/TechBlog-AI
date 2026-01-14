@@ -1,5 +1,3 @@
-// ssr-meta.cjs - CommonJS format with timeout handling
-
 module.exports.handler = async (event) => {
   console.log("=== SSR FUNCTION START ===");
 
@@ -8,8 +6,10 @@ module.exports.handler = async (event) => {
 
     // Extract slug safely
     let slug = extractSlug(rawPath, event.queryStringParameters);
-    
-    if (!slug) return getHomepageMeta();
+
+    if (!slug) {
+      return getHomepageMeta();
+    }
 
     // Detect bots
     const userAgent = event.headers["user-agent"] || "";
@@ -21,23 +21,29 @@ module.exports.handler = async (event) => {
 
     // Fetch meta from backend with timeout
     const post = await fetchPostMeta(slug);
-    
+
     const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
     if (!post) {
-      // Post not found - handle gracefully
-      console.log("DEBUG - Post not found, redirecting to homepage");
+      console.log("DEBUG - Post not found");
       return notFoundResponse(isBot, slug);
     }
 
     if (isBot) {
-      // FOR BOTS: Return SEO meta tags
+      // FOR BOTS: Return full SEO HTML with meta tags
       return botResponse(post, postUrl);
-    } else {
-      // FOR HUMANS: Redirect to homepage (SPA will handle routing)
-      ;
     }
-    
+
+    // FOR HUMANS: Return minimal response so Netlify can rewrite to /index.html
+    return {
+      statusCode: 200,
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "X-Robots-Tag": "noindex"
+      },
+      body: ""
+    };
+
   } catch (err) {
     console.error("SSR ERROR:", err);
     return errorHTML();
