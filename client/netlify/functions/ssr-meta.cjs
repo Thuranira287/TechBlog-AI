@@ -1,3 +1,5 @@
+// ssr-meta.cjs - CommonJS format with timeout handling
+
 module.exports.handler = async (event) => {
   console.log("=== SSR FUNCTION START ===");
 
@@ -6,10 +8,8 @@ module.exports.handler = async (event) => {
 
     // Extract slug safely
     let slug = extractSlug(rawPath, event.queryStringParameters);
-
-    if (!slug) {
-      return getHomepageMeta();
-    }
+    
+    if (!slug) return getHomepageMeta();
 
     // Detect bots
     const userAgent = event.headers["user-agent"] || "";
@@ -21,29 +21,23 @@ module.exports.handler = async (event) => {
 
     // Fetch meta from backend with timeout
     const post = await fetchPostMeta(slug);
-
+    
     const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
     if (!post) {
-      console.log("DEBUG - Post not found");
+      // Post not found - handle gracefully
+      console.log("DEBUG - Post not found, redirecting to homepage");
       return notFoundResponse(isBot, slug);
     }
 
     if (isBot) {
-      // FOR BOTS: Return full SEO HTML with meta tags
+      // FOR BOTS: Return SEO meta tags
       return botResponse(post, postUrl);
+    } else {
+      // FOR HUMANS: Redirect to homepage (SPA will handle routing)
+      return humanResponse(slug);
     }
-
-    // FOR HUMANS: Return minimal response so Netlify can rewrite to /index.html
-    return {
-      statusCode: 200,
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "X-Robots-Tag": "noindex"
-      },
-      body: ""
-    };
-
+    
   } catch (err) {
     console.error("SSR ERROR:", err);
     return errorHTML();
@@ -249,14 +243,28 @@ function botResponse(post, postUrl) {
   };
 }
 
-function humanResponse(slug) {
+function humanResponse() {
   return {
     statusCode: 200,
-    body: "", 
     headers: {
-      "Cache-Control": "public, max-age=0, must-revalidate",
-      "X-Robots-Tag": "noindex"
-    }
+      "Content-Type": "text/html",
+      "Cache-Control": "no-cache",
+      "X-Robots-Tag": "noindex",
+      "Vary": "User-Agent"
+    },
+    body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TechBlog AI</title>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- IMPORTANT: load the REAL Vite entry -->
+  <script type="module" src="/assets/index-caf3a617.js"></script>
+</body>
+</html>`
   };
 }
 
