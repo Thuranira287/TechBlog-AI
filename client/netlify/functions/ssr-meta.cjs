@@ -34,15 +34,10 @@ module.exports.handler = async (event) => {
     if (isBot) {
       // FOR BOTS: Return SEO meta tags
       return botResponse(post, postUrl);
+    } else {
+      // FOR HUMANS: Return SPA index.html
+      return humanResponse();
     }
-
-    // FOR HUMANS: fall through to SPA (Netlify will serve index.html)
-    return {
-      statusCode: 200,
-      headers: {
-        "X-Robots-Tag": "noindex"
-      }
-    };
 
   } catch (err) {
     console.error("SSR ERROR:", err);
@@ -246,6 +241,25 @@ function botResponse(post, postUrl) {
       "X-Robots-Tag": "index, follow"
     },
     body: html
+  };
+}
+
+const fs = require("fs");
+const path = require("path");
+
+function humanResponse() {
+  const indexPath = path.resolve(__dirname, "../client/dist/index.html");
+  const html = fs.readFileSync(indexPath, "utf-8");
+
+  return {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "Cache-Control": "public, max-age=3600",
+      "X-Robots-Tag": "noindex",
+      "Vary": "User-Agent",
+    },
+    body: html,
   };
 }
 
