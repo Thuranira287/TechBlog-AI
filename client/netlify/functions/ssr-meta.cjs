@@ -38,7 +38,7 @@ module.exports.handler = async (event) => {
 
     // FOR HUMANS: fall through to SPA (Netlify will serve index.html)
     return {
-      statusCode: 404,
+      statusCode: 200,
       headers: {
         "X-Robots-Tag": "noindex"
       }
