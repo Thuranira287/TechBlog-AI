@@ -1,2 +1,3 @@
-/post/*  /.netlify/functions/ssr-meta  200!
+/assets/*   /assets/:splat   200
+/post/*  /.netlify/functions/ssr-meta  200
 /*       /index.html                  200

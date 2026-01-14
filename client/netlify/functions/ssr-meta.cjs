@@ -130,7 +130,7 @@ async function fetchPostMeta(slug) {
   }
 }
 
-function notFoundResponse(isBot, slug) {
+function notFoundResponse(isBot) {
   const homepageUrl = "https://aitechblogs.netlify.app/";
   
   if (isBot) {

@@ -31,9 +31,8 @@ export default function CookieConsent({
       localStorage.removeItem("techblog_consent_expiry");
     }
 
-    // Show banner if no consent
     if (!savedConsent) {
-      showBanner(10000); // 10 seconds after page load
+      showBanner(10000); 
     }
   }, []);
 
@@ -65,7 +64,7 @@ export default function CookieConsent({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-end px-4 pb-4 pointer-events-none">
-      {/* Optional backdrop for small screens */}
+      {/* Backdrop for small screens */}
       <div className="fixed inset-0 bg-black opacity-20 sm:hidden pointer-events-none" />
 
         {/* Banner */}

@@ -106,7 +106,7 @@ const CommentSection = ({ postId }) => {
         if (parent) {
           parent.replies.push(comment);
         } else {
-          // Parent not found (shouldn't happen), treat as root
+          // Parent not found, treat as root
           rootComments.push(comment);
         }
       } else {
@@ -327,7 +327,7 @@ const CommentSection = ({ postId }) => {
     const isReplying = replyingTo?.id === comment.id;
     const textareaRef = useRef(null);
 
-    // Fix for RTL textarea bug
+    // RTL textarea
     useEffect(() => {
       if (isReplying && textareaRef.current) {
         const textarea = textareaRef.current;
@@ -360,7 +360,7 @@ const CommentSection = ({ postId }) => {
     return (
       <div
         className={`${depth > 0 ? 'ml-8 pl-4 border-l-2 border-gray-200' : ''}`}
-        style={{ direction: 'ltr' }} // Ensure LTR context for entire comment
+        style={{ direction: 'ltr' }} 
       >
         {/* Comment Card */}
         <div

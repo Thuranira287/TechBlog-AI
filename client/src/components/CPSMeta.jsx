@@ -1,9 +1,8 @@
-// src/components/CSPMeta.jsx
 import React, { useEffect } from 'react';
 
 export default function CSPMeta() {
   useEffect(() => {
-    // Only add CSP meta tag in production
+    // CSP meta tag in production
     if (process.env.NODE_ENV === 'production' && !document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
       const meta = document.createElement('meta');
       meta.httpEquiv = 'Content-Security-Policy';

@@ -2,8 +2,6 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBlog } from '../context/BlogContext'
 import { Mail, Facebook, Twitter, Linkedin, Instagram, Github } from "lucide-react";
-
-// Import images directly
 import DigitalOcean from "../assets/DigitalOcean.png";
 import CloudFlare from "../assets/CloudFlare.png";
 import AWS from "../assets/AWS.png";
@@ -20,7 +18,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear()
   const [isHovered, setIsHovered] = useState(false)
 
-  // Partner logos with imported images
+  // Partner logos
   const partnerLogos = [
     { id: 1, name: "DigitalOcean", logo: DigitalOcean },
     { id: 2, name: "Cloudflare", logo: CloudFlare },
@@ -39,7 +37,7 @@ const Footer = () => {
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-2">
-        {/* Trusted Partners Section - Integrated into main footer */}
+        {/* Trusted Partners Section */}
         <div className="mb-8 pt-4 border-t border-gray-800 ">
           <div className="flex items-center justify-center mb-3">
             <h3 className="text-sm font-semibold text-gray-400 mr-3">Trusted by</h3>
@@ -76,20 +74,17 @@ const Footer = () => {
             </div>
           </div>
         </div>
-
-        {/* Rest of the component remains the same */}
-        {/* Main Footer Content - Compact */}
+        {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
-          {/* Brand - More Compact */}
+          {/* Brand */}
           <div className="md:col-span-1">
             <Link to="/" className="flex items-start space-x-3 mb-4">
               <div className="relative flex-shrink-0">
-                {/* Larger logo container with blue ring frame */}
+                {/* Logo container */}
                 <div className="relative w-14 h-14 sm:w-16 sm:h-16">
-                  {/* Blue ring frame - larger for footer */}
                   <div className="absolute inset-0 rounded-full border-3 border-blue-600 ring-3 ring-blue-100 ring-offset-1"></div>
                   
-                  {/* Logo image - larger for better visibility */}
+                  {/* Logo image */}
                   <img 
                     src={TechBlogAI} 
                     alt="TechBlog AI Logo" 
@@ -109,7 +104,7 @@ const Footer = () => {
             </Link>
           </div>
 
-          {/* Categories - Compact */}
+          {/* Categories */}
           <div>
             <h3 className="text-sm font-semibold mb-3 text-gray-300">Categories</h3>
             <ul className="space-y-1.5">
@@ -126,7 +121,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Legal - Compact */}
+          {/* Legal */}
           <div>
             <h3 className="text-sm font-semibold mb-3 text-gray-300">Legal</h3>
             <ul className="space-y-1.5">
@@ -153,7 +148,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact - Compact */}
+          {/* Contact */}
           <div>
             <h3 className="text-sm font-semibold mb-3 text-gray-300">Contact</h3>
             <div className="space-y-2">
@@ -203,7 +198,7 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Bar - Minimal */}
+        {/* Bottom Bar */}
         <div className="border-t border-gray-800 pt-4 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-xs">
             © {currentYear} TechBlog AI. All rights reserved.
