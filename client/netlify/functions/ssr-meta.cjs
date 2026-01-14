@@ -35,7 +35,7 @@ module.exports.handler = async (event) => {
       return botResponse(post, postUrl);
     } else {
       // FOR HUMANS: Redirect to homepage (SPA will handle routing)
-      return humanResponse(slug);
+      ;
     }
     
   } catch (err) {
