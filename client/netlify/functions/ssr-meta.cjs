@@ -1,7 +1,4 @@
 // ssr-meta.cjs
-const fs = require("fs");
-const path = require("path");
-
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
@@ -28,7 +25,7 @@ module.exports.handler = async (event) => {
   } catch (error) {
     console.error("SSR fatal error:", error);
 
-    // 🔥 NEVER return error HTML to humans
+    // NEVER return error HTML to humans
     return humanResponse();
   }
 };
@@ -152,27 +149,9 @@ function botFallbackHTML(slug) {
 /* ================= HUMAN SPA ================= */
 
 function humanResponse() {
-  const indexPath = path.resolve(__dirname, "../client/dist/index.html");
-
-  let html;
-  try {
-    html = fs.readFileSync(indexPath, "utf-8");
-  } catch (err) {
-    console.error("CRITICAL: index.html missing", err);
-    // LAST RESORT – still serve something usable
-    return {
-      statusCode: 302,
-      headers: { Location: "https://aitechblogs.netlify.app/" }
-    };
-  }
-
   return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/html",
-      "Cache-Control": "public, max-age=3600",
-      "Vary": "User-Agent"
-    },
-    body: html
+    statusCode: 302,
+    headers: { Location: "/" }
   };
 }
+
