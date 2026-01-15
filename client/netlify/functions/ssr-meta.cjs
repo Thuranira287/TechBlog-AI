@@ -1,216 +1,131 @@
-// ssr-meta.cjs - CommonJS format with timeout handling
+// ssr-meta.cjs
 const fs = require("fs");
 const path = require("path");
 
 module.exports.handler = async (event) => {
+  const rawPath = event.rawPath || event.path || "";
+  const slug = extractSlug(rawPath, event.queryStringParameters);
+
+  const userAgent = event.headers["user-agent"] || "";
+  const isBot = detectBot(userAgent);
+
   try {
-    const rawPath = event.rawPath || event.path || "";
-    const slug = extractSlug(rawPath, event.queryStringParameters);
-
-    const userAgent = event.headers["user-agent"] || "";
-    const isBot = detectBot(userAgent);
-
     if (isBot) {
       const post = await fetchPostMeta(slug);
       const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-      return botResponse(post, postUrl); // Serve meta for crawlers
-    } else {
-      return humanResponse(); // Serve SPA for humans
+
+      // BOT fallback ONLY
+      if (!post) {
+        return botFallbackHTML(slug);
+      }
+
+      return botResponse(post, postUrl);
     }
+
+    // HUMANS ALWAYS GET SPA
+    return humanResponse();
+
   } catch (error) {
-    console.error("DEBUG - Error in handler:", error.message);
-    return errorHTML();
-  } 
+    console.error("SSR fatal error:", error);
+
+    // 🔥 NEVER return error HTML to humans
+    return humanResponse();
+  }
 };
 
-// ========== HELPER FUNCTIONS ==========
+/* ================= HELPERS ================= */
 
 function extractSlug(rawPath, queryParams) {
-  // Extract from path
   let slug = rawPath
     .replace("/.netlify/functions/ssr-meta", "")
     .replace(/^\/post\//, "")
     .replace(/\/$/, "");
 
-  console.log("DEBUG - Raw path:", rawPath);
-  console.log("DEBUG - Initial slug:", slug);
-
-  // Check query params (for direct function calls)
-  if (queryParams && queryParams.path) {
+  if (queryParams?.path) {
     slug = queryParams.path.replace(/^\/post\//, "").replace(/\/$/, "");
-    console.log("DEBUG - Slug from query params:", slug);
   }
 
   return slug;
 }
 
 function detectBot(userAgent) {
-  const botPatterns = [
-    'facebook', 'twitter', 'whatsapp', 'linkedin', 'telegram',
-    'bot', 'crawler', 'spider', 'facebookexternalhit',
-    'googlebot', 'bingbot', 'slackbot', 'discordbot',
-    'duckduckbot', 'baiduspider', 'yandexbot', 'screaming frog'
+  const bots = [
+    "facebook", "twitter", "whatsapp", "linkedin", "telegram",
+    "bot", "crawler", "spider", "facebookexternalhit",
+    "googlebot", "bingbot", "slackbot", "discordbot",
+    "duckduckbot", "baiduspider", "yandexbot", "screaming frog"
   ];
-  
-  const ua = userAgent.toLowerCase();
-  return botPatterns.some(pattern => ua.includes(pattern));
+
+  return bots.some(b => userAgent.toLowerCase().includes(b));
 }
 
 async function fetchPostMeta(slug) {
-  const metaUrl = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
-  console.log("DEBUG - Fetching from:", metaUrl);
+  if (!slug) return null;
 
-  // Add timeout to fetch (10 seconds)
+  const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const response = await fetch(metaUrl, {
+    const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'TechBlogAI-SSR/1.0',
-        'Accept': 'application/json'
+        "User-Agent": "TechBlogAI-SSR/1.0",
+        "Accept": "application/json"
       }
     });
-    
-    clearTimeout(timeoutId);
-    
-    console.log("DEBUG - API response status:", response.status);
 
-    if (!response.ok) {
-      // If 404, return null instead of throwing
-      if (response.status === 404) {
-        console.log("DEBUG - Post not found (404)");
-        return null;
-      }
-      throw new Error(`Failed to fetch post: ${response.status}`);
-    }
+    clearTimeout(timeout);
+    if (!res.ok) return null;
 
-    const post = await response.json();
-    
-    console.log("DEBUG - Post data received:", {
-      title: post.title,
-      excerpt: post.excerpt?.substring(0, 50) + '...',
-      featured_image: post.featured_image,
-      has_meta: !!(post.meta_title || post.title)
-    });
-
-    return post;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      console.error("DEBUG - Fetch timed out after 10 seconds");
-      // Return null on timeout instead of throwing
-      return null;
-    }
-    console.error("DEBUG - Fetch error:", error.message);
-    // Return null for other fetch errors
+    return await res.json();
+  } catch {
+    clearTimeout(timeout);
     return null;
   }
 }
 
-{/*function notFoundResponse(isBot, slug) {
-  const homepageUrl = "https://aitechblogs.netlify.app/";
-  
-  if (isBot) {
-    // For bots, return a simple page with link to homepage
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "text/html",
-        "Cache-Control": "public, max-age=300"
-      },
-      body: `<!DOCTYPE html>
-<html>
-<head>
-  <title>Article Not Found - TechBlog AI</title>
-  <meta name="description" content="This article may have been moved or deleted. Visit TechBlog AI for more articles." />
-  <meta property="og:title" content="Article Not Found - TechBlog AI" />
-  <meta property="og:description" content="This article may have been moved or deleted." />
-  <meta property="og:url" content="${homepageUrl}" />
-  <meta name="robots" content="noindex, follow" />
-</head>
-<body>
-  <h1>Article Not Found</h1>
-  <p>This article may have been moved or deleted.</p>
-  <p><a href="${homepageUrl}">Visit TechBlog AI Homepage</a></p>
-</body>
-</html>`
-    };
-  } else {
-    // For humans, redirect to homepage
-    return {
-      statusCode: 302,
-      headers: {
-        "Location": homepageUrl,
-        "Cache-Control": "public, max-age=3600"
-      }
-    };
-  }
-}*/}
+/* ================= BOT HTML ================= */
 
-function escapeHtml(text) {
-  if (!text) return '';
+function escapeHtml(text = "") {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/"/g, "&quot;");
 }
 
 function generateBotHtml(post, postUrl) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
-  const description = escapeHtml(post.description || post.excerpt || post.meta_description || "Read this article on TechBlog AI");
-  const ogDescription = escapeHtml(post.og_description || post.excerpt || post.meta_description || "Read this article on TechBlog AI");
-  const image = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
-  const twitterTitle = escapeHtml(post.twitter_title || post.title || post.meta_title || "TechBlog AI Article");
+  const desc = escapeHtml(post.excerpt || post.meta_description || "");
+  const img = post.featured_image || "https://aitechblogs.netlify.app/og-image.png";
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>${title}</title>
-  <meta name="description" content="${description}" />
-  
-  <!-- Open Graph / Facebook -->
-  <meta property="fb:app_id" content="1829393364607774" />
-  <meta property="og:type" content="article" />
-  <meta property="og:title" content="${title}" />
-  <meta property="og:description" content="${ogDescription}" />
-  <meta property="og:image" content="${image}" />
-  <meta property="og:url" content="${postUrl}" />
-  <meta property="og:site_name" content="TechBlog AI" />
-  <meta property="article:published_time" content="${post.created_at || ''}" />
-  <meta property="article:author" content="${post.author_name || 'TechBlog AI Team'}" />
-  
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${twitterTitle}" />
-  <meta name="twitter:description" content="${ogDescription}" />
-  <meta name="twitter:image" content="${image}" />
-  <meta name="twitter:site" content="@AiTechBlogs" />
-  <meta name="twitter:creator" content="@AiTechBlogs" />
-  
-  <!-- Canonical URL -->
-  <link rel="canonical" href="${postUrl}" />
+<meta charset="utf-8" />
+<title>${title}</title>
+<meta name="description" content="${desc}" />
+
+<meta property="og:type" content="article" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${desc}" />
+<meta property="og:image" content="${img}" />
+<meta property="og:url" content="${postUrl}" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${title}" />
+<meta name="twitter:description" content="${desc}" />
+<meta name="twitter:image" content="${img}" />
+
+<link rel="canonical" href="${postUrl}" />
 </head>
-<body>
-  <main>
-    <h1>${title}</h1>
-    <p>${description}</p>
-    <p><a href="https://aitechblogs.netlify.app/">Read full article on TechBlog AI</a></p>
-    <p>This page contains SEO meta tags for search engines and social media platforms.</p>
-  </main>
-</body>
+<body></body>
 </html>`;
 }
 
 function botResponse(post, postUrl) {
-  const html = generateBotHtml(post, postUrl);
-  
-  console.log("DEBUG - Returning HTML response for Bot");
-  
   return {
     statusCode: 200,
     headers: {
@@ -218,22 +133,37 @@ function botResponse(post, postUrl) {
       "Cache-Control": "public, max-age=3600, s-maxage=7200",
       "X-Robots-Tag": "index, follow"
     },
-    body: html
+    body: generateBotHtml(post, postUrl)
   };
 }
 
-function humanResponse() {
-  const fs = require("fs");
-  const path = require("path");
+function botFallbackHTML(slug) {
+  const url = `https://aitechblogs.netlify.app/post/${slug}`;
+  return {
+    statusCode: 200,
+    headers: { "Content-Type": "text/html" },
+    body: `<html><head>
+      <meta property="og:title" content="TechBlog AI Article" />
+      <meta property="og:url" content="${url}" />
+    </head><body></body></html>`
+  };
+}
 
+/* ================= HUMAN SPA ================= */
+
+function humanResponse() {
   const indexPath = path.resolve(__dirname, "../client/dist/index.html");
 
   let html;
   try {
     html = fs.readFileSync(indexPath, "utf-8");
   } catch (err) {
-    console.error("DEBUG - Failed to read SPA index.html:", err.message);
-    return errorHTML();
+    console.error("CRITICAL: index.html missing", err);
+    // LAST RESORT – still serve something usable
+    return {
+      statusCode: 302,
+      headers: { Location: "https://aitechblogs.netlify.app/" }
+    };
   }
 
   return {
@@ -241,68 +171,8 @@ function humanResponse() {
     headers: {
       "Content-Type": "text/html",
       "Cache-Control": "public, max-age=3600",
-      "Vary": "User-Agent",
+      "Vary": "User-Agent"
     },
-    body: html,
-  };
-}
-
-{/*function getHomepageMeta() {
-  console.log("DEBUG - Serving homepage meta");
-  
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/html",
-      "Cache-Control": "public, max-age=3600"
-    },
-    body: `<!DOCTYPE html>
-<html>
-<head>
-  <title>TechBlog AI - Practical AI & Web Development Guides</title>
-  <meta property="fb:app_id" content="1829393364607774" />
-  <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
-  <meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis." />
-  <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
-  <meta property="og:url" content="https://aitechblogs.netlify.app/" />
-  <meta property="og:type" content="website" />
-</head>
-<body>
-  <p>Redirecting to TechBlog AI homepage...</p>
-</body>
-</html>`
-  };
-}
-*/}
-function errorHTML(slug = "") {
-  const postUrl = slug ? `https://aitechblogs.netlify.app/post/${slug}` : "https://aitechblogs.netlify.app";
-  
-  console.log("DEBUG - Serving error page for:", postUrl);
-  
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/html",
-      "Cache-Control": "public, max-age=3600, s-maxage=7200",
-      "Vary": "User-Agent",
-      "X-Robots-Tag": "index, follow",
-      "Content-Security-Policy": "default-src 'none'; script-src 'none'; style-src 'none'; img-src 'self' https: data:; connect-src 'self' https://techblogai-backend.onrender.com; frame-src 'none';"
-    },
-    body: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>TechBlog AI Article</title>
-  <meta property="fb:app_id" content="1829393364607774" />
-  <meta property="og:title" content="TechBlog AI Article" />
-  <meta property="og:description" content="Read this article on TechBlog AI" />
-  <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
-  <meta property="og:url" content="${postUrl}" />
-  <meta property="og:site_name" content="TechBlog AI" />
-</head>
-<body>
-  <p><a href="https://aitechblogs.netlify.app/">Visit TechBlog AI Homepage</a></p>
-</body>
-</html>`
+    body: html
   };
 }
