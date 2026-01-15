@@ -150,8 +150,19 @@ function botFallbackHTML(slug) {
 
 function humanResponse() {
   return {
-    statusCode: 302,
-    headers: { Location: "/" }
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "Cache-Control": "public, max-age=3600"
+    },
+    body: `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="refresh" content="0; url=/index.html" />
+  </head>
+</html>`
   };
 }
+
 
