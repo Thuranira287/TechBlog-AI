@@ -1,48 +1,38 @@
 // ssr-meta.cjs - CommonJS format with timeout handling
-module.exports.handler = async (event) => {
-  console.log("=== SSR FUNCTION START ===");
+const fs = require("fs");
+const path = require("path");
 
+module.exports.handler = async (event) => {
   try {
     const rawPath = event.rawPath || event.path || "";
-
-    // Extract slug safely
     const slug = extractSlug(rawPath, event.queryStringParameters);
 
-    if (!slug) {
-      return getHomepageMeta();
-    }
-
-    // Detect bots
     const userAgent = event.headers["user-agent"] || "";
     const isBot = detectBot(userAgent);
 
-    console.log("DEBUG - Final slug:", slug);
-    console.log("DEBUG - User Agent:", userAgent.substring(0, 100));
-    console.log("DEBUG - Is bot?", isBot);
-
-    // Fetch meta from backend with timeout
-    const post = await fetchPostMeta(slug);
-
-    const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-
-    if (!post) {
-      // Post not found - handle gracefully
-      console.log("DEBUG - Post not found");
-      return notFoundResponse(isBot, slug);
-    }
-
     if (isBot) {
-      // FOR BOTS: Return SEO meta tags
-      return botResponse(post, postUrl);
+      const post = await fetchPostMeta(slug);
+      const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
+      return botResponse(post, postUrl); // Serve meta for crawlers
     } else {
-      // FOR HUMANS: Return SPA index.html
-      return humanResponse();
-    }
+      // Serve the actual SPA for humans
+      const indexPath = path.resolve(__dirname, "../client/dist/index.html");
+      const html = fs.readFileSync(indexPath, "utf-8");
 
-  } catch (err) {
-    console.error("SSR ERROR:", err);
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "text/html",
+          "Cache-Control": "public, max-age=3600",
+          "Vary": "User-Agent",
+        },
+        body: html,
+      };
+    } 
+  } catch (error) {
+    console.error("DEBUG - Error in handler:", error.message);
     return errorHTML();
-  }
+  } 
 };
 
 // ========== HELPER FUNCTIONS ==========
@@ -244,10 +234,7 @@ function botResponse(post, postUrl) {
   };
 }
 
-const fs = require("fs");
-const path = require("path");
-
-function humanResponse() {
+{/*function humanResponse() {
   const indexPath = path.resolve(__dirname, "../client/dist/index.html");
   let html = fs.readFileSync(indexPath, "utf-8");
 
@@ -261,7 +248,7 @@ function humanResponse() {
     body: html,
   };
 }
-
+*/}
 function getHomepageMeta() {
   console.log("DEBUG - Serving homepage meta");
   
