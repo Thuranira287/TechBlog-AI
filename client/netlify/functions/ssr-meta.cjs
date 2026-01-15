@@ -15,20 +15,8 @@ module.exports.handler = async (event) => {
       const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
       return botResponse(post, postUrl); // Serve meta for crawlers
     } else {
-      // Serve the actual SPA for humans
-      const indexPath = path.resolve(__dirname, "../client/dist/index.html");
-      const html = fs.readFileSync(indexPath, "utf-8");
-
-      return {
-        statusCode: 200,
-        headers: {
-          "Content-Type": "text/html",
-          "Cache-Control": "public, max-age=3600",
-          "Vary": "User-Agent",
-        },
-        body: html,
-      };
-    } 
+      return humanResponse(); // Serve SPA for humans
+    }
   } catch (error) {
     console.error("DEBUG - Error in handler:", error.message);
     return errorHTML();
@@ -121,7 +109,7 @@ async function fetchPostMeta(slug) {
   }
 }
 
-function notFoundResponse(isBot, slug) {
+{/*function notFoundResponse(isBot, slug) {
   const homepageUrl = "https://aitechblogs.netlify.app/";
   
   if (isBot) {
@@ -159,7 +147,7 @@ function notFoundResponse(isBot, slug) {
       }
     };
   }
-}
+}*/}
 
 function escapeHtml(text) {
   if (!text) return '';
@@ -234,9 +222,19 @@ function botResponse(post, postUrl) {
   };
 }
 
-{/*function humanResponse() {
+function humanResponse() {
+  const fs = require("fs");
+  const path = require("path");
+
   const indexPath = path.resolve(__dirname, "../client/dist/index.html");
-  let html = fs.readFileSync(indexPath, "utf-8");
+
+  let html;
+  try {
+    html = fs.readFileSync(indexPath, "utf-8");
+  } catch (err) {
+    console.error("DEBUG - Failed to read SPA index.html:", err.message);
+    return errorHTML();
+  }
 
   return {
     statusCode: 200,
@@ -248,8 +246,8 @@ function botResponse(post, postUrl) {
     body: html,
   };
 }
-*/}
-function getHomepageMeta() {
+
+{/*function getHomepageMeta() {
   console.log("DEBUG - Serving homepage meta");
   
   return {
@@ -275,7 +273,7 @@ function getHomepageMeta() {
 </html>`
   };
 }
-
+*/}
 function errorHTML(slug = "") {
   const postUrl = slug ? `https://aitechblogs.netlify.app/post/${slug}` : "https://aitechblogs.netlify.app";
   
