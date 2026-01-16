@@ -1,4 +1,6 @@
 // ssr-meta.cjs
+const fs = require("fs");
+const path = require("path");
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
@@ -149,20 +151,31 @@ function botFallbackHTML(slug) {
 /* ================= HUMAN SPA ================= */
 
 function humanResponse() {
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/html",
-      "Cache-Control": "public, max-age=3600"
-    },
-    body: `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="refresh" content="0; url=/index.html" />
-  </head>
-</html>`
-  };
+  try {
+    const html = fs.readFileSync(
+      path.resolve(__dirname, "../client/dist/index.html"),
+      "utf-8"
+    );
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "text/html",
+        "Cache-Control": "public, max-age=3600",
+        "Vary": "User-Agent"
+      },
+      body: html
+    };
+  } catch (err) {
+    // ONLY case where redirect is acceptable
+    return {
+      statusCode: 302,
+      headers: {
+        Location: "/"
+      }
+    };
+  }
 }
+
 
 
