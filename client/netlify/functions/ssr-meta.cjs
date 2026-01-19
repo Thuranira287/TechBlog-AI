@@ -1,3 +1,5 @@
+const fetch = require("node-fetch");
+
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
@@ -6,7 +8,6 @@ module.exports.handler = async (event) => {
     const post = await fetchPostMeta(slug);
     const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
-    // If post not found → still return bot-safe HTML (not 404)
     if (!post) {
       return botFallbackHTML(slug);
     }
@@ -14,29 +15,45 @@ module.exports.handler = async (event) => {
     return botResponse(post, postUrl);
 
   } catch (error) {
-    console.error("SSR fatal error:", error);
-
-    // Never hard-fail bots
+    console.error("SSR error:", error);
+    // Never fail bots — always return something crawlable
     return botFallbackHTML(slug);
   }
 };
-
 /* ================= HELPERS ================= */
 
 function extractSlug(rawPath, queryParams) {
-  let slug = rawPath
-    .replace("/.netlify/functions/ssr-meta", "")
-    .replace(/^\/post\//, "")
-    .replace(/\/$/, "");
+  let slug = rawPath.replace(/^\/post\//, "").replace(/\/$/, "");
 
   if (queryParams?.path) {
-    slug = queryParams.path
-      .replace(/^\/post\//, "")
-      .replace(/\/$/, "");
+    slug = queryParams.path.replace(/^\/post\//, "").replace(/\/$/, "");
   }
 
   return slug;
 }
+
+{/*function detectBot(userAgent = "") {
+  const bots = [
+    "googlebot",
+    "bingbot",
+    "duckduckbot",
+    "yandexbot",
+    "baiduspider",
+    "facebookexternalhit",
+    "twitterbot",
+    "linkedinbot",
+    "whatsapp",
+    "telegram",
+    "slackbot",
+    "discordbot",
+    "bot",
+    "crawler",
+    "spider"
+  ];
+
+  const ua = userAgent.toLowerCase();
+  return bots.some(b => ua.includes(b));
+}*/}
 
 async function fetchPostMeta(slug) {
   if (!slug) return null;
@@ -50,7 +67,7 @@ async function fetchPostMeta(slug) {
       signal: controller.signal,
       headers: {
         "User-Agent": "TechBlogAI-Bot-SSR/1.0",
-        "Accept": "application/json"
+        Accept: "application/json"
       }
     });
 
@@ -91,7 +108,6 @@ function generateBotHtml(post, postUrl) {
 <meta property="og:description" content="${desc}" />
 <meta property="og:image" content="${img}" />
 <meta property="og:url" content="${postUrl}" />
-<meta property="og:site_name" content="TechBlog AI" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${title}" />
@@ -108,7 +124,7 @@ function botResponse(post, postUrl) {
   return {
     statusCode: 200,
     headers: {
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type": "text/html",
       "Cache-Control": "public, max-age=3600, s-maxage=7200",
       "Vary": "User-Agent",
       "X-Robots-Tag": "index, follow"
@@ -122,7 +138,7 @@ function botFallbackHTML(slug) {
   return {
     statusCode: 200,
     headers: {
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type": "text/html",
       "Vary": "User-Agent"
     },
     body: `<!DOCTYPE html>
@@ -136,3 +152,30 @@ function botFallbackHTML(slug) {
 </html>`
   };
 }
+
+/* ================= HUMAN SPA ================= */
+
+{/*function humanSPAResponse() {
+  const indexPath = path.resolve(__dirname, "../client/dist/index.html");
+
+  let html;
+  try {
+    html = fs.readFileSync(indexPath, "utf-8");
+  } catch (err) {
+    console.error("Human SPA index.html missing", err);
+    return {
+      statusCode: 302,
+      headers: { Location: "https://aitechblogs.netlify.app/" }
+    };
+  }
+
+  return {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "Cache-Control": "public, max-age=3600",
+      "Vary": "User-Agent"
+    },
+    body: html
+  };
+}*/}
