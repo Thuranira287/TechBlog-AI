@@ -1,5 +1,4 @@
 // ssr-meta.cjs
-// ssr-meta.cjs
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
