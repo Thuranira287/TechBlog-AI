@@ -1,8 +1,13 @@
+/* ================= SSR META FUNCTION FOR NETLIFY ================= */
+
 const fs = require("fs");
 const path = require("path");
-const fetch = require("node-fetch");
+
 /* ================= ENTRY POINT ================= */
 module.exports.handler = async (event) => {
+  // Dynamic import of node-fetch (ESM)
+  const fetch = (await import("node-fetch")).default;
+
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
 
@@ -12,13 +17,10 @@ module.exports.handler = async (event) => {
   try {
     if (isBot) {
       // Bot requested a post -> fetch metadata
-      const post = await fetchPostMeta(slug);
+      const post = await fetchPostMeta(slug, fetch);
       const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
-      if (!post) {
-        return botFallbackHTML(slug);
-      }
-
+      if (!post) return botFallbackHTML(slug);
       return botResponse(post, postUrl);
     } else {
       // Human requested a post -> serve SPA index.html
@@ -34,38 +36,23 @@ module.exports.handler = async (event) => {
 
 function extractSlug(rawPath, queryParams) {
   let slug = rawPath.replace(/^\/post\//, "").replace(/\/$/, "");
-
   if (queryParams?.path) {
     slug = queryParams.path.replace(/^\/post\//, "").replace(/\/$/, "");
   }
-
   return slug;
 }
 
 function detectBot(userAgent = "") {
   const bots = [
-    "googlebot",
-    "bingbot",
-    "duckduckbot",
-    "yandexbot",
-    "baiduspider",
-    "facebookexternalhit",
-    "twitterbot",
-    "linkedinbot",
-    "whatsapp",
-    "telegram",
-    "slackbot",
-    "discordbot",
-    "bot",
-    "crawler",
-    "spider"
+    "googlebot", "bingbot", "duckduckbot", "yandexbot", "baiduspider",
+    "facebookexternalhit", "twitterbot", "linkedinbot", "whatsapp",
+    "telegram", "slackbot", "discordbot", "bot", "crawler", "spider"
   ];
-
   const ua = userAgent.toLowerCase();
   return bots.some(b => ua.includes(b));
 }
 
-async function fetchPostMeta(slug) {
+async function fetchPostMeta(slug, fetch) {
   if (!slug) return null;
 
   const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
@@ -77,13 +64,11 @@ async function fetchPostMeta(slug) {
       signal: controller.signal,
       headers: {
         "User-Agent": "TechBlogAI-Bot-SSR/1.0",
-        Accept: "application/json"
+        "Accept": "application/json"
       }
     });
-
     clearTimeout(timeout);
     if (!res.ok) return null;
-
     return await res.json();
   } catch {
     clearTimeout(timeout);
@@ -149,7 +134,8 @@ function botFallbackHTML(slug) {
     statusCode: 200,
     headers: {
       "Content-Type": "text/html",
-      "Vary": "User-Agent"
+      "Vary": "User-Agent",
+      "X-Robots-Tag": "noindex"
     },
     body: `<!DOCTYPE html>
 <html>
@@ -166,7 +152,8 @@ function botFallbackHTML(slug) {
 /* ================= HUMAN SPA ================= */
 
 function humanSPAResponse() {
-  const indexPath = path.resolve(__dirname, "../client/dist/index.html");
+  // Netlify build output path
+  const indexPath = path.join(__dirname, "../public/index.html");
 
   let html;
   try {

@@ -1,5 +1,8 @@
-# All posts go to SSR function
-/post/*  /.netlify/functions/ssr-meta  200
+# ================= BOT SSR =================
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=(?i)googlebot|bingbot|duckduckbot|yandexbot|baiduspider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|slackbot|discordbot|bot|crawler|spider
 
-# SPA fallback for everything else
+# ================= HUMAN SPA =================
+/post/*  /index.html  200
+
+# ================= FALLBACK =================
 /*       /index.html  200
