@@ -38,29 +38,6 @@ function extractSlug(rawPath, queryParams) {
   return slug;
 }
 
-function detectBot(userAgent = "") {
-  const bots = [
-    "googlebot",
-    "bingbot",
-    "duckduckbot",
-    "yandexbot",
-    "baiduspider",
-    "facebookexternalhit",
-    "twitterbot",
-    "linkedinbot",
-    "whatsapp",
-    "telegram",
-    "slackbot",
-    "discordbot",
-    "crawler",
-    "spider",
-    "bot"
-  ];
-
-  const ua = userAgent.toLowerCase();
-  return bots.some(b => ua.includes(b));
-}
-
 async function fetchPostMeta(slug) {
   if (!slug) return null;
 
@@ -114,6 +91,7 @@ function generateBotHtml(post, postUrl) {
 <meta property="og:description" content="${desc}" />
 <meta property="og:image" content="${img}" />
 <meta property="og:url" content="${postUrl}" />
+<meta property="og:site_name" content="TechBlog AI" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${title}" />
@@ -130,7 +108,7 @@ function botResponse(post, postUrl) {
   return {
     statusCode: 200,
     headers: {
-      "Content-Type": "text/html",
+      "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=3600, s-maxage=7200",
       "Vary": "User-Agent",
       "X-Robots-Tag": "index, follow"
@@ -144,7 +122,7 @@ function botFallbackHTML(slug) {
   return {
     statusCode: 200,
     headers: {
-      "Content-Type": "text/html",
+      "Content-Type": "text/html; charset=utf-8",
       "Vary": "User-Agent"
     },
     body: `<!DOCTYPE html>

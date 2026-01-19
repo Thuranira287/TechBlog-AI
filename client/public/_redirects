@@ -1,5 +1,19 @@
-# Bots
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=googlebot|bingbot|duckduckbot|yandexbot|baiduspider|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|slackbot|discordbot
+# Bot detection
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*googlebot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*bingbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*duckduckbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*yandexbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*baiduspider*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*facebookexternalhit*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*twitterbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*linkedinbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*whatsapp*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*telegram*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*slackbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*discordbot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*bot*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*crawler*
+/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*spider*
 
 # Humans
 /post/*  /index.html  200
