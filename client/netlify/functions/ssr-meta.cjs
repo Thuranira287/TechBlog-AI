@@ -1,34 +1,33 @@
 // ssr-meta.cjs
-const fs = require("fs");
-const path = require("path");
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
 
-  const userAgent = event.headers["user-agent"] || "";
+  const userAgent = event.headers?.["user-agent"] || "";
   const isBot = detectBot(userAgent);
 
+  // 🚫 Humans are NEVER handled here
+  if (!isBot) {
+    return {
+      statusCode: 404,
+      body: "Not Found"
+    };
+  }
+
   try {
-    if (isBot) {
-      const post = await fetchPostMeta(slug);
-      const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
+    const post = await fetchPostMeta(slug);
+    const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
-      // BOT fallback ONLY
-      if (!post) {
-        return botFallbackHTML(slug);
-      }
-
-      return botResponse(post, postUrl);
+    // Bot fallback if post/meta is missing
+    if (!post) {
+      return botFallbackHTML(slug);
     }
 
-    // HUMANS ALWAYS GET SPA
-    return humanResponse();
+    return botResponse(post, postUrl);
 
   } catch (error) {
-    console.error("SSR fatal error:", error);
-
-    // NEVER return error HTML to humans
-    return humanResponse();
+    console.error("Bot SSR error:", error);
+    return botFallbackHTML(slug);
   }
 };
 
@@ -41,36 +40,49 @@ function extractSlug(rawPath, queryParams) {
     .replace(/\/$/, "");
 
   if (queryParams?.path) {
-    slug = queryParams.path.replace(/^\/post\//, "").replace(/\/$/, "");
+    slug = queryParams.path
+      .replace(/^\/post\//, "")
+      .replace(/\/$/, "");
   }
 
   return slug;
 }
 
-function detectBot(userAgent) {
+function detectBot(userAgent = "") {
   const bots = [
-    "facebook", "twitter", "whatsapp", "linkedin", "telegram",
-    "bot", "crawler", "spider", "facebookexternalhit",
-    "googlebot", "bingbot", "slackbot", "discordbot",
-    "duckduckbot", "baiduspider", "yandexbot", "screaming frog"
+    "googlebot",
+    "bingbot",
+    "duckduckbot",
+    "yandexbot",
+    "baiduspider",
+    "facebookexternalhit",
+    "twitterbot",
+    "linkedinbot",
+    "whatsapp",
+    "telegram",
+    "slackbot",
+    "discordbot",
+    "crawler",
+    "spider",
+    "bot"
   ];
 
-  return bots.some(b => userAgent.toLowerCase().includes(b));
+  const ua = userAgent.toLowerCase();
+  return bots.some(b => ua.includes(b));
 }
 
 async function fetchPostMeta(slug) {
   if (!slug) return null;
 
   const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
-
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "TechBlogAI-SSR/1.0",
+        "User-Agent": "TechBlogAI-Bot-SSR/1.0",
         "Accept": "application/json"
       }
     });
@@ -130,6 +142,7 @@ function botResponse(post, postUrl) {
     headers: {
       "Content-Type": "text/html",
       "Cache-Control": "public, max-age=3600, s-maxage=7200",
+      "Vary": "User-Agent",
       "X-Robots-Tag": "index, follow"
     },
     body: generateBotHtml(post, postUrl)
@@ -140,42 +153,18 @@ function botFallbackHTML(slug) {
   const url = `https://aitechblogs.netlify.app/post/${slug}`;
   return {
     statusCode: 200,
-    headers: { "Content-Type": "text/html" },
-    body: `<html><head>
-      <meta property="og:title" content="TechBlog AI Article" />
-      <meta property="og:url" content="${url}" />
-    </head><body></body></html>`
+    headers: {
+      "Content-Type": "text/html",
+      "Vary": "User-Agent"
+    },
+    body: `<!DOCTYPE html>
+<html>
+<head>
+<meta property="og:title" content="TechBlog AI Article" />
+<meta property="og:url" content="${url}" />
+<link rel="canonical" href="${url}" />
+</head>
+<body></body>
+</html>`
   };
 }
-
-/* ================= HUMAN SPA ================= */
-
-function humanResponse() {
-  try {
-    const html = fs.readFileSync(
-      path.resolve(__dirname, "../client/dist/index.html"),
-      "utf-8"
-    );
-
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "text/html",
-        "Cache-Control": "public, max-age=3600",
-        "Vary": "User-Agent"
-      },
-      body: html
-    };
-  } catch (err) {
-    // ONLY case where redirect is acceptable
-    return {
-      statusCode: 302,
-      headers: {
-        Location: "/"
-      }
-    };
-  }
-}
-
-
-

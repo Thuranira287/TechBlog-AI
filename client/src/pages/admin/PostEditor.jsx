@@ -276,7 +276,7 @@ const PostEditor = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Brief summary of your post"
                 />
-                <CharCounter text={formData.excerpt} max={300} />
+                <CharCounter text={formData.excerpt} max={700} />
               </div>
 
               <div>
@@ -312,7 +312,7 @@ const PostEditor = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Optimized title for search engines"
                 />
-                <CharCounter text={formData.meta_title} min={30} max={60} />
+                <CharCounter text={formData.meta_title} min={30} max={500} />
               </div>
 
               <div>
@@ -326,7 +326,7 @@ const PostEditor = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Brief description that appears in search results"
                 />
-                <CharCounter text={formData.meta_description} min={120} max={160} />
+                <CharCounter text={formData.meta_description} min={120} max={500} />
               </div>
 
               <div>
@@ -359,7 +359,7 @@ const PostEditor = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                       placeholder="Title for social media shares"
                     />
-                    <CharCounter text={formData.og_title} min={30} max={60} />
+                    <CharCounter text={formData.og_title} min={30} max={500} />
                   </div>
 
                   <div>
@@ -371,7 +371,7 @@ const PostEditor = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                       placeholder="Description for social media shares"
                     />
-                    <CharCounter text={formData.og_description} min={100} max={200} />
+                    <CharCounter text={formData.og_description} min={100} max={500} />
                   </div>
                 </div>
 
@@ -390,7 +390,7 @@ const PostEditor = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                       placeholder="Title for Twitter shares"
                     />
-                    <CharCounter text={formData.twitter_title} min={30} max={60} />
+                    <CharCounter text={formData.twitter_title} min={30} max={500} />
                   </div>
 
                   <div>
@@ -402,7 +402,7 @@ const PostEditor = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                       placeholder="Description for Twitter shares"
                     />
-                    <CharCounter text={formData.twitter_description} min={100} max={200} />
+                    <CharCounter text={formData.twitter_description} min={100} max={500} />
                   </div>
                 </div>
               </div>
