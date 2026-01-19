@@ -44,10 +44,27 @@ function extractSlug(rawPath, queryParams) {
 
 function detectBot(userAgent = "") {
   const bots = [
-    "googlebot", "bingbot", "duckduckbot", "yandexbot", "baiduspider",
-    "facebookexternalhit", "twitterbot", "linkedinbot", "whatsapp",
-    "telegram", "slackbot", "discordbot", "bot", "crawler", "spider"
+    // Search Engines
+    'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
+    'sogou', 'exabot', 'facebot', 'facebookexternalhit',
+    
+    // Social Media
+    'twitterbot', 'linkedinbot', 'whatsapp', 'telegram', 'slackbot', 'discordbot',
+    'skypeuripreview', 'slack-imgproxy',
+    
+    // AI Models
+    'chatgpt', 'openai', 'claude', 'anthropic', 'perplexity', 'youbot', 'cohere',
+    'huggingface', 'midjourney', 'stablediffusion', 'dall-e', 'gptbot', 'ccbot',
+    
+    // Other Bots
+    'applebot', 'amazonbot', 'semrush', 'ahrefs', 'mj12bot', 'uptimerobot',
+    'siteauditbot', 'bytespider', 'dataforseo',
+    
+    // Generic
+    'bot', 'crawler', 'spider', 'scraper', 'checker', 'monitor', 'fetch',
+    'request', 'scan', 'agent', 'collector', 'gatherer', 'extractor'
   ];
+
   const ua = userAgent.toLowerCase();
   return bots.some(b => ua.includes(b));
 }
@@ -153,7 +170,8 @@ function botFallbackHTML(slug) {
 
 function humanSPAResponse() {
   // Netlify build output path
-  const indexPath = path.join(__dirname, "../public/index.html");
+  const indexPath = path.join(__dirname, "../../client/dist/index.html");
+  // C:\Users\alexa\Desktop\React\Ads\client\dist\index.html
 
   let html;
   try {
