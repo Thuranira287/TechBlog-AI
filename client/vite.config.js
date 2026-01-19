@@ -18,7 +18,7 @@ export default defineConfig({
       }
     }
   },
-  publicDir: 'public',
+  //publicDir: 'public',
  /* headers: {
       // Modern CSP policy
       'Content-Security-Policy': `
