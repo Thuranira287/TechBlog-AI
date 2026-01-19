@@ -1,3 +1,4 @@
+# ================= BUILD SETTINGS =================
 [build]
   base = "client"
   publish = "dist"
@@ -7,6 +8,11 @@
   framework = "#static"
   port = 8888
   functions = "netlify/functions"
+
+# ================= EDGE FUNCTIONS =================
+[[edge_functions]]
+  function = "ssr-router"
+  path = "/post/*"
 
 # ================= SECURITY HEADERS =================
 [[headers]]
@@ -19,12 +25,22 @@
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://www.google-analytics.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';"
 
 # ================= CACHE HEADERS =================
+# Cache for Edge Function responses (bot-rendered HTML)
+[[headers]]
+  for = "/post/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400"
+    Vary = "User-Agent"
+    X-Robots-Tag = "index, follow"
+
+# Cache for Serverless Function (if still using)
 [[headers]]
   for = "/.netlify/functions/ssr-meta"
   [headers.values]
     Cache-Control = "public, max-age=3600, s-maxage=7200"
     Vary = "User-Agent"
 
+# Cache for static assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
@@ -49,3 +65,21 @@
   for = "/*.svg"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ================= REDIRECTS =================
+# All redirects are now handled by the Edge Function and _redirects file
