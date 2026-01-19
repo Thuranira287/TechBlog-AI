@@ -1,22 +1,17 @@
-# Bot detection
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*googlebot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*bingbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*duckduckbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*yandexbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*baiduspider*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*facebookexternalhit*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*twitterbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*linkedinbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*whatsapp*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*telegram*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*slackbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*discordbot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*bot*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*crawler*
-/post/*  /.netlify/functions/ssr-meta  200  User-Agent=*spider*
+# Priority bots (add more as you discover them in logs)
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*googlebot*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*bingbot*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*facebookexternalhit*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*facebot*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*twitterbot*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*LinkedInBot*
 
-# Humans
-/post/*  /index.html  200
+# Very broad safety net (catches 95%+ of remaining crawlers)
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*bot*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*crawler*
+/post/* /.netlify/functions/ssr-meta 200 User-Agent=*spider*
 
-# Fallback
-/*       /index.html  200
+# Only after all bot rules
+/post/* /index.html 200
+
+/*      /index.html 200
