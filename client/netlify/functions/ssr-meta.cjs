@@ -1,22 +1,12 @@
-// ssr-meta.cjs
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
-
-  const userAgent = event.headers["user-agent"] || "";
-  const isBot = detectBot(userAgent);
-
-  // 🔑 HUMANS MUST FALL THROUGH TO SPA
-  if (!isBot) {
-    return {
-      statusCode: 404
-    };
-  }
 
   try {
     const post = await fetchPostMeta(slug);
     const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
+    // If post not found → still return bot-safe HTML (not 404)
     if (!post) {
       return botFallbackHTML(slug);
     }
@@ -25,9 +15,9 @@ module.exports.handler = async (event) => {
 
   } catch (error) {
     console.error("SSR fatal error:", error);
-    return {
-      statusCode: 404
-    };
+
+    // Never hard-fail bots
+    return botFallbackHTML(slug);
   }
 };
 
