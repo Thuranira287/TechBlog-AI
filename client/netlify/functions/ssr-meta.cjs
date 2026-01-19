@@ -1,25 +1,35 @@
+const fs = require("fs");
+const path = require("path");
 const fetch = require("node-fetch");
-
+/* ================= ENTRY POINT ================= */
 module.exports.handler = async (event) => {
   const rawPath = event.rawPath || event.path || "";
   const slug = extractSlug(rawPath, event.queryStringParameters);
 
+  const userAgent = event.headers["user-agent"] || "";
+  const isBot = detectBot(userAgent);
+
   try {
-    const post = await fetchPostMeta(slug);
-    const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
+    if (isBot) {
+      // Bot requested a post -> fetch metadata
+      const post = await fetchPostMeta(slug);
+      const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
 
-    if (!post) {
-      return botFallbackHTML(slug);
+      if (!post) {
+        return botFallbackHTML(slug);
+      }
+
+      return botResponse(post, postUrl);
+    } else {
+      // Human requested a post -> serve SPA index.html
+      return humanSPAResponse();
     }
-
-    return botResponse(post, postUrl);
-
-  } catch (error) {
-    console.error("SSR error:", error);
-    // Never fail bots — always return something crawlable
-    return botFallbackHTML(slug);
+  } catch (err) {
+    console.error("SSR Error:", err);
+    return humanSPAResponse();
   }
 };
+
 /* ================= HELPERS ================= */
 
 function extractSlug(rawPath, queryParams) {
@@ -32,7 +42,7 @@ function extractSlug(rawPath, queryParams) {
   return slug;
 }
 
-{/*function detectBot(userAgent = "") {
+function detectBot(userAgent = "") {
   const bots = [
     "googlebot",
     "bingbot",
@@ -53,7 +63,7 @@ function extractSlug(rawPath, queryParams) {
 
   const ua = userAgent.toLowerCase();
   return bots.some(b => ua.includes(b));
-}*/}
+}
 
 async function fetchPostMeta(slug) {
   if (!slug) return null;
@@ -155,7 +165,7 @@ function botFallbackHTML(slug) {
 
 /* ================= HUMAN SPA ================= */
 
-{/*function humanSPAResponse() {
+function humanSPAResponse() {
   const indexPath = path.resolve(__dirname, "../client/dist/index.html");
 
   let html;
@@ -178,4 +188,4 @@ function botFallbackHTML(slug) {
     },
     body: html
   };
-}*/}
+}
