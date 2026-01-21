@@ -7,5 +7,5 @@ Allow: /api/comments
 Disallow: /admin/
 Disallow: /api/admin
 
-# You can point to either, but frontend is already validated
+
 Sitemap: https://aitechblogs.netlify.app/sitemap.xml

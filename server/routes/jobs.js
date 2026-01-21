@@ -8,8 +8,7 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // ====== PUBLIC ROUTES ======
-
-// GET all active jobs (public - for jobs page)
+// GET all active jobs
 router.get('/public', async (req, res) => {
   try {
     const { type, category, search } = req.query;
@@ -41,9 +40,9 @@ router.get('/public', async (req, res) => {
     }
 
     query += ` ORDER BY featured DESC, posted_at DESC`;
-    
+    if (process.env.NODE_ENV !== 'production') {
     console.log('Executing query:', query);
-    console.log('With params:', params);
+    console.log('With params:', params);}
     
     const [jobs] = await pool.execute(query, params);
     
@@ -53,7 +52,8 @@ router.get('/public', async (req, res) => {
       data: jobs
     });
   } catch (error) {
-    console.error('Error fetching public jobs:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error fetching public jobs:', error);}
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch jobs',
@@ -87,7 +87,8 @@ router.get('/public/:id', async (req, res) => {
       data: jobs[0]
     });
   } catch (error) {
-    console.error('Error fetching job details:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error fetching job details:', error);}
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch job details' 
@@ -104,7 +105,8 @@ router.post('/:id/view', async (req, res) => {
     );
     res.json({ success: true });
   } catch (error) {
-    console.error('Error tracking view:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error tracking view:', error);}
     res.status(500).json({ success: false, error: 'Failed to track view' });
   }
 });
@@ -118,14 +120,15 @@ router.post('/:id/click', async (req, res) => {
     );
     res.json({ success: true });
   } catch (error) {
-    console.error('Error tracking click:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error tracking click:', error);}
     res.status(500).json({ success: false, error: 'Failed to track click' });
   }
 });
 
 // ====== ADMIN PROTECTED ROUTES ======
 
-// GET all jobs (admin - includes inactive)
+// GET all jobs
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const [jobs] = await pool.execute(
@@ -138,7 +141,8 @@ router.get('/', authenticateToken, async (req, res) => {
       data: jobs
     });
   } catch (error) {
-    console.error('Error fetching admin jobs:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error fetching admin jobs:', error);}
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch jobs',
@@ -167,7 +171,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       data: jobs[0]
     });
   } catch (error) {
-    console.error('Error fetching job:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error fetching job:', error);}
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch job' 
@@ -178,9 +183,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // POST create new job
 router.post('/', authenticateToken, upload.single('company_logo'), async (req, res) => {
   try {
+    if (process.env.NODE_ENV !== 'production') {
     console.log('Creating new job...');
     console.log('Request body:', req.body);
-    console.log('File present:', req.file ? 'Yes' : 'No');
+    console.log('File present:', req.file ? 'Yes' : 'No');}
 
     const {
       title,
@@ -213,9 +219,11 @@ router.post('/', authenticateToken, upload.single('company_logo'), async (req, r
           company_name
         );
         logoUrl = uploadResult.secure_url;
-        console.log('Logo uploaded to:', logoUrl);
+        if (process.env.NODE_ENV !== 'production') {
+        console.log('Logo uploaded to:', logoUrl);}
       } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
+        if (process.env.NODE_ENV !== 'production') {
+        console.error('Cloudinary upload error:', uploadError);}
         // Continue without logo if upload fails
       }
     }
@@ -256,7 +264,8 @@ router.post('/', authenticateToken, upload.single('company_logo'), async (req, r
       data: newJob[0]
     });
   } catch (error) {
-    console.error('Error creating job:', error);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error('Error creating job:', error);}
     res.status(500).json({
       success: false,
       error: 'Failed to create job',
@@ -310,7 +319,8 @@ router.put('/:id', authenticateToken, upload.single('company_logo'), async (req,
         );
         logoUrl = uploadResult.secure_url;
       } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
+        if (process.env.NODE_ENV !== 'production') {
+        console.error('Cloudinary upload error:', uploadError);}
         // Keep existing logo if upload fails
       }
     }

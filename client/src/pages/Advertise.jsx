@@ -121,7 +121,7 @@ export default function Advertise() {
       if (response.data.success) {
         const data = response.data.data;
         
-        // Format monthly visitors
+        // monthly visitors
         const visitorsNum = data.monthlyVisitors;
         if (visitorsNum >= 1000) {
           setMonthlyVisitors(`${(visitorsNum / 1000).toFixed(1)}k+`);
@@ -129,7 +129,7 @@ export default function Advertise() {
           setMonthlyVisitors(`${visitorsNum}+`);
         }
         
-        // Format affiliate clicks
+        // affiliate clicks
         if (data.affiliates && data.affiliates.length > 0) {
           const formattedAffiliates = data.affiliates.map(aff => ({
             name: aff.name,
@@ -145,7 +145,6 @@ export default function Advertise() {
         
         setLastUpdated(new Date(data.lastUpdated).toLocaleString());
       } else {
-        // Use default data if API fails
         setMonthlyVisitors("5,000+");
         setAffiliateClicks(defaultAffiliates);
       }
@@ -169,8 +168,7 @@ export default function Advertise() {
       console.log('Using default logos:', error.message);
     }
   };
-
-  // Default logos if API fails
+  
   const defaultLogos = [
     { 
       id: 1, 
@@ -242,7 +240,7 @@ export default function Advertise() {
       
     } catch (err) {
       console.error('Media kit error:', err);
-      alert("Media kit generation failed. Please email us for details.");
+      alert("Media kit generation failed. Please email us at advertise@techblogai.com for details.");
     } finally {
       setMediaKitLoading(false);
     }

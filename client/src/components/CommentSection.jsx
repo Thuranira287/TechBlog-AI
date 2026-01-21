@@ -101,26 +101,19 @@ const CommentSection = ({ postId }) => {
     // Second pass: Build hierarchy
     flatComments.forEach((comment) => {
       if (comment.parent_id) {
-        // This is a reply - find its parent
         const parent = commentMap.get(comment.parent_id);
         if (parent) {
           parent.replies.push(comment);
         } else {
-          // Parent not found, treat as root
           rootComments.push(comment);
         }
-      } else {
-        // This is a root comment
+      } else {t
         rootComments.push(comment);
       }
     });
-
-    // Sort root comments by date (newest first)
     rootComments.sort(
       (a, b) => new Date(b.created_at) - new Date(a.created_at)
     );
-
-    // Sort replies within each comment (newest first)
     rootComments.forEach((comment) => {
       if (comment.replies.length > 0) {
         comment.replies.sort(
@@ -132,10 +125,7 @@ const CommentSection = ({ postId }) => {
     return rootComments;
   };
 
-  /* -----------------------------
-     Reactions
-  ----------------------------- */
-
+// Reactions
   const handleReaction = async (commentId, type) => {
     if (reacting === commentId) return;
     setReacting(commentId);
@@ -162,7 +152,7 @@ const CommentSection = ({ postId }) => {
       await blogAPI.reactToComment(commentId, type);
     } catch (err) {
       console.error('❌ Error reacting to comment:', err);
-      fetchComments(); // Refresh on error
+      fetchComments();
       alert('Failed to save reaction. Please try again.');
     } finally {
       setReacting(null);
@@ -225,10 +215,7 @@ const CommentSection = ({ postId }) => {
     setComments((prevComments) => updateCommentTree(prevComments));
   };
 
-  /* -----------------------------
-     Submit Comment / Reply
-  ----------------------------- */
-
+//Submit Comment / Reply
   const submitComment = async (payload) => {
     if (!payload.content.trim()) {
       alert('Please enter your comment');
@@ -284,10 +271,7 @@ const CommentSection = ({ postId }) => {
     setSubmitting(false);
   };
 
-  /* -----------------------------
-     Delete Comment (Admin only)
-  ----------------------------- */
-
+// Delete Comment (Admin only)
   const deleteComment = async (commentId) => {
     if (!window.confirm('Are you sure you want to delete this comment?')) {
       return;
@@ -317,10 +301,7 @@ const CommentSection = ({ postId }) => {
     });
   };
 
-  /* -----------------------------
-     Render Comment with Replies
-  ----------------------------- */
-
+//Render Comment with Replies
   const CommentItem = ({ comment, depth = 0, isReply = false }) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
     const userReaction = comment.userReaction;
@@ -331,28 +312,18 @@ const CommentSection = ({ postId }) => {
     useEffect(() => {
       if (isReplying && textareaRef.current) {
         const textarea = textareaRef.current;
-
-        // Force LTR by manipulating DOM directly
         textarea.setAttribute('dir', 'ltr');
         textarea.style.direction = 'ltr';
         textarea.style.textAlign = 'left';
         textarea.style.unicodeBidi = 'plaintext';
-
-        // Clear any inherited styles
         textarea.style.removeProperty('rtl');
         textarea.style.removeProperty('right');
-
-        // Add transform to force new rendering context
         textarea.style.transform = 'translateZ(0)';
         textarea.style.backfaceVisibility = 'hidden';
-
-        // Focus and set cursor to start
         setTimeout(() => {
           textarea.focus();
           textarea.setSelectionRange(0, 0);
         }, 10);
-
-        // Force reflow
         textarea.offsetHeight;
       }
     }, [isReplying]);
@@ -579,10 +550,7 @@ const CommentSection = ({ postId }) => {
     );
   };
 
-  /* -----------------------------
-     Main Render
-  ----------------------------- */
-
+// Main Render
   const totalCommentCount = comments.reduce(
     (acc, comment) => acc + 1 + (comment.replies ? comment.replies.length : 0),
     0

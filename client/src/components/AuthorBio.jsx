@@ -3,11 +3,11 @@ import React from "react";
 /**
  * AuthorBio Component
  * 
- * @param {Object} props - Component properties
- * @param {boolean} props.compact - If true, renders a shorter version of the bio
- * @param {boolean} props.showAvatar - If true, displays the author's avatar
- * @param {boolean} props.showSocialLinks - If true, displays social media links
- * @param {boolean} props.showContact - If true, displays contact information
+ * @param {Object} props 
+ * @param {boolean} props.compact 
+ * @param {boolean} props.showAvatar 
+ * @param {boolean} props.showSocialLinks
+ * @param {boolean} props.showContact 
  */
 export default function AuthorBio({ 
   compact = true, 

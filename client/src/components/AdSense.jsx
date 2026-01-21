@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-/**
- * ✅ Load the Google AdSense script once globally.
- * Place <AdSense /> inside App.jsx (outside Router) or root layout.
- */
+
 const AdSense = () => {
   useEffect(() => {
     // Check if script already exists
@@ -20,13 +17,11 @@ const AdSense = () => {
     }
   }, []);
 
-  return null; // Nothing visible, just loads script
+  return null; 
 };
 
-/**
- * ✅ Generic Ad Unit Component
- * Example: <AdUnit slot="YOUR_SLOT_ID" format="auto" responsive />
- */
+// Generic Ad Unit Component
+
 export const AdUnit = ({ slot, format = "auto", responsive = true }) => {
   const adRef = useRef(null);
 
@@ -55,9 +50,8 @@ export const AdUnit = ({ slot, format = "auto", responsive = true }) => {
   );
 };
 
-/**
- * ✅ Header Ad — top banner
- */
+// Header Ad — top banner
+ 
 export const HeaderAd = () => {
   const [adReady, setAdReady] = useState(false);
 
@@ -73,8 +67,8 @@ export const HeaderAd = () => {
         if (status === 'filled') {
           setAdReady(true);
         } else {
-          // After 3 seconds, show anyway (ad might never load)
-          setTimeout(() => setAdReady(true), 3000);
+          // After 3 seconds,
+          setTimeout(() => setAdReady(true), 4000);
         }
       }
     };
@@ -86,7 +80,6 @@ export const HeaderAd = () => {
     return () => clearTimeout(checkAdStatus);
   }, []);
 
-  // Don't render anything until we're ready
   if (!adReady) return null;
 
   return (
@@ -98,19 +91,15 @@ export const HeaderAd = () => {
   );
 };
 
-/**
- * ✅ Sidebar Ad — sticky on scroll
- */
+// Sidebar Ad — sticky on scroll
 export const SidebarAd = () => (
   <div className="sticky top-4">
     <AdUnit slot="8847382989" format="auto" />
   </div>
 );
 
-/**
- * ✅ In-Content Ad — automatically inserted after every 3rd paragraph
- * Use: <InContentAd html={post.content} />
- */
+//In-Content Ad  inserted after every 3rd paragraph
+
 export const InContentAd = ({ html }) => {
   if (!html) return null;
 

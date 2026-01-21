@@ -9,7 +9,7 @@
     <meta name="google-site-verification" content="ywxxXNhDUVU2qs0RdOkmXTMmrEubdVxYoUbUIGiq-M4" />
     
     <!-- Primary Meta Tags -->
-    <meta name="description" content="TechBlog AI delivers practical AI guides, web development tutorials, and emerging tech insights. Learn to build real projects with step-by-step guides and expert analysis." />
+    <meta name="description" content="TechBlog AI delivers practical AI guides, web development tutorials, and emerging tech insights to help you build real projects step by step." />
     <meta name="keywords" content="AI tutorials, web development, JavaScript, React, Python, machine learning, programming guides, tech news, cybersecurity" />
     <meta name="author" content="TechBlog AI Team" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -21,24 +21,15 @@
     <meta property="og:url" content="https://aitechblogs.netlify.app/" />
     <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
     <meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis. Build real projects today." />
-    <!-- Use your screenshot as OG image -->
+    <!-- Screenshot as OG image -->
     <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="TechBlog AI Screenshot - AI & Web Development Tutorials Platform" />
+    <meta property="og:image:alt" content="TechBlog AI Screenshot - Your trusted source for the latest technology news, AI insights, web development tutorials, and industry trends." />    
     <meta property="og:site_name" content="TechBlog AI" />
     <meta property="og:locale" content="en_US" />
     
-    <!--OG/Twitter tags-->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://aitechblogs.netlify.app" />
-    <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
-    <meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis. Build real projects today." />
-    <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="TechBlog AI Screenshot - Your trusted source for the latest technology news, AI insights, web development tutorials, and industry trends." />
-
+    <!--Twitter Card tags-->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="TechBlog AI - Practical AI & Web Development Guides" />
     <meta name="twitter:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis." />
@@ -49,7 +40,7 @@
     <!-- Canonical URL 
     <link rel="canonical" href="https://aitechblogs.netlify.app/" />
     -->
-    <!-- Favicons - Use simple approach -->
+    <!-- Favicons simple approach -->
     <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
     <link rel="icon" type="image/png" href="/blog-icon.svg" />
     <link rel="apple-touch-icon" href="/blog-icon.svg" />
@@ -100,12 +91,12 @@
     }
     </script>
     
-    <!-- AdSense (Wait for approval before uncommenting) -->
+    <!-- AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922"
      crossorigin="anonymous">
     </script>
     
-    <!-- CSS for instant loading screen -->
+    <!-- CSS loading screen -->
     <style>
       .loading { 
         position: fixed; top: 0; left: 0; 
@@ -131,7 +122,7 @@
     <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
   </head>
   <body>
-    <!-- Loading screen (removed by React after hydration) -->
+    <!-- Loading screen  -->
     <div class="loading" id="loading-screen">
       <div class="loading-content">
         <div class="loading-spinner"></div>
@@ -144,9 +135,8 @@
     <!-- Preload main script -->
     <script type="module" src="/src/main.jsx" defer></script>
     
-    <!-- Simple script to hide loading screen after timeout -->
+    <!-- Script to hide loading screen after timeout -->
     <script>
-      // Fallback: Hide loading screen after 3 seconds max
       setTimeout(function() {
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) {

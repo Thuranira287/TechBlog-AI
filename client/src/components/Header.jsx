@@ -341,13 +341,6 @@ const Header = () => {
                     </Link>
                   ))}
                 </div>
-                <Link
-                  to="/categories"
-                  className="block mt-2 text-blue-600 text-sm font-medium"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  View all →
-                </Link>
               </div>
 
               {/* Mobile Auth Links */}

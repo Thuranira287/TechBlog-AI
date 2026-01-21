@@ -1,4 +1,3 @@
-// netlify/functions/generate-media-kit.js
 import { jsPDF } from "jspdf";
 
 export const handler = async () => {
@@ -40,7 +39,7 @@ export const handler = async () => {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     
-    // Add some sample data
+    // sample data
     const insights = [
       { label: "Monthly Unique Visitors", value: "5,000+" },
       { label: "Return Visitor Rate", value: "45%" },
@@ -110,8 +109,9 @@ export const handler = async () => {
     });
 
     // ====== Generate PDF ======
-    const pdfOutput = doc.output();
-    
+    const pdfArrayBuffer = doc.output('arraybuffer');
+    const base64 = Buffer.from(pdfArrayBuffer).toString('base64');
+
     return {
       statusCode: 200,
       headers: {
@@ -119,12 +119,14 @@ export const handler = async () => {
         'Content-Disposition': 'attachment; filename="TechBlogAI_MediaKit.pdf"',
         'Access-Control-Allow-Origin': '*'
       },
-      body: pdfOutput,
+      body: base64,
       isBase64Encoded: true
     };
+
     
   } catch (err) {
-    console.error("PDF generation error:", err);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error("PDF generation error:", err);}
     
     return {
       statusCode: 500,

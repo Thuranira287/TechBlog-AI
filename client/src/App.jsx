@@ -19,7 +19,7 @@ import Advertise from "./pages/Advertise";
 import JobsPage from "./pages/JobsPage";
 import JobDetails from "./pages/JobDetails";
 
-// Lazy load admin pages (better performance)
+// Lazy load admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const PostEditor = lazy(() => import('./pages/admin/PostEditor'));
 const CommentsPage = lazy(() => import('./pages/admin/CommentsPage'));
@@ -124,14 +124,16 @@ function App() {
       });
       
       setAnalyticsLoaded(true);
-      console.log("Analytics loaded with privacy settings");
+      if (process.env.NODE_ENV !== 'production') {
+      console.log("Analytics loaded with privacy settings");}
     }
   };
 
   const enableAnalytics = () => {
     setConsentGiven(true);
     loadAnalytics();
-    console.log("Analytics enabled (user accepted)");
+    if (process.env.NODE_ENV !== 'production') {
+    console.log("Analytics enabled (user accepted)");}
   };
 
   const disableAnalytics = () => {
@@ -142,7 +144,8 @@ function App() {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
       }
     });
-    console.log("Analytics disabled (user declined)");
+    if (process.env.NODE_ENV !== 'production') {
+    console.log("Analytics disabled (user declined)");}
   };
 
   return (
@@ -156,7 +159,7 @@ function App() {
           }}
         >
           <Layout>
-            {/* CookieConsent must be outside Routes but inside Router */}
+            {/* CookieConsent */}
             <CookieConsent 
               onAccept={enableAnalytics} 
               onDecline={disableAnalytics}

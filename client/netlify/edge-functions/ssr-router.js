@@ -1,10 +1,5 @@
-/**
- * Netlify Edge Function: SSR Router
- * Path: netlify/edge-functions/ssr-router.js
- * 
- * This function intercepts requests to /post/* routes and determines
- * whether to serve server-rendered content (for bots) or the SPA shell (for humans)
- */
+//This function intercepts requests to /post/* routes and determines
+// whether to serve server-rendered content (for bots) or the SPA shell (for humans)
 
 export default async (request, context) => {
   try {
@@ -69,9 +64,8 @@ export default async (request, context) => {
 
 /* ================= HELPER FUNCTIONS ================= */
 
-/**
- * Detects if the User-Agent is a bot/crawler
- */
+//Detects if the User-Agent is a bot/crawler
+ 
 function detectBot(userAgent = "") {
   const bots = [
     // Search Engines
@@ -106,9 +100,8 @@ function detectBot(userAgent = "") {
   return bots.some(bot => ua.includes(bot));
 }
 
-/**
- * Fetches post metadata from backend API
- */
+// Fetches post metadata from backend API
+
 async function fetchPostMeta(slug) {
   if (!slug) return null;
 
@@ -144,9 +137,8 @@ async function fetchPostMeta(slug) {
   }
 }
 
-/**
- * Escapes HTML special characters
- */
+// Escapes HTML special characters
+
 function escapeHtml(text = "") {
   return text
     .replace(/&/g, "&amp;")
@@ -156,17 +148,19 @@ function escapeHtml(text = "") {
     .replace(/'/g, "&#039;");
 }
 
-/**
- * Generates bot-optimized HTML with full meta tags
- */
+// Generates bot-optimized HTML with full meta tags
+
 function generateBotHtml(post, postUrl) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
   const desc = escapeHtml(post.excerpt || post.meta_description || "Read the latest tech insights on TechBlog AI");
   const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
   const author = escapeHtml(post.author || "TechBlog AI Team");
   const publishDate = post.created_at || post.published_at || new Date().toISOString();
+  const modifiedDate = post.updated_at || publishDate;
   const category = escapeHtml(post.category || "Technology");
   const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
+  const wordCount = post.word_count || 1000;
+  const readingTime = Math.ceil(wordCount / 200); // Average reading speed
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -186,6 +180,7 @@ function generateBotHtml(post, postUrl) {
   <link rel="canonical" href="${postUrl}" />
   
   <!-- Open Graph / Facebook -->
+  <meta property="fb:app_id" content="1829393364607774" />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="${postUrl}" />
   <meta property="og:title" content="${title}" />
@@ -207,32 +202,75 @@ function generateBotHtml(post, postUrl) {
   <meta name="twitter:site" content="@AiTechBlogs" />
   <meta name="twitter:creator" content="@AiTechBlogs" />
   
-  <!-- Schema.org JSON-LD -->
+  <!-- Schema.org JSON-LD - Enhanced Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": "${title}",
     "description": "${desc}",
-    "image": "${img}",
+    "image": {
+      "@type": "ImageObject",
+      "url": "${img}",
+      "width": 1200,
+      "height": 630
+    },
     "url": "${postUrl}",
     "datePublished": "${publishDate}",
+    "dateModified": "${modifiedDate}",
     "author": {
       "@type": "Person",
-      "name": "${author}"
+      "name": "${author}",
+      "url": "https://aitechblogs.netlify.app"
     },
     "publisher": {
       "@type": "Organization",
       "name": "TechBlog AI",
+      "url": "https://aitechblogs.netlify.app",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://aitechblogs.netlify.app/blog-icon.svg"
+        "url": "https://aitechblogs.netlify.app/blog-icon.svg",
+        "width": 100,
+        "height": 100
       }
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": "${postUrl}"
-    }
+    },
+    "articleSection": "${category}",
+    "keywords": "${escapeHtml(tags)}",
+    "wordCount": ${wordCount},
+    "timeRequired": "PT${readingTime}M",
+    "inLanguage": "en-US"
+  }
+  </script>
+  
+  <!-- Breadcrumb Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://aitechblogs.netlify.app"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "${category}",
+        "item": "https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "${title}",
+        "item": "${postUrl}"
+      }
+    ]
   }
   </script>
   
@@ -264,20 +302,12 @@ function generateBotHtml(post, postUrl) {
       <p><em>This is a preview for search engines and social media. The full article requires JavaScript to be enabled.</em></p>
     </div>
   </article>
-  
-  <!-- Trigger SPA load for browsers with JS -->
-  <script>
-    if (typeof window !== 'undefined') {
-      window.location.href = '${postUrl}';
-    }
-  </script>
 </body>
 </html>`;
 }
 
-/**
- * Generates fallback HTML when post is not found
- */
+// Generates fallback HTML when post is not found
+
 function generateFallbackHtml(slug) {
   const url = `https://aitechblogs.netlify.app/post/${slug}`;
   

@@ -1,9 +1,8 @@
-// netlify/functions/get-stats.js
 import mysql from "mysql2/promise";
 
 export const handler = async () => {
   try {
-    // For local development, use environment variables
+    //environment variables
     const connection = await mysql.createConnection({
       host: process.env.MYSQL_HOST || "localhost",
       user: process.env.MYSQL_USER || "root",
@@ -17,7 +16,7 @@ export const handler = async () => {
       "SELECT name, COUNT(*) as clicks FROM affiliate_clicks GROUP BY name ORDER BY clicks DESC LIMIT 5"
     );
 
-    // Fetch monthly visitors (simplified version without GA4 for now)
+    // Fetch monthly visitors
     const [visitorRows] = await connection.execute(
       `SELECT 
         DATE_FORMAT(created_at, '%Y-%m') as month,
@@ -50,7 +49,8 @@ export const handler = async () => {
       })
     };
   } catch (err) {
-    console.error("Error fetching stats:", err);
+    if (process.env.NODE_ENV !== 'production') {
+    console.error("Error fetching stats:", err);}
     
     // Return fallback data
     return {

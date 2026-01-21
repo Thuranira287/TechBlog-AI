@@ -54,6 +54,7 @@ const JobMetaTags = ({ job }) => {
       <meta name="keywords" content={`${job.category}, ${job.job_type}, ${job.company_name}, tech jobs, programming jobs, ${job.location}`} />
       
       {/* Open Graph / Facebook */}
+      <meta property="fb:app_id" content="1829393364607774" />
       <meta property="og:type" content="article" />
       <meta property="article:section" content="Jobs" />
       <meta property="article:published_time" content={job.posted_at} />

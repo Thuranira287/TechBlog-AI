@@ -116,9 +116,11 @@ const PostEditor = () => {
     }
     
     // Debug: Log what's being sent
-    console.log('📤 FormData contents:');
+    if (process.env.NODE_ENV !== 'production') {
+    console.log('📤 FormData contents:');}
     for (let [key, value] of postData.entries()) {
-      console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);
+      if (process.env.NODE_ENV !== 'production') {
+      console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);}
     }
 
     let response;
@@ -127,7 +129,8 @@ const PostEditor = () => {
       if (imagePreview && !imagePreview.startsWith('blob:')) {
         postData.append('existing_featured_image', imagePreview);
       }
-      console.log(`🔄 Updating post ID: ${id}`);
+      if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔄 Updating post ID: ${id}`);}
       response = await blogAPI.updateAdminPost(id, postData);
     } else {
       console.log('🆕 Creating new post');

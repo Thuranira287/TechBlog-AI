@@ -7,7 +7,7 @@ if (!API_BASE_URL) console.warn("VITE_API_URL not set, using localhost fallback"
 // Create separate instances for different needs
 export const api = axios.create({
   baseURL: API_BASE_URL || 'http://localhost:5000/api',
-  timeout: 10000, // Increased to 30s for general requests
+  timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -28,18 +28,17 @@ export const ssrApi = axios.create({
 
 // Retry configuration
 const MAX_RETRIES = 2;
-const RETRY_DELAY = 1000; // 1 second
+const RETRY_DELAY = 1000;
 
 // Retry interceptor
 const retryInterceptor = (error, instance) => {
   const config = error.config;
   
-  // Don't retry if already tried or if not a timeout/network error
   if (!config || config.__retryCount >= MAX_RETRIES) {
     return Promise.reject(error);
   }
   
-  // Only retry on timeout or network errors
+  // retry on timeout or network errors
   const shouldRetry = error.code === 'ECONNABORTED' || 
                      !error.response || 
                      error.response.status >= 500;
@@ -50,9 +49,10 @@ const retryInterceptor = (error, instance) => {
   
   config.__retryCount = config.__retryCount || 0;
   config.__retryCount += 1;
-  
-  console.log(`🔄 Retry attempt ${config.__retryCount} for ${config.url}`);
-  
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔄 Retry attempt ${config.__retryCount} for ${config.url}`);
+  }
+
   // Create new promise with exponential backoff
   const backoffDelay = RETRY_DELAY * Math.pow(2, config.__retryCount - 1);
   
@@ -117,9 +117,8 @@ const responseInterceptor = (error) => {
 api.interceptors.response.use(null, responseInterceptor);
 adminApi.interceptors.response.use(null, responseInterceptor);
 
-// API methods with optimized timeouts
+// API methods
 export const blogAPI = {
-  // Posts - 30s timeout with retry
   getPosts: (page = 1, limit = 10, category = null, search = null) => {
     const params = { page, limit }
     if (category) params.category = category
@@ -132,15 +131,15 @@ export const blogAPI = {
   getCategoryPosts: (categorySlug, page = 1) => 
     api.get(`/posts/category/${categorySlug}?page=${page}`),
 
-  // Categories - faster
+  // Categories
   getCategories: () => api.get('/categories'),
 
-  // Comments - with retry
+  // Comments 
   getComments: (postId) => api.get(`/comments/post/${postId}`),
 
   createComment: (commentData) => api.post('/comments', commentData),
 
-  // Reactions - fast
+  // Reactions
   reactToComment: (commentId, type) => 
     api.post(`/comments/${commentId}/reactions`, { 
       type,
@@ -156,7 +155,7 @@ export const blogAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   getMe: () => api.get('/auth/me'),
 
-  // Admin methods - use adminApi with longer timeouts
+  // Admin methods
   getAdminDashboard: (params = {}) => adminApi.get('/admin/dashboard', { params}),
   
   getAdminPosts: (page = 1) => adminApi.get(`/admin/posts?page=${page}`),

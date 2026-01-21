@@ -27,6 +27,7 @@ const JobsPageMetaTags = () => {
       <meta name="keywords" content="tech jobs, programming jobs, software engineering jobs, data science jobs, AI jobs, ML jobs, web development jobs, internships, remote jobs" />
       
       {/* Open Graph / Facebook */}
+      <meta property="fb:app_id" content="1829393364607774" />
       <meta property="og:type" content="website" />
       <meta property="og:url" content={pageUrl} />
       <meta property="og:title" content="Tech Jobs & Careers | Find Programming Jobs & Internships" />

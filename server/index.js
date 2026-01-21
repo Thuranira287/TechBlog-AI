@@ -65,7 +65,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS handling for images
 app.use('/uploads', (req, res, next) => {
-  // Set CORS headers specifically for images
+  // CORS headers specifically for images
   res.header('Access-Control-Allow-Origin', 'https://aitechblogs.netlify.app');
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -77,11 +77,13 @@ app.use('/uploads', (req, res, next) => {
   }
   next();
 });
+if (process.env.NODE_ENV === 'development') {
 app.use('/api/admin', (req, res, next) => {
   console.log(`🛣️  Route hit: ${req.method} ${req.path}`);
   console.log(`📡 Original URL: ${req.originalUrl}`);
   next();
 });
+}
 
 // Serve uploaded files statically - AFTER the CORS middleware
 app.use('/uploads', express.static('uploads'));
@@ -286,8 +288,6 @@ app.get('/api/stats', async (req, res) => {
 // ====== Media Kit PDF Endpoint ======
 app.get('/api/media-kit', async (req, res) => {
   try {
-    // We'll implement PDF generation here
-    // For now, return a message
     res.json({
       success: true,
       message: "PDF media kit generation coming soon",
@@ -323,7 +323,6 @@ app.get('/api/logos', async (req, res) => {
           website: "https://www.digitalocean.com",
           description: "Cloud Infrastructure"
         },
-        // ... add more defaults as needed
       ];
       res.json(defaultLogos);
     } else {

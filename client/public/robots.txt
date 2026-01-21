@@ -1,5 +1,17 @@
-# CORRECT - allows sitemap
 User-agent: *
 Allow: /
+Allow: /ads.txt
+Allow: /ads/
+Allow: /*.js
+Allow: /*.css
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.gif
+
+User-agent: Googlebot
+Allow: /*
+
+User-agent: AdsBot-Google
+Allow: /*
 
 Sitemap: https://aitechblogs.netlify.app/sitemap.xml

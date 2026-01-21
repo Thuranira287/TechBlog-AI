@@ -2,7 +2,10 @@ import express from 'express';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { parser, uploadBufferToCloudinary } from "../config/cloudinary.js";
+import { submitSitemapToSearchEngines, submitUrlToIndexNow } from "../utils/sitemapSubmitter.js";
 
+if (process.env.NODE_ENV !== 'production') {
+  console.log = () => {};
 const router = express.Router();
 
 // Protect all admin routes
@@ -122,7 +125,6 @@ router.get('/posts/:id', async (req, res) => {
 });
 
 // Create post - UPDATED WITH SEO FIELDS
-// Create post - UPDATED TO MATCH YOUR ACTUAL SCHEMA
 router.post('/posts', parser.single('featured_image'), async (req, res) => {
   try {
     const { 
@@ -134,13 +136,14 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     } = req.body;
 
     // Debug logging
+    if (process.env.NODE_ENV !== 'production') {
     console.log('📝 Received post data:', {
       title: title?.substring(0, 50),
       slug,
       category_id,
       hasFile: !!req.file,
       tags: tags?.substring(0, 100)
-    });
+    });}
 
     // Validate required fields
     if (!title || !slug || !content || !category_id) {
@@ -171,7 +174,6 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
         console.log('✅ Image uploaded:', featured_image);
       } catch (uploadError) {
         console.error('❌ Image upload failed:', uploadError);
-        // Continue without image
       }
     }
 
@@ -220,7 +222,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       console.log(`  ${key}: ${value === null ? 'NULL' : typeof value === 'string' ? `"${value.substring(0, 30)}..."` : value}`);
     });
 
-    // INSERT QUERY THAT MATCHES YOUR EXACT TABLE STRUCTURE
+    // INSERT QUERY TABLE STRUCTURE
     const [result] = await pool.execute(`
       INSERT INTO posts 
       (title, slug, excerpt, content, author_id, category_id, featured_image, 
@@ -280,6 +282,16 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       ...newPost[0],
       tags: typeof newPost[0].tags === 'string' ? JSON.parse(newPost[0].tags) : newPost[0].tags || []
     };
+    // SEO: Notify search engines ONLY if published
+    if (safeValues.status === "published") {
+      const postUrl = `https://aitechblogs.netlify.app/post/${safeValues.slug}`;
+
+      // Fire-and-forget (no await → no slowdown)
+      submitSitemapToSearchEngines().catch(() => {});
+      submitUrlToIndexNow(postUrl).catch(() => {});
+
+      console.log("SEO ping sent for new post:", postUrl);
+    }
 
     res.status(201).json({
       success: true,
@@ -319,7 +331,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
   }
 });
 
-// Update post - MATCH YOUR SCHEMA
+// Update post
 router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
   try {
     const { 
@@ -339,6 +351,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
     }
     
     const existingPost = existingPosts[0];
+    const wasJustPublished = existingPost.status !== "published" && status === "published";
 
     // Handle featured image
     let featured_image = existing_featured_image || existingPost.featured_image;
@@ -348,7 +361,6 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
         featured_image = uploadResult.secure_url;
       } catch (uploadError) {
         console.error('Image upload failed:', uploadError);
-        // Keep existing image
       }
     }
 
@@ -368,7 +380,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       parsedTags = typeof existingPost.tags === 'string' ? JSON.parse(existingPost.tags) : existingPost.tags || [];
     }
 
-    // Prepare update values - use existing values if not provided
+    // Prepare update values
     const updateValues = {
       title: title || existingPost.title,
       slug: slug || existingPost.slug,
@@ -390,8 +402,6 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       tags: JSON.stringify(parsedTags),
       status: status || existingPost.status
     };
-
-    // Update query matching your schema
     await pool.execute(`
       UPDATE posts 
       SET title = ?, slug = ?, excerpt = ?, content = ?, category_id = ?,
@@ -430,6 +440,15 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.id = ?
     `, [req.params.id]);
+    // SEO: Notify search engines if post was just published
+    if (wasJustPublished) {
+      const postUrl = `https://aitechblogs.netlify.app/post/${updateValues.slug}`;
+
+      submitSitemapToSearchEngines().catch(() => {});
+      submitUrlToIndexNow(postUrl).catch(() => {});
+
+      console.log("SEO ping sent for published update:", postUrl);
+    }
 
     res.json({
       success: true,
@@ -532,5 +551,6 @@ router.delete('/comments/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+}
 
 export default router;

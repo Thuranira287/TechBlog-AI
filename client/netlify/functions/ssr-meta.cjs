@@ -5,7 +5,6 @@ const path = require("path");
 
 /* ================= ENTRY POINT ================= */
 module.exports.handler = async (event) => {
-  // Dynamic import of node-fetch (ESM)
   const fetch = (await import("node-fetch")).default;
 
   const rawPath = event.rawPath || event.path || "";

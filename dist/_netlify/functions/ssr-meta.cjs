@@ -1,5 +1,6 @@
 // ssr-meta.cjs - CommonJS format with timeout handling
-
+if (process.env.NODE_ENV !== 'production') {
+  console.log = () =>{};
 module.exports.handler = async (event) => {
   console.log("=== SSR FUNCTION START ===");
 
@@ -317,4 +318,5 @@ function errorHTML(slug = "") {
 </body>
 </html>`
   };
+}
 }

@@ -15,7 +15,7 @@ cloudinary.config({
 // Multer setup (stores file in memory for streaming to Cloudinary)
 const parser = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // Increased to 10MB for high-quality logos
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for high-quality logos
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/gif'];
     if (allowedMimeTypes.includes(file.mimetype)) {
@@ -46,8 +46,6 @@ const uploadBufferToCloudinary = (fileBuffer, folder = 'techblogai/featured-imag
     streamifier.createReadStream(fileBuffer).pipe(uploadStream);
   });
 };
-
-// Specific upload functions for different content types
 
 // 1. Job/Company Logos Upload (optimized for logos)
 const uploadJobLogoToCloudinary = (fileBuffer, companyName = '') => {
@@ -227,5 +225,4 @@ export {
   getOptimizedUrl
 };
 
-// For backward compatibility
 export const uploadToCloudinary = uploadBufferToCloudinary;
