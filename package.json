@@ -20,13 +20,12 @@
     "jspdf": "^4.0.0",
     "multer": "^2.0.0-rc.3",
     "mysql2": "^3.6.5",
-    "router": "^2.2.0",
     "streamifier": "^0.1.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
   "engines": {
-    "node": ">=18.x"
+    "node": "20.x"
   }
 }
