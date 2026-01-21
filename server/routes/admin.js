@@ -4,8 +4,6 @@ import { authenticateToken } from '../middleware/auth.js';
 import { parser, uploadBufferToCloudinary } from "../config/cloudinary.js";
 import { submitSitemapToSearchEngines, submitUrlToIndexNow } from "../utils/sitemapSubmitter.js";
 
-if (process.env.NODE_ENV !== 'production') {
-  console.log = () => {};
 const router = express.Router();
 
 // Protect all admin routes
@@ -551,6 +549,5 @@ router.delete('/comments/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-}
 
 export default router;

@@ -1,5 +1,6 @@
-//This function intercepts requests to /post/* routes and determines
-// whether to serve server-rendered content (for bots) or the SPA shell (for humans)
+ //This function intercepts requests to /post/* routes and determines
+//whether to serve server-rendered content (for bots) or the SPA shell (for humans)
+ 
 
 export default async (request, context) => {
   try {
@@ -12,16 +13,21 @@ export default async (request, context) => {
     // Comprehensive bot detection
     const isBot = detectBot(userAgent);
     
-    console.log(`[Edge Function] Path: ${url.pathname}, Bot: ${isBot}, UA: ${userAgent.substring(0, 50)}`);
+    // Detect AI crawlers for full content
+    const fullContentCrawlers = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot'];
+    const isFullContentBot = fullContentCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
+    
+    console.log(`[Edge Function] Path: ${url.pathname}, Bot: ${isBot}, FullContent: ${isFullContentBot}, UA: ${userAgent.substring(0, 50)}`);
 
     if (isBot) {
-      // Bot detected - serve server-rendered HTML with meta tags
+      // Bot detected - SSR HTML with meta tags
       try {
-        const post = await fetchPostMeta(slug);
+        // Fetch post metadata or full content for AI crawlers
+        const post = await fetchPostMeta(slug, isFullContentBot);
         
         if (post) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-          const html = generateBotHtml(post, postUrl);
+          const html = generateBotHtml(post, postUrl, isFullContentBot);
           
           return new Response(html, {
             status: 200,
@@ -30,7 +36,7 @@ export default async (request, context) => {
               "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
               "X-Robots-Tag": "index, follow",
               "Vary": "User-Agent",
-              "X-Rendered-By": "Edge-SSR"
+              "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR"
             }
           });
         } else {
@@ -64,8 +70,8 @@ export default async (request, context) => {
 
 /* ================= HELPER FUNCTIONS ================= */
 
-//Detects if the User-Agent is a bot/crawler
- 
+// Detects if the User-Agent is a bot/crawler
+
 function detectBot(userAgent = "") {
   const bots = [
     // Search Engines
@@ -101,11 +107,13 @@ function detectBot(userAgent = "") {
 }
 
 // Fetches post metadata from backend API
-
-async function fetchPostMeta(slug) {
+ 
+async function fetchPostMeta(slug, fullContent = false) {
   if (!slug) return null;
 
-  const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/meta`;
+  // Use different endpoint based on whether we need full content
+  const endpoint = fullContent ? 'full' : 'meta';
+  const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/${endpoint}`;
   
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout for edge
@@ -148,9 +156,13 @@ function escapeHtml(text = "") {
     .replace(/'/g, "&#039;");
 }
 
-// Generates bot-optimized HTML with full meta tags
-
-function generateBotHtml(post, postUrl) {
+/**
+ * Generates bot-optimized HTML with full meta tags
+ * @param {Object} post - Post data from API
+ * @param {String} postUrl - Full URL of the post
+ * @param {Boolean} includeFullContent - Whether to include full article content
+ */
+function generateBotHtml(post, postUrl, includeFullContent = false) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
   const desc = escapeHtml(post.excerpt || post.meta_description || "Read the latest tech insights on TechBlog AI");
   const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
@@ -161,6 +173,27 @@ function generateBotHtml(post, postUrl) {
   const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
   const wordCount = post.word_count || 1000;
   const readingTime = Math.ceil(wordCount / 200); // Average reading speed
+  
+  // Determine content to display based on bot type
+  let contentHtml = '';
+  if (includeFullContent && post.content) {
+    // AI crawlers get substantial content
+    const fullContent = escapeHtml(post.content.substring(0, 2000));
+    contentHtml = `
+      <div class="article-preview">
+        <p>${desc}</p>
+        <div class="full-content">${fullContent}${post.content.length > 2000 ? '...' : ''}</div>
+      </div>`;
+  } else if (post.content) {
+    // Traditional search engines get brief preview
+    const preview = escapeHtml(post.content.substring(0, 500));
+    contentHtml = `
+      <p>${desc}</p>
+      <div class="article-preview">${preview}${post.content.length > 500 ? '...' : ''}</div>`;
+  } else {
+    // Fallback to description only
+    contentHtml = `<p>${desc}</p>`;
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -180,7 +213,6 @@ function generateBotHtml(post, postUrl) {
   <link rel="canonical" href="${postUrl}" />
   
   <!-- Open Graph / Facebook -->
-  <meta property="fb:app_id" content="1829393364607774" />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="${postUrl}" />
   <meta property="og:title" content="${title}" />
@@ -262,7 +294,7 @@ function generateBotHtml(post, postUrl) {
         "@type": "ListItem",
         "position": 2,
         "name": "${category}",
-        "item": "https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"
+        "item": "https://aitechblogs.netlify.app/category/${category.toLowerCase()}"
       },
       {
         "@type": "ListItem",
@@ -289,6 +321,8 @@ function generateBotHtml(post, postUrl) {
     h1 { color: #1a1a1a; margin-bottom: 10px; }
     .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
     .content { margin-top: 30px; }
+    .article-preview { margin: 20px 0; white-space: pre-wrap; }
+    .full-content { margin-top: 15px; line-height: 1.8; }
   </style>
 </head>
 <body>
@@ -298,10 +332,17 @@ function generateBotHtml(post, postUrl) {
       By ${author} • ${category} • ${new Date(publishDate).toLocaleDateString()}
     </div>
     <div class="content">
-      <p>${desc}</p>
-      <p><em>This is a preview for search engines and social media. The full article requires JavaScript to be enabled.</em></p>
+      ${contentHtml}
+      <p><em>This is ${includeFullContent ? 'an extended preview' : 'a preview'} for search engines and social media. The full interactive article requires JavaScript to be enabled.</em></p>
     </div>
   </article>
+  
+  <!-- Trigger SPA load for browsers with JS -->
+  <script>
+    if (typeof window !== 'undefined') {
+      window.location.href = '${postUrl}';
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -336,5 +377,4 @@ function generateFallbackHtml(slug) {
 export const config = {
   path: "/post/*",
   // Run on all requests to /post/* routes
-  onError: "bypass" // Fallback to origin on error
-};
+  onError: "bypass"

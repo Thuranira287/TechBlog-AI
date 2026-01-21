@@ -3,6 +3,17 @@ import pool from "../config/db.js";
 
 const router = express.Router();
 
+const safeParseTags = (tags) => {
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags;
+  try {
+    return JSON.parse(tags);
+  } catch {
+    return [];
+  }
+};
+
+
 const getFullImageUrl = (imagePath) => {
   if (!imagePath) return null;
 
@@ -56,8 +67,7 @@ router.get("/", async (req, res) => {
 
     console.log(`🔍 Executing main query`);
     
-    //const [posts] = await pool.execute(query, [limit, offset]);
-    const [posts] = await pool.execute(query, [limit.toString(), offset.toString()])
+    const [posts] = await pool.execute(query, [limit.toString(), offset.toString()]);
     const [countResult] = await pool.execute(countQuery);
 
     const total = countResult[0].total;
@@ -134,10 +144,15 @@ router.get("/category/:categorySlug", async (req, res) => {
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.category_id = ? AND p.status = 'published'
       ORDER BY p.published_at DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `;
 
-    const [posts] = await pool.execute(query, [categoryId]);
+    const [posts] = await pool.execute(query, [
+      categoryId,
+      Number(limit),
+      Number(offset),
+    ]);
+
 
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total
@@ -167,7 +182,187 @@ router.get("/category/:categorySlug", async (req, res) => {
   }
 });
 
+/**
+ * 🆕 GET post metadata ONLY (lightweight for traditional search engines)
+ * Used by Edge Function for Google, Bing, etc.
+ * IMPORTANT: This must come BEFORE /:slug route
+ */
+router.get('/:slug/meta', async (req, res) => {
+  try {
+    console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
+    
+    const query = `
+      SELECT 
+        p.id,
+        p.title,
+        p.slug,
+        p.excerpt,
+        p.featured_image,
+        p.created_at,
+        p.updated_at,
+        p.published_at,
+        p.view_count,
+        p.word_count,
+        p.meta_title,
+        p.meta_description,
+        p.keywords,
+        p.og_title,
+        p.og_description,
+        p.twitter_title,
+        p.twitter_description,
+        p.tags,
+        a.name AS author_name,
+        c.name AS category_name,
+        c.id AS category_id
+      FROM posts p
+      LEFT JOIN authors a ON p.author_id = a.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.slug = ? AND p.status = 'published'
+      LIMIT 1
+    `;
+    
+    const [rows] = await pool.execute(query, [req.params.slug]);
+    
+    if (!rows || rows.length === 0) {
+      console.log(`❌ Post not found for meta: ${req.params.slug}`);
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    const post = rows[0];
+    console.log(`✅ [META] Meta found for: ${post.title}`);
+    
+    // Parse tags
+    const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
+    
+    res.json({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      featured_image: getFullImageUrl(post.featured_image),
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      published_at: post.published_at,
+      view_count: post.view_count,
+      word_count: post.word_count,
+      meta_title: post.meta_title || post.title,
+      meta_description: post.meta_description || post.excerpt,
+      keywords: post.keywords,
+      og_title: post.og_title || post.meta_title || post.title,
+      og_description: post.og_description || post.meta_description || post.excerpt,
+      twitter_title: post.twitter_title || post.og_title || post.meta_title || post.title,
+      twitter_description: post.twitter_description || post.og_description || post.meta_description || post.excerpt,
+      author: post.author_name || 'TechBlog AI Team',
+      category: post.category_name || 'Technology',
+      category_id: post.category_id,
+      tags: tags
+    });
+    
+  } catch (error) {
+    console.error('❌ [META] Meta endpoint error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    });
+  }
+});
 
+/**
+ * 🆕 GET post with FULL CONTENT (for AI crawlers like ChatGPT, Claude, Perplexity)
+ * Used by Edge Function when AI crawler is detected
+ * IMPORTANT: This must come BEFORE /:slug route
+ */
+router.get('/:slug/full', async (req, res) => {
+  try {
+    const userAgent = req.headers['user-agent'] || '';
+    console.log(`🤖 [FULL] Fetching full content for: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
+    
+    const query = `
+      SELECT 
+        p.id,
+        p.title,
+        p.slug,
+        p.excerpt,
+        p.content,
+        p.featured_image,
+        p.created_at,
+        p.updated_at,
+        p.published_at,
+        p.view_count,
+        p.word_count,
+        p.meta_title,
+        p.meta_description,
+        p.keywords,
+        p.og_title,
+        p.og_description,
+        p.twitter_title,
+        p.twitter_description,
+        p.tags,
+        a.name AS author_name,
+        c.name AS category_name,
+        c.id AS category_id
+      FROM posts p
+      LEFT JOIN authors a ON p.author_id = a.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.slug = ? AND p.status = 'published'
+      LIMIT 1
+    `;
+    
+    const [rows] = await pool.execute(query, [req.params.slug]);
+    
+    if (!rows || rows.length === 0) {
+      console.log(`❌ [FULL] Post not found: ${req.params.slug}`);
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    const post = rows[0];
+    
+    // Log AI crawler access for analytics
+    const aiCrawlers = ['gptbot', 'anthropic', 'claude', 'cohere', 'perplexity', 'chatgpt'];
+    const isAICrawler = aiCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
+    
+    if (isAICrawler) {
+      console.log(`🤖 [AI CRAWLER] Full content accessed by: ${userAgent.substring(0, 50)}`);
+    }
+    
+    console.log(`✅ [FULL] Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
+    
+    // Parse tags
+    const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
+    
+    res.json({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      content: post.content, // 🔥 FULL CONTENT INCLUDED
+      featured_image: getFullImageUrl(post.featured_image),
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      published_at: post.published_at,
+      view_count: post.view_count,
+      word_count: post.word_count,
+      meta_title: post.meta_title || post.title,
+      meta_description: post.meta_description || post.excerpt,
+      keywords: post.keywords,
+      og_title: post.og_title || post.meta_title || post.title,
+      og_description: post.og_description || post.meta_description || post.excerpt,
+      twitter_title: post.twitter_title || post.og_title || post.meta_title || post.title,
+      twitter_description: post.twitter_description || post.og_description || post.meta_description || post.excerpt,
+      author: post.author_name || 'TechBlog AI Team',
+      category: post.category_name || 'Technology',
+      category_id: post.category_id,
+      tags: tags
+    });
+    
+  } catch (error) {
+    console.error('❌ [FULL] Full content endpoint error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    });
+  }
+});
 
 /**
  * ✅ GET single post by slug - COMPLETELY UPDATED WITH ALL SEO FIELDS
@@ -289,71 +484,6 @@ router.get("/:slug", async (req, res) => {
     console.error("❌ Error fetching post:", error);
     res.status(500).json({ 
       error: "Internal server error",
-      details: error.message 
-    });
-  }
-});
-
-//the /:slug/meta endpoint
-router.get('/:slug/meta', async (req, res) => {
-  try {
-    console.log(`🔍 Fetching meta for post slug: "${req.params.slug}"`);
-    
-    const query = `
-      SELECT 
-        p.id,
-        p.title,
-        p.slug,
-        p.excerpt,
-        p.featured_image,
-        p.meta_title,
-        p.meta_description,
-        p.keywords,
-        p.og_title,
-        p.og_description,
-        p.twitter_title,
-        p.twitter_description,
-        a.name AS author_name
-      FROM posts p
-      LEFT JOIN authors a ON p.author_id = a.id
-      WHERE p.slug = ? AND p.status = 'published'
-      LIMIT 1
-    `;
-    
-    const [rows] = await pool.execute(query, [req.params.slug]);
-    
-    if (!rows || rows.length === 0) {
-      console.log(`❌ Post not found for meta: ${req.params.slug}`);
-      return res.status(404).json({ error: 'Post not found' });
-    }
-    
-    const post = rows[0];
-    console.log(`✅ Meta found for: ${post.title}`);
-    
-    // Get full image URL
-    const featuredImage = getFullImageUrl(post.featured_image);
-    
-    res.json({
-      id: post.id,
-      title: post.title,
-      slug: post.slug,
-      excerpt: post.excerpt,
-      featured_image: featuredImage,
-      meta_title: post.meta_title || post.title,
-      meta_description: post.meta_description || post.excerpt,
-      keywords: post.keywords,
-      og_title: post.og_title || post.meta_title || post.title,
-      og_description: post.og_description || post.meta_description || post.excerpt,
-      twitter_title: post.twitter_title || post.og_title || post.meta_title || post.title,
-      twitter_description: post.twitter_description || post.og_description || post.meta_description || post.excerpt,
-      author_name: post.author_name,
-      url: `https://aitechblogs.netlify.app/post/${post.slug}`
-    });
-    
-  } catch (error) {
-    console.error('❌ Meta endpoint error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
       details: error.message 
     });
   }
