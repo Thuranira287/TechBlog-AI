@@ -362,7 +362,7 @@ function generateFallbackHtml(slug) {
   <meta property="og:type" content="article" />
   <meta property="og:url" content="${url}" />
   <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
-  <meta name="robots" content="noindex" />
+  <meta name="robots" content="index, follow" />
   <link rel="canonical" href="${url}" />
 </head>
 <body>
