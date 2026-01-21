@@ -60,6 +60,7 @@ app.use(helmet({
 
 app.use(limiter);
 app.use(cors(corsOptions)); // Use CORS before other middleware
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
