@@ -131,7 +131,6 @@ router.get("/category/:categorySlug", async (req, res) => {
     `;
 
     const [posts] = await pool.execute(query, [categoryId]);
-
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total
        FROM posts
