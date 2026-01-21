@@ -101,7 +101,6 @@
   [headers.values]
     Content-Type = "application/xml"
     Cache-Control = "public, max-age=3600, s-maxage=7200"
-    X-Robots-Tag = "noindex"
 
 [[headers]]
   for = "/robots.txt"

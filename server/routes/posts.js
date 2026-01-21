@@ -169,7 +169,7 @@ router.get("/category/:categorySlug", async (req, res) => {
 
 router.get('/:slug/meta', async (req, res) => {
   try {
-    console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
+    console.log(`🔍  Fetching meta for post slug: "${req.params.slug}"`);
     
     const query = `
       SELECT 
@@ -208,7 +208,7 @@ router.get('/:slug/meta', async (req, res) => {
     }
     
     const post = rows[0];
-    console.log(`✅ [META] Meta found for: ${post.title}`);
+    console.log(`✅  Meta found for: ${post.title}`);
     
     // Parse tags
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
@@ -237,7 +237,7 @@ router.get('/:slug/meta', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ [META] Meta endpoint error:', error);
+    console.error('❌  Meta endpoint error:', error);
     res.status(500).json({ 
       error: 'Internal server error', 
       details: error.message 
@@ -250,7 +250,7 @@ router.get('/:slug/meta', async (req, res) => {
 router.get('/:slug/full', async (req, res) => {
   try {
     const userAgent = req.headers['user-agent'] || '';
-    console.log(`🤖 [FULL] Fetching full content for: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
+    console.log(`🤖  Fetching full content for: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
     
     const query = `
       SELECT 
@@ -299,7 +299,7 @@ router.get('/:slug/full', async (req, res) => {
       console.log(`🤖 [AI CRAWLER] Full content accessed by: ${userAgent.substring(0, 50)}`);
     }
     
-    console.log(`✅ [FULL] Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
+    console.log(`✅ Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
     
     // Parse tags
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];

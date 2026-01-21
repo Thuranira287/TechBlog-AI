@@ -1,6 +1,5 @@
- //This function intercepts requests to /post/* routes and determines
-//whether to serve server-rendered content (for bots) or the SPA shell (for humans)
- 
+// This function intercepts requests to /post/* routes and determines
+// whether to serve server-rendered content (for bots) or the SPA shell (for humans)
 
 export default async (request, context) => {
   try {
@@ -27,7 +26,7 @@ export default async (request, context) => {
         
         if (post) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-          const html = generateBotHtml(post, postUrl, isFullContentBot);
+          const html = generateBotHtml(post, postUrl, isFullContentBot, isFullContentBot);
           
           return new Response(html, {
             status: 200,
@@ -46,7 +45,7 @@ export default async (request, context) => {
             status: 200,
             headers: {
               "Content-Type": "text/html; charset=utf-8",
-              "X-Robots-Tag": "noindex",
+              "X-Robots-Tag": "index, follow",
               "Vary": "User-Agent",
               "X-Rendered-By": "Edge-SSR-Fallback"
             }
@@ -71,7 +70,6 @@ export default async (request, context) => {
 /* ================= HELPER FUNCTIONS ================= */
 
 // Detects if the User-Agent is a bot/crawler
-
 function detectBot(userAgent = "") {
   const bots = [
     // Search Engines
@@ -107,7 +105,6 @@ function detectBot(userAgent = "") {
 }
 
 // Fetches post metadata from backend API
- 
 async function fetchPostMeta(slug, fullContent = false) {
   if (!slug) return null;
 
@@ -146,7 +143,6 @@ async function fetchPostMeta(slug, fullContent = false) {
 }
 
 // Escapes HTML special characters
-
 function escapeHtml(text = "") {
   return text
     .replace(/&/g, "&amp;")
@@ -157,12 +153,36 @@ function escapeHtml(text = "") {
 }
 
 /**
+ * Clean HTML for AI crawlers - removes dangerous tags but keeps structure
+ */
+function cleanHtmlForAI(html = "") {
+  if (!html) return "";
+  
+  let clean = html;
+  
+  // Remove dangerous tags completely
+  clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  clean = clean.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  clean = clean.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+  clean = clean.replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '');
+  
+  // Remove event handlers and javascript: URLs
+  clean = clean.replace(/on\w+="[^"]*"/gi, '');
+  clean = clean.replace(/on\w+='[^']*'/gi, '');
+  clean = clean.replace(/javascript:/gi, '');
+  
+  return clean;
+}
+
+/**
  * Generates bot-optimized HTML with full meta tags
  * @param {Object} post - Post data from API
  * @param {String} postUrl - Full URL of the post
  * @param {Boolean} includeFullContent - Whether to include full article content
+ * @param {Boolean} isAICrawler - Whether this is an AI crawler (GPTBot, Claude, etc.)
  */
-function generateBotHtml(post, postUrl, includeFullContent = false) {
+function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler = false) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
   const desc = escapeHtml(post.excerpt || post.meta_description || "Read the latest tech insights on TechBlog AI");
   const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
@@ -177,20 +197,39 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
   // Determine content to display based on bot type
   let contentHtml = '';
   if (includeFullContent && post.content) {
-    // AI crawlers get substantial content
-    const fullContent = post.content.substring(0, 2000);
-    contentHtml = `
+    if (isAICrawler) {
+      // For AI crawlers: use the full, cleaned content
+      let fullContent = post.content || "";
+      
+      // Additional safety cleaning
+      fullContent = cleanHtmlForAI(fullContent);
+      
+      // NO TRUNCATION for AI crawlers - show full content
+      contentHtml = `
       <div class="article-preview">
         <p>${desc}</p>
-        <div class="full-content">${fullContent}${post.content.length > 2000 ? '...' : ''}</div>
+        <div class="full-content">${fullContent}</div>
       </div>`;
+    } else {
+      // For traditional bots: escape HTML and show limited content
+      const escapedContent = escapeHtml(post.content);
+      const maxLength = 1500; // Less content for traditional bots
+      const displayContent = escapedContent.length > maxLength 
+        ? escapedContent.substring(0, maxLength) + '...' 
+        : escapedContent;
+      
+      contentHtml = `
+      <div class="article-preview">
+        <p>${desc}</p>
+        <div class="full-content">${displayContent}</div>
+      </div>`;
+    }
   } else if (post.content) {
-    // Traditional search engines get brief preview
+    // Traditional search engines get brief preview (escaped)
     const preview = escapeHtml(post.content.substring(0, 500));
     contentHtml = `
-  <article class="article-content">
-    ${fullContent}${post.content.length > 2000 ? '…' : ''}
-  </article>`;
+      <p>${desc}</p>
+      <div class="article-preview">${preview}${post.content.length > 500 ? '...' : ''}</div>`;
   } else {
     // Fallback to description only
     contentHtml = `<p>${desc}</p>`;
@@ -207,7 +246,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
   <meta name="title" content="${title}" />
   <meta name="description" content="${desc}" />
   <meta name="author" content="${author}" />
-  <meta name="keywords" content="${escapeHtml(tags)}" />
+  <meta name="keywords" content="${escapeHtml(post.keywords || tags)}" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
   
   <!-- Canonical URL -->
@@ -273,7 +312,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
       "@id": "${postUrl}"
     },
     "articleSection": "${category}",
-    "keywords": "${escapeHtml(tags)}",
+    "keywords": "${escapeHtml(post.keywords || tags)}",
     "wordCount": ${wordCount},
     "timeRequired": "PT${readingTime}M",
     "inLanguage": "en-US"
@@ -323,8 +362,49 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
     h1 { color: #1a1a1a; margin-bottom: 10px; }
     .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
     .content { margin-top: 30px; }
-    .article-preview { margin: 20px 0; white-space: pre-wrap; }
-    .full-content { margin-top: 15px; line-height: 1.8; }
+    .article-preview { 
+      margin: 20px 0; 
+      white-space: normal !important;
+    }
+    .full-content { 
+      margin-top: 15px; 
+      line-height: 1.8;
+    }
+    .full-content h2, .full-content h3, .full-content h4 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      color: #1a1a1a;
+    }
+    .full-content h2 { font-size: 1.5em; }
+    .full-content h3 { font-size: 1.25em; }
+    .full-content h4 { font-size: 1.1em; }
+    .full-content p {
+      margin-bottom: 1em;
+    }
+    .full-content ul, .full-content ol {
+      margin-left: 1.5em;
+      margin-bottom: 1em;
+    }
+    .full-content li {
+      margin-bottom: 0.5em;
+    }
+    .full-content a {
+      color: #3b82f6;
+      text-decoration: underline;
+    }
+    .full-content strong, .full-content b {
+      font-weight: 600;
+    }
+    .full-content em, .full-content i {
+      font-style: italic;
+    }
+    .full-content blockquote {
+      border-left: 3px solid #ccc;
+      padding-left: 1em;
+      margin-left: 0;
+      font-style: italic;
+      color: #555;
+    }
   </style>
 </head>
 <body>
@@ -335,7 +415,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
     </div>
     <div class="content">
       ${contentHtml}
-      <p><em>This is ${includeFullContent ? 'an extended preview' : 'a preview'} for search engines and social media. The full interactive article requires JavaScript to be enabled.</em></p>
+      <p><em>${isAICrawler ? 'This content has been optimized for AI training and analysis. Full interactive version available at the original URL.' : 'This is a preview for search engines and social media. The full interactive article requires JavaScript to be enabled.'}</em></p>
     </div>
   </article>
   
@@ -350,7 +430,6 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
 }
 
 // Generates fallback HTML when post is not found
-
 function generateFallbackHtml(slug) {
   const url = `https://aitechblogs.netlify.app/post/${slug}`;
   
