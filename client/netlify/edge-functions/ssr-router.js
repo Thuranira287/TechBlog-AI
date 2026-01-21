@@ -378,3 +378,4 @@ export const config = {
   path: "/post/*",
   // Run on all requests to /post/* routes
   onError: "bypass"
+};
