@@ -178,7 +178,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
   let contentHtml = '';
   if (includeFullContent && post.content) {
     // AI crawlers get substantial content
-    const fullContent = escapeHtml(post.content.substring(0, 2000));
+    const fullContent = post.content.substring(0, 2000);
     contentHtml = `
       <div class="article-preview">
         <p>${desc}</p>
@@ -188,8 +188,9 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
     // Traditional search engines get brief preview
     const preview = escapeHtml(post.content.substring(0, 500));
     contentHtml = `
-      <p>${desc}</p>
-      <div class="article-preview">${preview}${post.content.length > 500 ? '...' : ''}</div>`;
+  <article class="article-content">
+    ${fullContent}${post.content.length > 2000 ? '…' : ''}
+  </article>`;
   } else {
     // Fallback to description only
     contentHtml = `<p>${desc}</p>`;
@@ -213,6 +214,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false) {
   <link rel="canonical" href="${postUrl}" />
   
   <!-- Open Graph / Facebook -->
+  <meta property="fb:app_id" content="1829393364607774" />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="${postUrl}" />
   <meta property="og:title" content="${title}" />

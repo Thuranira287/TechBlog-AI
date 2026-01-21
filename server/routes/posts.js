@@ -3,17 +3,6 @@ import pool from "../config/db.js";
 
 const router = express.Router();
 
-const safeParseTags = (tags) => {
-  if (!tags) return [];
-  if (Array.isArray(tags)) return tags;
-  try {
-    return JSON.parse(tags);
-  } catch {
-    return [];
-  }
-};
-
-
 const getFullImageUrl = (imagePath) => {
   if (!imagePath) return null;
 
@@ -26,9 +15,7 @@ const getFullImageUrl = (imagePath) => {
   return `https://techblogai-backend.onrender.com${imagePath}`;
 };
 
-/**
- * ✅ GET all published posts with pagination - UPDATED WITH SEO FIELDS
- */
+//GET all published posts with pagination
 router.get("/", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -36,8 +23,6 @@ router.get("/", async (req, res) => {
     const offset = (page - 1) * limit;
 
     console.log(`📄 Fetching posts - Page: ${page}, Limit: ${limit}`);
-
-    // UPDATED QUERY: Added SEO fields
     const query = `
       SELECT 
         p.*, 
@@ -73,7 +58,7 @@ router.get("/", async (req, res) => {
     const total = countResult[0].total;
     const totalPages = Math.ceil(total / limit);
 
-    // ✅ FIX: Add full image URLs to each post
+    // Add full image URLs to each post
     const postsWithFullUrls = posts.map(post => ({
       ...post,
       featured_image: getFullImageUrl(post.featured_image),
@@ -102,9 +87,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-/**
- * ✅ GET posts by category - UPDATED WITH SEO FIELDS
- */
+// GET posts by category - UPDATED WITH SEO FIELDS
 router.get("/category/:categorySlug", async (req, res) => {
   try {
     console.log(`🔍 Fetching posts for category: "${req.params.categorySlug}"`);
@@ -182,11 +165,8 @@ router.get("/category/:categorySlug", async (req, res) => {
   }
 });
 
-/**
- * 🆕 GET post metadata ONLY (lightweight for traditional search engines)
- * Used by Edge Function for Google, Bing, etc.
- * IMPORTANT: This must come BEFORE /:slug route
- */
+//GET post metadata ONLY (lightweight for traditional search engines)
+
 router.get('/:slug/meta', async (req, res) => {
   try {
     console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
@@ -265,11 +245,8 @@ router.get('/:slug/meta', async (req, res) => {
   }
 });
 
-/**
- * 🆕 GET post with FULL CONTENT (for AI crawlers like ChatGPT, Claude, Perplexity)
- * Used by Edge Function when AI crawler is detected
- * IMPORTANT: This must come BEFORE /:slug route
- */
+//GET post with FULL CONTENT (for AI crawlers like ChatGPT, Claude, Perplexity)
+
 router.get('/:slug/full', async (req, res) => {
   try {
     const userAgent = req.headers['user-agent'] || '';
@@ -360,14 +337,10 @@ router.get('/:slug/full', async (req, res) => {
   }
 });
 
-/**
- * ✅ GET single post by slug - COMPLETELY UPDATED WITH ALL SEO FIELDS
- */
+// GET single post by slug
 router.get("/:slug", async (req, res) => {
   try {
     console.log(`🔍 Fetching post by slug: "${req.params.slug}"`);
-
-    // UPDATED QUERY: Include ALL SEO fields
     const [posts] = await pool.execute(
       `SELECT 
         p.*,
@@ -401,7 +374,7 @@ router.get("/:slug", async (req, res) => {
     // Parse tags to array
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
 
-    // ✅ FIX: Build complete post object with fallbacks for SEO fields
+    //post object with fallbacks for SEO fields
     const completePost = {
       id: post.id,
       title: post.title,
@@ -463,7 +436,7 @@ router.get("/:slug", async (req, res) => {
       [post.category_id, post.id]
     );
 
-    // ✅ FIX: Add full image URLs to related posts too
+    // Add full image URLs to related posts too
     const relatedPostsWithFullUrls = relatedPosts.map(relatedPost => ({
       ...relatedPost,
       featured_image: getFullImageUrl(relatedPost.featured_image),
