@@ -15,88 +15,95 @@ const getFullImageUrl = (imagePath) => {
   return `https://techblogai-backend.onrender.com${imagePath}`;
 };
 
-//GET all published posts with pagination
+// GET all published posts with pagination (OFFSET + CURSOR)
 router.get("/", async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
-    const offset = (page - 1) * limit;
+    const cursor = req.query.cursor || null;
 
-    console.log(`📄 Fetching posts - Page: ${page}, Limit: ${limit}`);
-    const query = `
-      SELECT 
-        p.*, 
-        p.meta_title, 
-        p.meta_description, 
-        p.keywords,
-        p.og_title, 
-        p.og_description, 
-        p.twitter_title, 
-        p.twitter_description,
-        a.name AS author_name, 
-        c.name AS category_name, 
-        c.slug AS category_slug
-      FROM posts p
-      LEFT JOIN authors a ON p.author_id = a.id
-      LEFT JOIN categories c ON p.category_id = c.id
-      WHERE p.status = 'published'
-      ORDER BY p.published_at DESC
-      LIMIT ? OFFSET ?
-    `;
+    let query;
+    let params;
 
-    const countQuery = `
-      SELECT COUNT(*) AS total
-      FROM posts p
-      WHERE p.status = 'published'
-    `;
+    if (cursor) {
+      // Cursor-based (FAST, index-friendly)
+      query = `
+        SELECT 
+          p.*, 
+          p.meta_title, 
+          p.meta_description, 
+          p.keywords,
+          p.og_title, 
+          p.og_description, 
+          p.twitter_title, 
+          p.twitter_description,
+          a.name AS author_name, 
+          c.name AS category_name, 
+          c.slug AS category_slug
+        FROM posts p
+        LEFT JOIN authors a ON p.author_id = a.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.status = 'published'
+        AND p.published_at < ?
+        ORDER BY p.published_at DESC
+        LIMIT ?
+      `;
+      params = [cursor, limit + 1];
+    } else {
+      // Offset fallback (legacy)
+      const page = parseInt(req.query.page) || 1;
+      const offset = (page - 1) * limit;
 
-    console.log(`🔍 Executing main query`);
-    
-    const [posts] = await pool.execute(query, [limit.toString(), offset.toString()]);
-    const [countResult] = await pool.execute(countQuery);
+      query = `
+        SELECT 
+          p.*, 
+          p.meta_title, 
+          p.meta_description, 
+          p.keywords,
+          p.og_title, 
+          p.og_description, 
+          p.twitter_title, 
+          p.twitter_description,
+          a.name AS author_name, 
+          c.name AS category_name, 
+          c.slug AS category_slug
+        FROM posts p
+        LEFT JOIN authors a ON p.author_id = a.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.status = 'published'
+        ORDER BY p.published_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [limit, offset];
+    }
 
-    const total = countResult[0].total;
-    const totalPages = Math.ceil(total / limit);
+    const [rows] = await pool.execute(query, params);
 
-    // Add full image URLs to each post
+    const hasNext = rows.length > limit;
+    const posts = hasNext ? rows.slice(0, limit) : rows;
+
     const postsWithFullUrls = posts.map(post => ({
       ...post,
       featured_image: getFullImageUrl(post.featured_image),
-      // Ensure tags is always an array
       tags: typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || []
     }));
 
-    console.log(`✅ Found ${posts.length} posts out of ${total} total`);
-
     res.json({
       posts: postsWithFullUrls,
-      pagination: {
-        current: page,
-        totalPages,
-        totalPosts: total,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+      nextCursor: hasNext ? posts[posts.length - 1].published_at : null
     });
+
   } catch (error) {
     console.error("❌ Error fetching posts:", error);
-    res.status(500).json({ 
-      error: "Internal server error",
-      details: error.message
-    });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET posts by category - UPDATED WITH SEO FIELDS
+
+// GET posts by category (OFFSET + CURSOR) WITH SEO FIELDS
 router.get("/category/:categorySlug", async (req, res) => {
   try {
-    console.log(`🔍 Fetching posts for category: "${req.params.categorySlug}"`);
-
-    const rawPage = Number(req.query.page);
-    const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
-
     const limit = 10;
-    const offset = (page - 1) * limit;
+    const cursor = req.query.cursor || null;
 
     const [categoryCheck] = await pool.execute(
       `SELECT id, name, slug FROM categories WHERE slug = ?`,
@@ -109,61 +116,116 @@ router.get("/category/:categorySlug", async (req, res) => {
 
     const categoryId = categoryCheck[0].id;
 
-    const query = `
-      SELECT 
-        p.*,
-        p.meta_title, 
-        p.meta_description, 
-        p.keywords,
-        p.og_title, 
-        p.og_description, 
-        p.twitter_title, 
-        p.twitter_description,
-        a.name AS author_name, 
-        c.name AS category_name, 
-        c.slug AS category_slug
-      FROM posts p
-      LEFT JOIN authors a ON p.author_id = a.id
-      LEFT JOIN categories c ON p.category_id = c.id
-      WHERE p.category_id = ? AND p.status = 'published'
-      ORDER BY p.published_at DESC
-      LIMIT $[limit] OFFSET $[offset]
-    `;
+    let query;
+    let params;
 
-    const [posts] = await pool.execute(query, [categoryId]);
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) AS total
-       FROM posts
-       WHERE category_id = ? AND status = 'published'`,
-      [categoryId]
-    );
+    if (cursor) {
+      // Cursor-based pagination
+      query = `
+        SELECT 
+          p.*,
+          p.meta_title, 
+          p.meta_description, 
+          p.keywords,
+          p.og_title, 
+          p.og_description, 
+          p.twitter_title, 
+          p.twitter_description,
+          a.name AS author_name,
+          c.name AS category_name,
+          c.slug AS category_slug
+        FROM posts p
+        LEFT JOIN authors a ON p.author_id = a.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.category_id = ?
+        AND p.status = 'published'
+        AND p.published_at < ?
+        ORDER BY p.published_at DESC
+        LIMIT ?
+      `;
+      params = [categoryId, cursor, (limit + 1).toString()]; // Convert to string
+    } else {
+      // Offset-based pagination (for page numbers)
+      const page = Number(req.query.page) || 1;
+      const offset = (page - 1) * limit;
 
-    const postsWithFullUrls = posts.map(post => ({
-      ...post,
-      featured_image: getFullImageUrl(post.featured_image),
-      tags: typeof post.tags === 'string'
-        ? JSON.parse(post.tags)
-        : post.tags || []
-    }));
+      query = `
+        SELECT 
+          p.*,
+          p.meta_title, 
+          p.meta_description, 
+          p.keywords,
+          p.og_title, 
+          p.og_description, 
+          p.twitter_title, 
+          p.twitter_description,
+          a.name AS author_name,
+          c.name AS category_name,
+          c.slug AS category_slug
+        FROM posts p
+        LEFT JOIN authors a ON p.author_id = a.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.category_id = ?
+        AND p.status = 'published'
+        ORDER BY p.published_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [categoryId, limit.toString(), offset.toString()]; // Convert to strings
+    }
 
-    res.json({
-      posts: postsWithFullUrls,
-      total: countResult[0].total,
-      currentPage: page,
+    const [rows] = await pool.execute(query, params);
+
+    const hasNext = cursor ? rows.length > limit : false;
+    const posts = hasNext ? rows.slice(0, limit) : rows;
+
+    // Also get total count for offset pagination
+    let total = 0;
+    if (!cursor) {
+      const [countResult] = await pool.execute(
+        `SELECT COUNT(*) AS total
+         FROM posts
+         WHERE category_id = ? AND status = 'published'`,
+        [categoryId]
+      );
+      total = countResult[0].total;
+    }
+
+    const response = {
+      posts: posts.map(p => ({
+        ...p,
+        featured_image: getFullImageUrl(p.featured_image),
+        tags: typeof p.tags === 'string' ? JSON.parse(p.tags) : p.tags || []
+      })),
       category: categoryCheck[0]
-    });
+    };
+
+    // Add pagination metadata
+    if (cursor) {
+      // Cursor pagination response
+      response.nextCursor = hasNext ? posts[posts.length - 1].published_at : null;
+    } else {
+      // Offset pagination response (backward compatibility)
+      const page = Number(req.query.page) || 1;
+      response.total = total;
+      response.currentPage = page;
+      response.totalPages = Math.ceil(total / limit);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error("❌ Error fetching category posts:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      error: "Internal server error",
+      details: error.message 
+    });
   }
 });
 
-//GET post metadata ONLY (lightweight for traditional search engines)
-
+// GET post metadata ONLY (lightweight for traditional search engines)
 router.get('/:slug/meta', async (req, res) => {
   try {
-    console.log(`🔍  Fetching meta for post slug: "${req.params.slug}"`);
+    console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
     
     const query = `
       SELECT 
@@ -197,12 +259,12 @@ router.get('/:slug/meta', async (req, res) => {
     const [rows] = await pool.execute(query, [req.params.slug]);
     
     if (!rows || rows.length === 0) {
-      console.log(`❌ Post not found for meta: ${req.params.slug}`);
+      console.log(`❌ [META] Post not found for meta: ${req.params.slug}`);
       return res.status(404).json({ error: 'Post not found' });
     }
     
     const post = rows[0];
-    console.log(`✅  Meta found for: ${post.title}`);
+    console.log(`✅ [META] Meta found for: ${post.title}`);
     
     // Parse tags
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
@@ -231,7 +293,7 @@ router.get('/:slug/meta', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌  Meta endpoint error:', error);
+    console.error('❌ [META] Meta endpoint error:', error);
     res.status(500).json({ 
       error: 'Internal server error', 
       details: error.message 
@@ -239,12 +301,11 @@ router.get('/:slug/meta', async (req, res) => {
   }
 });
 
-//GET post with FULL CONTENT (for AI crawlers like ChatGPT, Claude, Perplexity)
-
+// GET post with FULL CONTENT (for AI crawlers like ChatGPT, Claude, Perplexity)
 router.get('/:slug/full', async (req, res) => {
   try {
     const userAgent = req.headers['user-agent'] || '';
-    console.log(`🤖  Fetching full content for: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
+    console.log(`🤖 [FULL] Fetching full content for: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
     
     const query = `
       SELECT 
@@ -293,7 +354,7 @@ router.get('/:slug/full', async (req, res) => {
       console.log(`🤖 [AI CRAWLER] Full content accessed by: ${userAgent.substring(0, 50)}`);
     }
     
-    console.log(`✅ Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
+    console.log(`✅ [FULL] Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
     
     // Parse tags
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
@@ -368,7 +429,7 @@ router.get("/:slug", async (req, res) => {
     // Parse tags to array
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
 
-    //post object with fallbacks for SEO fields
+    // post object with fallbacks for SEO fields
     const completePost = {
       id: post.id,
       title: post.title,

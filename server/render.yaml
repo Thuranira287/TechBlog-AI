@@ -2,10 +2,10 @@ services:
   - type: web
     name: techblogai-backend
     env: node
-    rootDir: /
+    rootDir: /server  
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
-        value: 18.x
+        value: 20.x
     autoDeploy: true
