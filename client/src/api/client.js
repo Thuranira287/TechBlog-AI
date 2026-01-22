@@ -46,7 +46,11 @@ const retryInterceptor = (error, instance) => {
   if (!shouldRetry) {
     return Promise.reject(error);
   }
-  
+  // Do not retry on 500 errors
+  if (error.response?.status === 500) {
+  return Promise.reject(error);
+  }
+
   config.__retryCount = config.__retryCount || 0;
   config.__retryCount += 1;
   if (process.env.NODE_ENV === 'development') {

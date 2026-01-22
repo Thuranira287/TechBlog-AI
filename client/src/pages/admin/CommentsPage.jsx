@@ -39,7 +39,7 @@ const CommentsPage = () => {
         setTotalPages(Math.ceil(response.data.length / itemsPerPage));
       }
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      process.env.NODE_ENV === 'development' && console.error('Error fetching comments:', error);
       setError({
         message: 'Failed to load comments',
         details: error.message

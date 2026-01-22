@@ -35,7 +35,7 @@ const AdminDashboard = () => {
       setError(null);
       const response = await blogAPI.getAdminDashboard({ page: pageNum, limit: 50 });
       
-      console.log('Dashboard Response:', response.data);
+      process.env.NODE_ENV === 'development' && console.log('Dashboard Response:', response.data);
       
       if (response.data) {
         setStats(response.data.stats || {
@@ -62,7 +62,7 @@ const AdminDashboard = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      process.env.NODE_ENV === 'development' && console.error('Error fetching dashboard data:', error);
       setError({
         message: 'Failed to load dashboard data',
         details: error.message
@@ -93,7 +93,7 @@ const AdminDashboard = () => {
         }));
       }
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      process.env.NODE_ENV === 'development' && console.error('Error fetching comments:', error);
     } finally {
       setCommentsLoading(false);
     }
@@ -145,7 +145,7 @@ const AdminDashboard = () => {
       }));
       
     } catch (error) {
-      console.error('Error approving comment:', error);
+      process.env.NODE_ENV === 'development' && console.error('Error approving comment:', error);
       alert('Failed to approve comment: ' + error.message);
     } finally {
       setModeratingCommentId(null);
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
       }));
       
     } catch (error) {
-      console.error('Error rejecting comment:', error);
+      process.env.NODE_ENV === 'development' && console.error('Error rejecting comment:', error);
       alert('Failed to reject comment: ' + error.message);
     } finally {
       setModeratingCommentId(null);

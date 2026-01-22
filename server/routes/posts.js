@@ -18,14 +18,13 @@ const getFullImageUrl = (imagePath) => {
 // GET all published posts with pagination (OFFSET + CURSOR)
 router.get("/", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const cursor = req.query.cursor || null;
 
     let query;
-    let params;
+    let params = [];
 
     if (cursor) {
-      // Cursor-based (FAST, index-friendly)
       query = `
         SELECT 
           p.*, 
@@ -45,12 +44,11 @@ router.get("/", async (req, res) => {
         WHERE p.status = 'published'
         AND p.published_at < ?
         ORDER BY p.published_at DESC
-        LIMIT ?
+        LIMIT ${limit + 1}
       `;
-      params = [cursor, limit + 1];
+      params = [cursor];
     } else {
-      // Offset fallback (legacy)
-      const page = parseInt(req.query.page) || 1;
+      const page = Math.max(parseInt(req.query.page) || 1, 1);
       const offset = (page - 1) * limit;
 
       query = `
@@ -71,9 +69,8 @@ router.get("/", async (req, res) => {
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE p.status = 'published'
         ORDER BY p.published_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
-      params = [limit, offset];
     }
 
     const [rows] = await pool.execute(query, params);
@@ -81,48 +78,43 @@ router.get("/", async (req, res) => {
     const hasNext = rows.length > limit;
     const posts = hasNext ? rows.slice(0, limit) : rows;
 
-    const postsWithFullUrls = posts.map(post => ({
-      ...post,
-      featured_image: getFullImageUrl(post.featured_image),
-      tags: typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || []
-    }));
-
     res.json({
-      posts: postsWithFullUrls,
+      posts,
+      pagination: {
+        hasNext,
+      },
       nextCursor: hasNext ? posts[posts.length - 1].published_at : null
     });
 
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("❌ Error fetching posts:", error);
-    }
+    process.env.NODE_ENV === 'development' &&
+    console.error("❌ Error fetching posts:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 // GET posts by category (OFFSET + CURSOR) WITH SEO FIELDS
 router.get("/category/:categorySlug", async (req, res) => {
   try {
     const limit = 10;
     const cursor = req.query.cursor || null;
-
+    
     const [categoryCheck] = await pool.execute(
       `SELECT id, name, slug FROM categories WHERE slug = ?`,
       [req.params.categorySlug]
     );
-
+    
     if (!categoryCheck.length) {
       return res.status(404).json({ error: "Category not found" });
     }
-
+    
     const categoryId = categoryCheck[0].id;
-
+    
     let query;
     let params;
-
+    
     if (cursor) {
-      // Cursor-based pagination
+      // Cursor-based pagination - use string interpolation for LIMIT
       query = `
         SELECT 
           p.*,
@@ -143,14 +135,14 @@ router.get("/category/:categorySlug", async (req, res) => {
         AND p.status = 'published'
         AND p.published_at < ?
         ORDER BY p.published_at DESC
-        LIMIT ?
+        LIMIT ${limit + 1}
       `;
-      params = [categoryId, cursor, limit + 1 ];
+      params = [categoryId, cursor];
     } else {
-      // Offset-based pagination (for page numbers)
+      // Offset-based pagination - use string interpolation for LIMIT and OFFSET
       const page = Number(req.query.page) || 1;
       const offset = (page - 1) * limit;
-
+      
       query = `
         SELECT 
           p.*,
@@ -170,16 +162,16 @@ router.get("/category/:categorySlug", async (req, res) => {
         WHERE p.category_id = ?
         AND p.status = 'published'
         ORDER BY p.published_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
-      params = [categoryId, limit, offset];
+      params = [categoryId];
     }
-
+    
     const [rows] = await pool.execute(query, params);
-
+    
     const hasNext = cursor ? rows.length > limit : false;
     const posts = hasNext ? rows.slice(0, limit) : rows;
-
+    
     // Also get total count for offset pagination
     let total = 0;
     if (!cursor) {
@@ -191,7 +183,7 @@ router.get("/category/:categorySlug", async (req, res) => {
       );
       total = countResult[0].total;
     }
-
+    
     const response = {
       posts: posts.map(p => ({
         ...p,
@@ -200,7 +192,7 @@ router.get("/category/:categorySlug", async (req, res) => {
       })),
       category: categoryCheck[0]
     };
-
+    
     // Add pagination metadata
     if (cursor) {
       // Cursor pagination response
@@ -212,14 +204,13 @@ router.get("/category/:categorySlug", async (req, res) => {
       response.currentPage = page;
       response.totalPages = Math.ceil(total / limit);
     }
-
+    
     res.json(response);
-
+    
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("❌ Error fetching category posts:", error);
-    }
-    res.status(500).json({ 
+    process.env.NODE_ENV === 'development' &&
+    console.error("❌ Error fetching category posts:", error);
+    res.status(500).json({
       error: "Internal server error",
       details: error.message 
     });

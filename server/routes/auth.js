@@ -59,6 +59,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       }
     });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Login error:', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -79,6 +80,7 @@ router.get('/me', authenticateToken, async (req, res) => {
 
     res.json({ user: users[0] });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

@@ -80,7 +80,11 @@ const CommentSection = ({ postId }) => {
       setComments([]);
     }
   } catch (err) {
-    console.error('Error fetching comments');
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ Error fetching comments:', err);
+      console.error('Response:', err?.response?.data);
+      console.error('Status:', err?.response?.status);
+    }
   } finally {
     setLoading(false);
   }
@@ -107,7 +111,7 @@ const CommentSection = ({ postId }) => {
         } else {
           rootComments.push(comment);
         }
-      } else {t
+      } else {
         rootComments.push(comment);
       }
     });

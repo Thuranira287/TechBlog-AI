@@ -46,6 +46,7 @@ router.get('/dashboard', async (req, res) => {
       }
     });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching dashboard data:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -89,6 +90,7 @@ router.get('/posts', async (req, res) => {
       }
     });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching posts:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -117,6 +119,7 @@ router.get('/posts/:id', async (req, res) => {
     
     res.json(post);
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching post:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -145,6 +148,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
 
     // Validate required fields
     if (!title || !slug || !content || !category_id) {
+      process.env.NODE_ENV !== 'production' &&
       console.error('❌ Missing required fields');
       return res.status(400).json({
         error: 'Missing required fields',
@@ -158,6 +162,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     const author_id = authors[0]?.id;
     
     if (!author_id) {
+      process.env.NODE_ENV !== 'production' &&
       console.error('❌ No author found in database');
       return res.status(500).json({ error: 'No author configured in system' });
     }
@@ -166,11 +171,14 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     let featured_image = null;
     if (req.file) {
       try {
+        process.env.NODE_ENV !== 'production' &&
         console.log('📸 Uploading featured image...');
         const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
         featured_image = uploadResult.secure_url;
+        process.env.NODE_ENV !== 'production' &&
         console.log('✅ Image uploaded:', featured_image);
       } catch (uploadError) {
+        process.env.NODE_ENV !== 'production' &&
         console.error('❌ Image upload failed:', uploadError);
       }
     }
@@ -185,6 +193,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
           parsedTags = tags.split(',').map(t => t.trim()).filter(t => t);
         }
       } catch (e) {
+        process.env.NODE_ENV !== 'production' &&
         console.warn('⚠️ Tag parsing failed, using as is:', e.message);
         parsedTags = [tags];
       }
@@ -214,9 +223,10 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       status: status || 'draft',
       view_count: 0
     };
-
+    process.env.NODE_ENV !== 'production' && 
     console.log('🛠️ Prepared values for insertion:');
     Object.entries(safeValues).forEach(([key, value]) => {
+      process.env.NODE_ENV !== 'production' &&
       console.log(`  ${key}: ${value === null ? 'NULL' : typeof value === 'string' ? `"${value.substring(0, 30)}..."` : value}`);
     });
 
@@ -255,7 +265,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       safeValues.view_count,
       safeValues.status  // For published_at conditional
     ]);
-
+    process.env.NODE_ENV !== 'production' &&
     console.log(`✅ Post created with ID: ${result.insertId}`);
 
     // Fetch the created post with joins
@@ -287,7 +297,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       // Fire-and-forget (no await → no slowdown)
       submitSitemapToSearchEngines().catch(() => {});
       submitUrlToIndexNow(postUrl).catch(() => {});
-
+      process.env.NODE_ENV !== 'production' &&
       console.log("SEO ping sent for new post:", postUrl);
     }
 
@@ -298,6 +308,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     });
 
   } catch (error) {
+    process.env.NODE_ENV !== 'production' &&
     console.error('❌ Error creating post:', error);
     
     // Enhanced error handling
@@ -339,7 +350,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       fb_title, fb_description, twitter_image, fb_image,
       tags, status, existing_featured_image 
     } = req.body;
-
+    process.env.NODE_ENV !== 'production' &&
     console.log('🔄 Updating post ID:', req.params.id);
 
     // Get existing post first
@@ -444,7 +455,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
 
       submitSitemapToSearchEngines().catch(() => {});
       submitUrlToIndexNow(postUrl).catch(() => {});
-
+      process.env.NODE_ENV !== 'production' &&
       console.log("SEO ping sent for published update:", postUrl);
     }
 
@@ -457,6 +468,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       }
     });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error updating post:', error);
     res.status(500).json({ 
       error: 'Failed to update post',
@@ -471,6 +483,7 @@ router.delete('/posts/:id', async (req, res) => {
     await pool.execute('DELETE FROM posts WHERE id = ?', [req.params.id]);
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error deleting post:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -482,6 +495,7 @@ router.get('/categories', async (req, res) => {
     const [categories] = await pool.execute('SELECT * FROM categories ORDER BY name');
     res.json(categories);
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -493,6 +507,7 @@ router.post('/categories', async (req, res) => {
     const [result] = await pool.execute('INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)', [name, slug, description]);
     res.status(201).json({ id: result.insertId, name, slug, description });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error creating category:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -510,6 +525,7 @@ router.get('/comments', async (req, res) => {
     
     res.json(comments);
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching admin comments:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -535,6 +551,7 @@ router.put('/comments/:id', async (req, res) => {
     
     res.json({ message: 'Comment updated successfully' });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error updating comment:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -545,6 +562,7 @@ router.delete('/comments/:id', async (req, res) => {
     await pool.execute('DELETE FROM comments WHERE id = ?', [req.params.id]);
     res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error deleting comment:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

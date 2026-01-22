@@ -59,6 +59,7 @@ const getUpdatedComment = async (commentId) => {
 router.get('/post/:postId', async (req, res) => {
   try {
     const { postId } = req.params;
+    process.env.NODE_ENV === 'development' &&
     console.log(`📋 Fetching comments for post ${postId}`);
     
     const [comments] = await pool.execute(
@@ -73,10 +74,11 @@ router.get('/post/:postId', async (req, res) => {
       [postId]
     );
 
-    console.log(`✅ Found ${comments.length} comments for post ${postId}`);
+    process.env.NODE_ENV === 'development' &&
+    console.log(`Found ${comments.length} comments for post ${postId}`);
     res.json(comments);
   } catch (err) {
-    console.error('❌ Error fetching comments:', err);
+    process.env.NODE_ENV === 'development' && console.error('❌ Error fetching comments:', err);
     res.status(500).json({ 
       error: 'Failed to fetch comments',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -425,7 +427,7 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
     
     res.json(stats[0]);
   } catch (err) {
-    console.error('❌ Error fetching comment stats:', err);
+    process.env.NODE_ENV === 'development' && console.error('❌ Error fetching comment stats:', err);
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });

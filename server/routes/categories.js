@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
     `);
     res.json(categories);
   } catch (error) {
+    process.env.NODE_ENV === 'development' &&
     console.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
