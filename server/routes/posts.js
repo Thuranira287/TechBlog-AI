@@ -93,7 +93,9 @@ router.get("/", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error fetching posts:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("❌ Error fetching posts:", error);
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -143,7 +145,7 @@ router.get("/category/:categorySlug", async (req, res) => {
         ORDER BY p.published_at DESC
         LIMIT ?
       `;
-      params = [categoryId, cursor, (limit + 1).toString()]; // Convert to string
+      params = [categoryId, cursor, limit + 1 ];
     } else {
       // Offset-based pagination (for page numbers)
       const page = Number(req.query.page) || 1;
@@ -170,7 +172,7 @@ router.get("/category/:categorySlug", async (req, res) => {
         ORDER BY p.published_at DESC
         LIMIT ? OFFSET ?
       `;
-      params = [categoryId, limit.toString(), offset.toString()]; // Convert to strings
+      params = [categoryId, limit, offset];
     }
 
     const [rows] = await pool.execute(query, params);
@@ -214,7 +216,9 @@ router.get("/category/:categorySlug", async (req, res) => {
     res.json(response);
 
   } catch (error) {
-    console.error("❌ Error fetching category posts:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("❌ Error fetching category posts:", error);
+    }
     res.status(500).json({ 
       error: "Internal server error",
       details: error.message 
@@ -225,8 +229,9 @@ router.get("/category/:categorySlug", async (req, res) => {
 // GET post metadata ONLY (lightweight for traditional search engines)
 router.get('/:slug/meta', async (req, res) => {
   try {
-    console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
-    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
+    }
     const query = `
       SELECT 
         p.id,
@@ -259,11 +264,13 @@ router.get('/:slug/meta', async (req, res) => {
     const [rows] = await pool.execute(query, [req.params.slug]);
     
     if (!rows || rows.length === 0) {
+      process.env.NODE_ENV === 'development' &&
       console.log(`❌ [META] Post not found for meta: ${req.params.slug}`);
       return res.status(404).json({ error: 'Post not found' });
     }
     
     const post = rows[0];
+    process.env.NODE_ENV === 'development' &&
     console.log(`✅ [META] Meta found for: ${post.title}`);
     
     // Parse tags
@@ -293,7 +300,9 @@ router.get('/:slug/meta', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ [META] Meta endpoint error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ [META] Meta endpoint error:', error);
+    }
     res.status(500).json({ 
       error: 'Internal server error', 
       details: error.message 
@@ -305,8 +314,9 @@ router.get('/:slug/meta', async (req, res) => {
 router.get('/:slug/full', async (req, res) => {
   try {
     const userAgent = req.headers['user-agent'] || '';
-    console.log(`🤖 [FULL] Fetching full content for: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
-    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 [FULL] Fetching full content for post slug: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
+    }
     const query = `
       SELECT 
         p.id,
@@ -340,6 +350,7 @@ router.get('/:slug/full', async (req, res) => {
     const [rows] = await pool.execute(query, [req.params.slug]);
     
     if (!rows || rows.length === 0) {
+      process.env.NODE_ENV === 'development' &&
       console.log(`❌ [FULL] Post not found: ${req.params.slug}`);
       return res.status(404).json({ error: 'Post not found' });
     }
@@ -351,9 +362,11 @@ router.get('/:slug/full', async (req, res) => {
     const isAICrawler = aiCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
     
     if (isAICrawler) {
+      process.env.NODE_ENV === 'development' &&
       console.log(`🤖 [AI CRAWLER] Full content accessed by: ${userAgent.substring(0, 50)}`);
     }
-    
+
+    process.env.NODE_ENV === 'development' &&
     console.log(`✅ [FULL] Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
     
     // Parse tags
@@ -384,7 +397,9 @@ router.get('/:slug/full', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ [FULL] Full content endpoint error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ [FULL] Full content endpoint error:', error);
+    }
     res.status(500).json({ 
       error: 'Internal server error', 
       details: error.message 
@@ -395,6 +410,7 @@ router.get('/:slug/full', async (req, res) => {
 // GET single post by slug
 router.get("/:slug", async (req, res) => {
   try {
+    process.env.NODE_ENV === 'development' &&
     console.log(`🔍 Fetching post by slug: "${req.params.slug}"`);
     const [posts] = await pool.execute(
       `SELECT 
@@ -419,11 +435,13 @@ router.get("/:slug", async (req, res) => {
     );
 
     if (posts.length === 0) {
+      process.env.NODE_ENV === 'development' &&
       console.log(`❌ Post not found: ${req.params.slug}`);
       return res.status(404).json({ error: "Post not found" });
     }
 
     let post = posts[0];
+    process.env.NODE_ENV === 'development' &&
     console.log(`✅ Post found: ${post.title}`);
 
     // Parse tags to array
@@ -497,7 +515,7 @@ router.get("/:slug", async (req, res) => {
       featured_image: getFullImageUrl(relatedPost.featured_image),
       tags: typeof relatedPost.tags === 'string' ? JSON.parse(relatedPost.tags) : relatedPost.tags || []
     }));
-
+    process.env.NODE_ENV === 'development' &&
     console.log(`📄 Found ${relatedPosts.length} related posts`);
 
     res.json({ 
@@ -505,7 +523,9 @@ router.get("/:slug", async (req, res) => {
       related_posts: relatedPostsWithFullUrls 
     });
   } catch (error) {
-    console.error("❌ Error fetching post:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("❌ Error fetching post:", error);
+    }
     res.status(500).json({ 
       error: "Internal server error",
       details: error.message 
