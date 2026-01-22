@@ -64,6 +64,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+
 // CORS handling for images
 app.use('/uploads', (req, res, next) => {
   // CORS headers specifically for images
@@ -95,6 +96,8 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/jobs', jobsRouter);
+app.use('/api/admin/jobs', jobsRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -350,8 +353,32 @@ app.get('/api/logos', async (req, res) => {
     ]);
   }
 });
-app.use('/api/jobs', jobsRouter);
-app.use('/api/admin/jobs', jobsRouter);
+
+//all /api/* routes
+app.get('/api', (req, res) => {
+  const endpoints = {
+    posts: '/api/posts',
+    categories: '/api/categories',
+    comments: '/api/comments',
+    auth: '/api/auth',
+    health: '/api/health',
+    stats: '/api/stats',
+    jobs: '/api/jobs',
+    mediaKit: '/api/media-kit',
+    logos: '/api/logos'
+  };
+  if (process.env.NODE_ENV === 'development') {
+    endpoints.admin = '/api/admin';
+  }
+  res.json({
+    message: 'AI Tech Blogs API',
+    version: '1.0.0',
+    documentation: 'https://github.com/Thuranira287/aitechblogs-api',
+    endpoints: endpoints,
+    status: 'operational',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // 404 handler
 app.use((req, res) => {
