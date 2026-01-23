@@ -112,28 +112,28 @@ app.get('/api/health', (req, res) => {
 app.get('/sitemap.xml', async (req, res) => {
   try {
     const [posts] = await pool.execute(
-      'SELECT slug, updated_at FROM posts WHERE status = "published" ORDER BY published_at DESC'
+      `SELECT slug, updated_at FROM posts WHERE status = 'published' ORDER BY published_at DESC`
     );
     
     const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
     
     let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>`;
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+      <loc>${baseUrl}</loc>
+      <changefreq>daily</changefreq>
+      <priority>1.0</priority>
+    </url>`;
     
     posts.forEach(post => {
-      sitemap += `
-  <url>
-    <loc>${baseUrl}/post/${post.slug}</loc>
-    <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`;
-    });
+        sitemap += `
+    <url>
+      <loc>${baseUrl}/post/${post.slug}</loc>
+      <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.8</priority>
+    </url>`;
+      });
     
     sitemap += '\n</urlset>';
     

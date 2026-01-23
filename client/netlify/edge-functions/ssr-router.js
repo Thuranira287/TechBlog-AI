@@ -335,7 +335,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
         "@type": "ListItem",
         "position": 2,
         "name": "${category}",
-        "item": "https://aitechblogs.netlify.app/category/${category.toLowerCase()}"
+        "item": "https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"
       },
       {
         "@type": "ListItem",
@@ -348,7 +348,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
   </script>
   
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   
   <style>
     body {
