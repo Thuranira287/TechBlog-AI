@@ -8,7 +8,7 @@ export default function CSPMeta() {
       meta.httpEquiv = 'Content-Security-Policy';
       meta.content = `
         default-src 'self';
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://pagead2.googlesyndication.com https://ep2.adtrafficquality.google;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://pagead2.googlesyndication.com https://ep2.adtrafficquality.google;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: https:;

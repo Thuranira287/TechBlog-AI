@@ -3,8 +3,6 @@ export default async (request, context) => {
     const url = new URL(request.url);
     const userAgent = request.headers.get("user-agent") || "";
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
-   
-    // Early return
     if (!slug) {
       return context.rewrite("/index.html");
     }
@@ -50,7 +48,7 @@ export default async (request, context) => {
             "Vary": "User-Agent",
             "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
             "Link": `<${postUrl}>; rel="canonical"`,
-            "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' data: ; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com https://www.google-analytics.com;",
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -74,7 +72,7 @@ export default async (request, context) => {
           "Vary": "User-Agent",
           "X-Rendered-By": "Edge-SSR-Human",
           "Link": `<${postUrl}>; rel="canonical"`,
-          "Content-Security-Policy": "default-src 'self'; script-src 'self' ; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' ; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com https://www.google-analytics.com;",
           "X-Content-Type-Options": "nosniff",
           "X-Frame-Options": "DENY",
           "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -498,7 +496,7 @@ function generateHumanShell({ slug, post, assets }) {
   const author = escapeHtml(post.author || "TechBlog AI Team");
   const publishDate = post.created_at || post.published_at || new Date().toISOString();
   const modifiedDate = post.updated_at || publishDate;
-  const category = escapeHtml(post.category || "Technology");
+  const category = escapeHtml(post.category );
   const tags = Array.isArray(post.tags) ? post.tags : [];
   const readingTime = Math.ceil((post.word_count || 1000) / 200);
   const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
@@ -523,7 +521,7 @@ function generateHumanShell({ slug, post, assets }) {
   <meta name="theme-color" content="#0f172a">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   
-  <title>${title} | TechBlog AI</title>
+  <title>${title}</title>
   <meta name="description" content="${desc}" />
   <meta name="author" content="${author}" />
   <meta name="keywords" content="${tags.map(t => escapeHtml(t)).join(', ')}" />
