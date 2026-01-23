@@ -23,12 +23,14 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     manifest: true,
+    cssMinify: true,
 
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          utils: ['axios', 'lucide-react']
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['framer-motion', 'lucide-react'],
+          'utils-vendor': ['axios', 'date-fns']
         }
       }
     }
