@@ -2,17 +2,22 @@
 <html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    <meta name="theme-color" content="#0f172a" />
-    <!--Google Search console SEO-->
-    <meta name="google-site-verification" content="ywxxXNhDUVU2qs0RdOkmXTMmrEubdVxYoUbUIGiq-M4" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     
     <!-- Primary Meta Tags -->
+    <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
+    <meta name="description" content="Master AI and web development with practical tutorials, step-by-step guides, and expert tech analysis. Build real projects today." />
     <meta name="keywords" content="AI tutorials, web development, JavaScript, React, Python, machine learning, programming guides, tech news, cybersecurity" />
     <meta name="author" content="TechBlog AI Team" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" content="#0f172a" />
+    
+    <!-- Google Search Console Verification -->
+    <meta name="google-site-verification" content="ywxxXNhDUVU2qs0RdOkmXTMmrEubdVxYoUbUIGiq-M4" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://aitechblogs.netlify.app/" />
     
     <!-- Open Graph / Facebook -->
     <meta property="fb:app_id" content="1829393364607774" />
@@ -20,15 +25,14 @@
     <meta property="og:url" content="https://aitechblogs.netlify.app/" />
     <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
     <meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis. Build real projects today." />
-    <!-- Screenshot as OG image -->
     <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="TechBlog AI Screenshot - Your trusted source for the latest technology news, AI insights, web development tutorials, and industry trends." />    
+    <meta property="og:image:alt" content="TechBlog AI - Your trusted source for the latest technology news, AI insights, web development tutorials, and industry trends." />
     <meta property="og:site_name" content="TechBlog AI" />
     <meta property="og:locale" content="en_US" />
     
-    <!--Twitter Card tags-->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="TechBlog AI - Practical AI & Web Development Guides" />
     <meta name="twitter:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis." />
@@ -36,29 +40,37 @@
     <meta name="twitter:site" content="@AiTechBlogs" />
     <meta name="twitter:creator" content="@AiTechBlogs" />
     
-    <!-- Canonical URL 
-    <link rel="canonical" href="https://aitechblogs.netlify.app/" />
-    -->
-    <!-- Favicon / Shortcut icons -->
+    <!-- Icons and Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-
-    <!-- Apple / iOS -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-
-    <!-- Android / PWA -->
-    <link rel="manifest" href="/site.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
-
-    <!-- Preconnect & Preload -->
-    <link rel="preconnect" href="https://techblogai-backend.onrender.com" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     
-    <!-- Schema.org structured data -->
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- DNS-->
+    <link rel="dns-prefetch" href="https://techblogai-backend.onrender.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://techblogai-backend.onrender.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    
+    <!-- Preload Resources -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" />
+    <link rel="preload" href="/src/index.css" as="style" />
+    <link rel="preload" href="/src/main.jsx" as="script" />
+    <link rel="preload" href="/og-image.png" as="image" />
+    
+    <!-- Schema.org Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -68,16 +80,21 @@
           "@id": "https://aitechblogs.netlify.app/#website",
           "name": "TechBlog AI",
           "url": "https://aitechblogs.netlify.app/",
-          "description": "Practical AI and web development tutorials, guides, and tech analysis",
+          "description": "Practical AI and web development tutorials, guides, and tech analysis. Build real projects with our step-by-step guides.",
           "publisher": {
             "@type": "Organization",
             "name": "TechBlog AI",
             "logo": {
               "@type": "ImageObject",
               "url": "https://aitechblogs.netlify.app/favicon.ico",
-              "width": 100,
-              "height": 100
-            }
+              "width": 112,
+              "height": 112
+            },
+            "sameAs": [
+              "https://twitter.com/AiTechBlogs",
+              "https://facebook.com/aitechblogs",
+              "https://linkedin.com/company/aitechblogs"
+            ]
           },
           "potentialAction": {
             "@type": "SearchAction",
@@ -86,91 +103,181 @@
           }
         },
         {
-          "@type": "WebPage",
-          "@id": "https://aitechblogs.netlify.app/jobs/#webpage",
-          "name": "Tech Jobs & Careers",
-          "url": "https://aitechblogs.netlify.app/jobs",
-          "description": "Find tech jobs, internships, and career opportunities at leading companies.",
-          "isPartOf": {
-            "@id": "https://aitechblogs.netlify.app/#website"
-          }
+          "@type": "BlogPosting",
+          "@id": "https://aitechblogs.netlify.app/",
+          "name": "TechBlog AI",
+          "description": "Latest AI and web development articles, tutorials, and guides",
+          "publisher": { "@id": "https://aitechblogs.netlify.app/#website" },
+          "inLanguage": "en-US"
         }
       ]
     }
     </script>
     
-    <!-- AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922"
-     crossorigin="anonymous">
-    </script>
-    
-    <!-- CSS loading screen -->
-    <style>
-      .loading { 
-        position: fixed; top: 0; left: 0; 
-        width: 100%; height: 100%; 
-        background: #ffffff;
-        display: flex; align-items: center; 
-        justify-content: center; z-index: 9999; 
+    <!-- CSS -->
+    <style id="critical-css">
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI', Arial, sans-serif;
+        line-height: 1.5; color: #1f2937; background: #ffffff;
+        min-height: 100vh; overflow-x: hidden;
       }
+      
+      /* Loading screen styles */
+      .loading { 
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: #ffffff; z-index: 9999; display: flex;
+        align-items: center; justify-content: center;
+        transition: opacity 0.3s ease-out;
+      }
+      .loading.loading-hidden { opacity: 0; pointer-events: none; }
+      .loading-content { text-align: center; }
       .loading-spinner {
-        width: 60px; height: 60px;
-        border: 4px solid rgba(59,130,246,0.1);
-        border-top-color: #3b82f6;
-        border-radius: 50%;
+        width: 60px; height: 60px; margin: 0 auto 20px;
+        border: 4px solid rgba(59, 130, 246, 0.1);
+        border-top-color: #3b82f6; border-radius: 50%;
         animation: spin 1s linear infinite;
       }
+      .loading-text { 
+        color: #4b5563; font-size: 1rem; font-weight: 500;
+        letter-spacing: 0.025em;
+      }
       @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-
-    <!-- Main CSS -->
-    <link rel="stylesheet" href="/src/index.css">
-
-    
-    <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
-  </head>
-  <body>
-    <!-- Loading screen  -->
-    <div class="loading" id="loading-screen">
-      <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <p class="loading-text">Loading TechBlog AI...</p>
-      </div>
-    </div>
-    
-    <div id="root"></div>
-    
-    <!-- Preload main script -->
-    <script type="module" src="/src/main.jsx" defer></script>
-    
-    <!-- Script to hide loading screen after timeout -->
-    <script>
-      setTimeout(function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-          loadingScreen.classList.add('loading-hidden');
-          setTimeout(() => loadingScreen.remove(), 300);
-        }
-      }, 3000);
       
-      // Hide loading screen when page is fully loaded
-      window.addEventListener('load', function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-          loadingScreen.classList.add('loading-hidden');
-          setTimeout(() => loadingScreen.remove(), 300);
-        }
-      });
-    </script>
+      /* Root container */
+      #root { min-height: 100vh; }
+      
+      /* Fallback font  */
+      @font-face {
+        font-family: 'Inter-fallback';
+        size-adjust: 107%;
+        ascent-override: 90%;
+        src: local('Arial');
+      }
+      
+      /* Print styles */
+      @media print {
+        .loading { display: none !important; }
+        * { background: transparent !important; color: #000 !important; }
+      }
+    </style>
     
-    <!-- Google tag (gtag.js) -->
+    <!-- Non-critical CSS -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" 
+          media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" />
+    </noscript>
+    
+    <!-- AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922"
+            crossorigin="anonymous"></script>
+    
+    <!-- Google Analytics  -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-L2JCRCT3F3"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
-      gtag('config', 'G-L2JCRCT3F3');
+      gtag('config', 'G-L2JCRCT3F3', { 
+        'transport_type': 'beacon',
+        'anonymize_ip': true
+      });
+      
+      // Send pageview
+      window.history.pushState = new Proxy(window.history.pushState, {
+        apply: (target, thisArg, argArray) => {
+          const url = argArray[2];
+          if (url) {
+            gtag('config', 'G-L2JCRCT3F3', {
+              'page_path': url,
+              'transport_type': 'beacon'
+            });
+          }
+          return target.apply(thisArg, argArray);
+        }
+      });
+    </script>
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                  script-src 'self' https://www.googletagmanager.com https://pagead2.googlesyndication.com 'unsafe-inline'; 
+                  style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; 
+                  img-src 'self' data: https:; 
+                  font-src 'self' https://fonts.gstatic.com; 
+                  connect-src 'self' https://techblogai-backend.onrender.com https://www.google-analytics.com; 
+                  frame-src https://googleads.g.doubleclick.net;" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+  </head>
+  <body>
+    <!-- Loading screen -->
+    <div class="loading" id="loading-screen" aria-live="polite" aria-busy="true">
+      <div class="loading-content">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p class="loading-text">Loading TechBlog AI...</p>
+      </div>
+    </div>
+    
+    <!-- Main app container -->
+    <div id="root" role="main"></div>
+    
+    <!-- Main application script -->
+    <script type="module" src="/src/main.jsx" defer></script>
+    
+    <!-- App initialization script -->
+    <script>
+      (function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const maxLoadingTime = 5000; // 5 seconds max
+        
+        // Function to hide loading screen
+        function hideLoadingScreen() {
+          if (loadingScreen && !loadingScreen.classList.contains('loading-hidden')) {
+            loadingScreen.classList.add('loading-hidden');
+            setTimeout(() => {
+              loadingScreen.style.display = 'none';
+              loadingScreen.removeAttribute('aria-busy');
+            }, 300);
+          }
+        }
+        
+        // Hide when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+          const rootContent = document.getElementById('root').innerHTML.trim();
+          if (rootContent.length > 0) {
+            hideLoadingScreen();
+          }
+        });
+        
+        // Hide when window is fully loaded
+        window.addEventListener('load', hideLoadingScreen);
+        setTimeout(hideLoadingScreen, maxLoadingTime);
+        window.addEventListener('app-loaded', hideLoadingScreen);
+        
+        // Performance monitoring
+        if ('performance' in window) {
+          window.addEventListener('load', () => {
+            const perfEntries = performance.getEntriesByType('navigation');
+            if (perfEntries.length > 0) {
+              const navTiming = perfEntries[0];
+              console.log('Page loaded in:', navTiming.loadEventEnd - navTiming.startTime, 'ms');
+            }
+          });
+        }
+      })();
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(error => {
+            console.log('ServiceWorker registration failed:', error);
+          });
+        });
+      }
     </script>
   </body>
 </html>
