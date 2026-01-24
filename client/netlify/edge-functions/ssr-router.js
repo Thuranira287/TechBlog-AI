@@ -1,89 +1,25 @@
+
 export default async (request, context) => {
-  const startTime = Date.now();
-  const requestId = generateRequestId();
-  const url = new URL(request.url);
-  
-  // ========== HEALTH CHECK ENDPOINT ==========
-  if (url.pathname === '/_health') {
-    return new Response(JSON.stringify({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      version: '2.0.0'
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Request-ID': requestId
-      }
-    });
-  }
-  
-  // ========== REQUEST VALIDATION ==========
-  if (!isValidPath(url.pathname)) {
-    logRequest(requestId, 'invalid_path', 400, startTime);
-    return new Response('Invalid request path', {
-      status: 400,
-      headers: {
-        'Content-Type': 'text/plain',
-        'X-Request-ID': requestId
-      }
-    });
-  }
-  
-  // ========== RATE LIMITING ==========
-  const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown';
-  const rateLimitKey = `rate_limit:${ip}`;
-  
-  if (await isRateLimited(rateLimitKey)) {
-    logRequest(requestId, 'rate_limited', 429, startTime);
-    return new Response('Too many requests', {
-      status: 429,
-      headers: {
-        'Content-Type': 'text/plain',
-        'Retry-After': '60',
-        'X-Request-ID': requestId
-      }
-    });
-  }
-  
-  // ========== REQUEST TIMEOUT HANDLING ==========
-  const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => {
-    timeoutController.abort();
-  }, 8000);
-  
   try {
+    const url = new URL(request.url);
     const userAgent = request.headers.get("user-agent") || "";
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
-    
-    // ========== SLUG VALIDATION ==========
-    if (!isValidSlug(slug)) {
-      logRequest(requestId, 'invalid_slug', 400, startTime);
-      return new Response('Invalid article slug', {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/plain',
-          'X-Request-ID': requestId
-        }
-      });
-    }
-    
+   
     const isBot = detectBot(userAgent);
     const fullContentCrawlers = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot'];
     const isFullContentBot = fullContentCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
-    
-    // ========== MONITORING LOG ==========
-    console.log(`[${requestId}] ${url.pathname}, IP:${ip}, Bot:${isBot}, Full:${isFullContentBot}`);
-    
+   
+    console.log(`[Edge] ${url.pathname}, Bot:${isBot}, Full:${isFullContentBot}`);
+
     if (isBot) {
       try {
-        const post = await fetchPostMeta(slug, isFullContentBot, timeoutController.signal);
-        
+        const post = await fetchPostMeta(slug, isFullContentBot);
+       
         if (post) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
           const html = generateBotHtml(post, postUrl, isFullContentBot, isFullContentBot);
-          
-          const response = new Response(html, {
+         
+          return new Response(html, {
             status: 200,
             headers: {
               "Content-Type": "text/html; charset=utf-8",
@@ -91,109 +27,31 @@ export default async (request, context) => {
               "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
               "Vary": "User-Agent",
               "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
-              "Link": `<${postUrl}>; rel="canonical"`,
-              // ========== SECURITY HEADERS ==========
-              "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
-              "X-Content-Type-Options": "nosniff",
-              "X-Frame-Options": "DENY",
-              "Referrer-Policy": "strict-origin-when-cross-origin",
-              "Permissions-Policy": "interest-cohort=()",
-              "X-Request-ID": requestId
+              "Link": `<${postUrl}>; rel="canonical"`
             }
           });
-          
-          // ========== ASYNC LOGGING ==========
-          context.waitUntil(logRequestAsync(requestId, 'success', 200, startTime, {
-            path: url.pathname,
-            bot: isBot,
-            fullContent: isFullContentBot,
-            postFound: true
-          }));
-          
-          return response;
         }
-        
-        const response = new Response(generateFallbackHtml(slug), {
+       
+        return new Response(generateFallbackHtml(slug), {
           status: 404,
           headers: {
             "Content-Type": "text/html; charset=utf-8",
             "X-Robots-Tag": "noindex, follow",
-            "Vary": "User-Agent",
-            "Content-Security-Policy": "default-src 'self'",
-            "X-Content-Type-Options": "nosniff",
-            "X-Request-ID": requestId
+            "Vary": "User-Agent"
           }
         });
-        
-        context.waitUntil(logRequestAsync(requestId, 'post_not_found', 404, startTime, {
-          path: url.pathname,
-          slug: slug
-        }));
-        
-        return response;
       } catch (error) {
-        context.waitUntil(logRequestAsync(requestId, 'fetch_error', 500, startTime, {
-          path: url.pathname,
-          error: error.message
-        }));
-        
-        console.error(`[${requestId}] Error:`, error);
+        console.error("[Edge] Error:", error);
         return context.rewrite("/index.html");
       }
     }
-    
-    // Human user - serve SPA shell
-    context.waitUntil(logRequestAsync(requestId, 'human_user', 200, startTime, {
-      path: url.pathname,
-      userAgent: userAgent.substring(0, 100)
-    }));
-    
+   
     return context.rewrite("/index.html");
   } catch (error) {
-    if (error.name === 'AbortError') {
-      context.waitUntil(logRequestAsync(requestId, 'timeout', 504, startTime, {
-        path: url.pathname,
-        timeout: 8000
-      }));
-      
-      return new Response('Gateway Timeout', {
-        status: 504,
-        headers: {
-          'Content-Type': 'text/plain',
-          'Retry-After': '10',
-          'X-Request-ID': requestId
-        }
-      });
-    }
-    
-    context.waitUntil(logRequestAsync(requestId, 'critical_error', 500, startTime, {
-      path: url.pathname,
-      error: error.message
-    }));
-    
-    console.error(`[${requestId}] Critical error:`, error);
+    console.error("[Edge] Critical error:", error);
     return context.rewrite("/index.html");
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
-
-// ========== HELPER FUNCTIONS ==========
-
-function generateRequestId() {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-function isValidPath(path) {
-  // Only allow /post/* paths and health check
-  return path.startsWith('/post/') || path === '/_health';
-}
-
-function isValidSlug(slug) {
-  // Slug validation
-  return /^[a-zA-Z0-9-_]{1,200}$/.test(slug);
-}
-
 
 function detectBot(userAgent = "") {
   const bots = ['googlebot', 'google-inspectiontool', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
@@ -204,22 +62,21 @@ function detectBot(userAgent = "") {
   return bots.some(bot => userAgent.toLowerCase().includes(bot));
 }
 
-async function fetchPostMeta(slug, fullContent = false, signal) {
+async function fetchPostMeta(slug, fullContent = false) {
   if (!slug) return null;
   const endpoint = fullContent ? 'full' : 'meta';
   const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/${endpoint}`;
-  
+ 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
     const response = await fetch(url, {
       method: 'GET',
-      signal: signal || controller.signal,
+      signal: controller.signal,
       headers: {
-        "User-Agent": "TechBlogAI-EdgeSSR/2.0",
-        "Accept": "application/json",
-        "X-Request-Timeout": "5000"
+        "User-Agent": "TechBlogAI-EdgeSSR/1.0",
+        "Accept": "application/json"
       }
     });
     clearTimeout(timeout);
@@ -230,49 +87,6 @@ async function fetchPostMeta(slug, fullContent = false, signal) {
     return null;
   }
 }
-
-// ========== MONITORING INTEGRATION ==========
-
-function logRequest(requestId, type, status, startTime) {
-  const duration = Date.now() - startTime;
-  console.log(JSON.stringify({
-    requestId,
-    type,
-    status,
-    duration,
-    timestamp: new Date().toISOString()
-  }));
-
-}
-
-async function logRequestAsync(requestId, type, status, startTime, extra = {}) {
-  const duration = Date.now() - startTime;
-  const logData = {
-    requestId,
-    type,
-    status,
-    duration,
-    timestamp: new Date().toISOString(),
-    ...extra
-  };
-  
-  // Send to logging service
-  try {
-    // Send to analytics endpoint
-    await fetch('https://analytics.example.com/log', {
-      method: 'POST',
-      body: JSON.stringify(logData),
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    // Silent fail - don't break the request
-    console.warn('Logging failed:', error);
-  }
-  
-  return logData;
-}
-
-// ========== HELPER FUNCTIONS ==========
 
 function escapeHtml(text = "") {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -351,9 +165,9 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
   const tags = Array.isArray(post.tags) ? post.tags : [];
   const tagsString = tags.map(t => escapeHtml(t)).join(", ");
   const readingTime = Math.ceil((post.word_count || 1000) / 200);
-  
+ 
   const schemas = generateSchemas(post, postUrl);
-  
+ 
   let contentHtml = '';
   if (includeFullContent && post.content) {
     if (isAICrawler) {
