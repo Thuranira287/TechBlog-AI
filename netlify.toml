@@ -85,7 +85,7 @@
 # ================= SITEMAP & ROBOTS REDIRECTS =================
 [[redirects]]
   from = "/sitemap.xml"
-  to = "https://techblogai-backend.onrender.com/sitemap.xml"
+  to = "/.netlify/functions/sitemap"
   status = 200
   force = true
 
