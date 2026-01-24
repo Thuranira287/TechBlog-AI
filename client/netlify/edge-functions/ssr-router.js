@@ -1,462 +1,527 @@
-// This function intercepts requests to /post/* routes and determines
-// whether to serve server-rendered content (for bots) or the SPA shell (for humans)
-
 export default async (request, context) => {
+  const startTime = Date.now();
+  const requestId = generateRequestId();
+  const url = new URL(request.url);
+  
+  // ========== HEALTH CHECK ENDPOINT ==========
+  if (url.pathname === '/_health') {
+    return new Response(JSON.stringify({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '2.0.0'
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-ID': requestId
+      }
+    });
+  }
+  
+  // ========== REQUEST VALIDATION ==========
+  if (!isValidPath(url.pathname)) {
+    logRequest(requestId, 'invalid_path', 400, startTime);
+    return new Response('Invalid request path', {
+      status: 400,
+      headers: {
+        'Content-Type': 'text/plain',
+        'X-Request-ID': requestId
+      }
+    });
+  }
+  
+  // ========== RATE LIMITING ==========
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown';
+  const rateLimitKey = `rate_limit:${ip}`;
+  
+  if (await isRateLimited(rateLimitKey)) {
+    logRequest(requestId, 'rate_limited', 429, startTime);
+    return new Response('Too many requests', {
+      status: 429,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Retry-After': '60',
+        'X-Request-ID': requestId
+      }
+    });
+  }
+  
+  // ========== REQUEST TIMEOUT HANDLING ==========
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    timeoutController.abort();
+  }, 8000);
+  
   try {
-    const url = new URL(request.url);
     const userAgent = request.headers.get("user-agent") || "";
-    
-    // Extract slug from path
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
     
-    // Comprehensive bot detection
-    const isBot = detectBot(userAgent);
+    // ========== SLUG VALIDATION ==========
+    if (!isValidSlug(slug)) {
+      logRequest(requestId, 'invalid_slug', 400, startTime);
+      return new Response('Invalid article slug', {
+        status: 400,
+        headers: {
+          'Content-Type': 'text/plain',
+          'X-Request-ID': requestId
+        }
+      });
+    }
     
-    // Detect AI crawlers for full content
+    const isBot = detectBot(userAgent);
     const fullContentCrawlers = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot'];
     const isFullContentBot = fullContentCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
     
-    console.log(`[Edge Function] Path: ${url.pathname}, Bot: ${isBot}, FullContent: ${isFullContentBot}, UA: ${userAgent.substring(0, 50)}`);
-
+    // ========== MONITORING LOG ==========
+    console.log(`[${requestId}] ${url.pathname}, IP:${ip}, Bot:${isBot}, Full:${isFullContentBot}`);
+    
     if (isBot) {
-      // Bot detected - SSR HTML with meta tags
       try {
-        // Fetch post metadata or full content for AI crawlers
-        const post = await fetchPostMeta(slug, isFullContentBot);
+        const post = await fetchPostMeta(slug, isFullContentBot, timeoutController.signal);
         
         if (post) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
           const html = generateBotHtml(post, postUrl, isFullContentBot, isFullContentBot);
           
-          return new Response(html, {
+          const response = new Response(html, {
             status: 200,
             headers: {
               "Content-Type": "text/html; charset=utf-8",
               "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
-              "X-Robots-Tag": "index, follow",
+              "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
               "Vary": "User-Agent",
-              "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR"
+              "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
+              "Link": `<${postUrl}>; rel="canonical"`,
+              // ========== SECURITY HEADERS ==========
+              "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+              "X-Content-Type-Options": "nosniff",
+              "X-Frame-Options": "DENY",
+              "Referrer-Policy": "strict-origin-when-cross-origin",
+              "Permissions-Policy": "interest-cohort=()",
+              "X-Request-ID": requestId
             }
           });
-        } else {
-          // Post not found - return fallback HTML
-          const fallbackHtml = generateFallbackHtml(slug);
-          return new Response(fallbackHtml, {
-            status: 200,
-            headers: {
-              "Content-Type": "text/html; charset=utf-8",
-              "X-Robots-Tag": "index, follow",
-              "Vary": "User-Agent",
-              "X-Rendered-By": "Edge-SSR-Fallback"
-            }
-          });
+          
+          // ========== ASYNC LOGGING ==========
+          context.waitUntil(logRequestAsync(requestId, 'success', 200, startTime, {
+            path: url.pathname,
+            bot: isBot,
+            fullContent: isFullContentBot,
+            postFound: true
+          }));
+          
+          return response;
         }
+        
+        const response = new Response(generateFallbackHtml(slug), {
+          status: 404,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "X-Robots-Tag": "noindex, follow",
+            "Vary": "User-Agent",
+            "Content-Security-Policy": "default-src 'self'",
+            "X-Content-Type-Options": "nosniff",
+            "X-Request-ID": requestId
+          }
+        });
+        
+        context.waitUntil(logRequestAsync(requestId, 'post_not_found', 404, startTime, {
+          path: url.pathname,
+          slug: slug
+        }));
+        
+        return response;
       } catch (error) {
-        console.error("[Edge Function] Error fetching post meta:", error);
-        // On error, serve SPA shell
+        context.waitUntil(logRequestAsync(requestId, 'fetch_error', 500, startTime, {
+          path: url.pathname,
+          error: error.message
+        }));
+        
+        console.error(`[${requestId}] Error:`, error);
         return context.rewrite("/index.html");
       }
-    } else {
-      // Human user - serve SPA shell
-      return context.rewrite("/index.html");
     }
-  } catch (error) {
-    console.error("[Edge Function] Critical error:", error);
-    // Fallback to SPA on any error
+    
+    // Human user - serve SPA shell
+    context.waitUntil(logRequestAsync(requestId, 'human_user', 200, startTime, {
+      path: url.pathname,
+      userAgent: userAgent.substring(0, 100)
+    }));
+    
     return context.rewrite("/index.html");
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      context.waitUntil(logRequestAsync(requestId, 'timeout', 504, startTime, {
+        path: url.pathname,
+        timeout: 8000
+      }));
+      
+      return new Response('Gateway Timeout', {
+        status: 504,
+        headers: {
+          'Content-Type': 'text/plain',
+          'Retry-After': '10',
+          'X-Request-ID': requestId
+        }
+      });
+    }
+    
+    context.waitUntil(logRequestAsync(requestId, 'critical_error', 500, startTime, {
+      path: url.pathname,
+      error: error.message
+    }));
+    
+    console.error(`[${requestId}] Critical error:`, error);
+    return context.rewrite("/index.html");
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
-/* ================= HELPER FUNCTIONS ================= */
+// ========== HELPER FUNCTIONS ==========
 
-// Detects if the User-Agent is a bot/crawler
-function detectBot(userAgent = "") {
-  const bots = [
-    // Search Engines
-    'googlebot', 'google-inspectiontool', 'bingbot', 'slurp', 'duckduckbot', 
-    'yandexbot', 'baiduspider', 'sogou', 'exabot',
-    
-    // Social Media
-    'facebot', 'facebookexternalhit', 'facebookcatalog', 'twitterbot', 
-    'linkedinbot', 'whatsapp', 'telegram', 'slackbot', 'discordbot',
-    'skypeuripreview', 'slack-imgproxy', 'pinterestbot', 'redditbot',
-    
-    // AI Crawlers
-    'chatgpt-user', 'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai',
-    'perplexitybot', 'youbot', 'ccbot', 'omgili', 'bytespider',
-    'petalbot', 'meta-externalagent',
-    
-    // SEO Tools
-    'semrushbot', 'ahrefsbot', 'mj12bot', 'dotbot', 'rogerbot',
-    'screaming frog', 'seokicks', 'sitebulb', 'serpstatbot',
-    
-    // Other Bots
-    'applebot', 'amazonbot', 'uptimerobot', 'siteauditbot', 'dataforseo',
-    'lighthouse', 'chrome-lighthouse', 'speedcurve',
-    
-    // Generic patterns
-    'bot/', 'crawler', 'spider', 'scraper', 'checker', 'monitor', 
-    'fetch', 'scan', 'agent/', 'collector', 'gatherer', 'extractor',
-    'archive', 'wget', 'curl', 'python-requests', 'ruby', 'java/'
-  ];
-
-  const ua = userAgent.toLowerCase();
-  return bots.some(bot => ua.includes(bot));
+function generateRequestId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Fetches post metadata from backend API
-async function fetchPostMeta(slug, fullContent = false) {
-  if (!slug) return null;
+function isValidPath(path) {
+  // Only allow /post/* paths and health check
+  return path.startsWith('/post/') || path === '/_health';
+}
 
-  // Use different endpoint based on whether we need full content
+function isValidSlug(slug) {
+  // Slug validation
+  return /^[a-zA-Z0-9-_]{1,200}$/.test(slug);
+}
+
+
+function detectBot(userAgent = "") {
+  const bots = ['googlebot', 'google-inspectiontool', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
+    'facebot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp', 'telegram', 'slackbot', 'discordbot',
+    'pinterestbot', 'redditbot', 'chatgpt-user', 'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot',
+    'youbot', 'ccbot', 'petalbot', 'meta-externalagent', 'semrushbot', 'ahrefsbot', 'mj12bot', 'dotbot', 'applebot',
+    'amazonbot', 'lighthouse', 'bot/', 'crawler', 'spider', 'scraper', 'fetch'];
+  return bots.some(bot => userAgent.toLowerCase().includes(bot));
+}
+
+async function fetchPostMeta(slug, fullContent = false, signal) {
+  if (!slug) return null;
   const endpoint = fullContent ? 'full' : 'meta';
   const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/${endpoint}`;
   
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout for edge
+  const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
     const response = await fetch(url, {
       method: 'GET',
-      signal: controller.signal,
+      signal: signal || controller.signal,
       headers: {
-        "User-Agent": "TechBlogAI-EdgeSSR/1.0",
+        "User-Agent": "TechBlogAI-EdgeSSR/2.0",
         "Accept": "application/json",
-        "Cache-Control": "no-cache"
+        "X-Request-Timeout": "5000"
       }
     });
-
     clearTimeout(timeout);
-
-    if (!response.ok) {
-      console.error(`[Edge Function] API returned ${response.status} for slug: ${slug}`);
-      return null;
-    }
-
-    const data = await response.json();
-    return data;
+    return response.ok ? await response.json() : null;
   } catch (error) {
     clearTimeout(timeout);
-    console.error("[Edge Function] Fetch error:", error.message);
+    console.error("[Edge] Fetch error:", error.message);
     return null;
   }
 }
 
-// Escapes HTML special characters
-function escapeHtml(text = "") {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+// ========== MONITORING INTEGRATION ==========
+
+function logRequest(requestId, type, status, startTime) {
+  const duration = Date.now() - startTime;
+  console.log(JSON.stringify({
+    requestId,
+    type,
+    status,
+    duration,
+    timestamp: new Date().toISOString()
+  }));
+
 }
 
-/**
- * Clean HTML for AI crawlers - removes dangerous tags but keeps structure
- */
+async function logRequestAsync(requestId, type, status, startTime, extra = {}) {
+  const duration = Date.now() - startTime;
+  const logData = {
+    requestId,
+    type,
+    status,
+    duration,
+    timestamp: new Date().toISOString(),
+    ...extra
+  };
+  
+  // Send to logging service
+  try {
+    // Send to analytics endpoint
+    await fetch('https://analytics.example.com/log', {
+      method: 'POST',
+      body: JSON.stringify(logData),
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    // Silent fail - don't break the request
+    console.warn('Logging failed:', error);
+  }
+  
+  return logData;
+}
+
+// ========== HELPER FUNCTIONS ==========
+
+function escapeHtml(text = "") {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function escapeJson(obj) {
+  return JSON.stringify(obj).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
 function cleanHtmlForAI(html = "") {
   if (!html) return "";
-  
   let clean = html;
-  
-  // Remove dangerous tags completely
   clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   clean = clean.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
   clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-  clean = clean.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
-  clean = clean.replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '');
-  
-  // Remove event handlers and javascript: URLs
-  clean = clean.replace(/on\w+="[^"]*"/gi, '');
-  clean = clean.replace(/on\w+='[^']*'/gi, '');
-  clean = clean.replace(/javascript:/gi, '');
-  
+  clean = clean.replace(/on\w+="[^"]*"/gi, '').replace(/on\w+='[^']*'/gi, '').replace(/javascript:/gi, '');
   return clean;
 }
 
-/**
- * Generates bot-optimized HTML with full meta tags
- * @param {Object} post - Post data from API
- * @param {String} postUrl - Full URL of the post
- * @param {Boolean} includeFullContent - Whether to include full article content
- * @param {Boolean} isAICrawler - Whether this is an AI crawler (GPTBot, Claude, etc.)
- */
+function generateSchemas(post, postUrl) {
+  const t = post.title || post.meta_title || "TechBlog AI Article";
+  const d = post.excerpt || post.meta_description || "Tech insights on TechBlog AI";
+  const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
+  const a = post.author || "TechBlog AI Team";
+  const pub = post.created_at || post.published_at || new Date().toISOString();
+  const mod = post.updated_at || pub;
+  const cat = post.category || "Technology";
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+  const wc = post.word_count || 1000;
+  const rt = Math.ceil(wc / 200);
+
+  return {
+    article: {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": t, "description": d,
+      "image": { "@type": "ImageObject", "url": img, "width": 1200, "height": 630 },
+      "url": postUrl, "datePublished": pub, "dateModified": mod,
+      "author": { "@type": "Person", "name": a, "url": "https://aitechblogs.netlify.app/about" },
+      "publisher": {
+        "@type": "Organization", "name": "TechBlog AI", "url": "https://aitechblogs.netlify.app",
+        "logo": { "@type": "ImageObject", "url": "https://aitechblogs.netlify.app/blog-icon.svg", "width": 100, "height": 100 },
+        "sameAs": ["https://twitter.com/AiTechBlogs", "https://facebook.com/aitechblogs"]
+      },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": postUrl },
+      "articleSection": cat, "keywords": tags.join(", "), "wordCount": wc,
+      "timeRequired": `PT${rt}M`, "inLanguage": "en-US", "isAccessibleForFree": true
+    },
+    breadcrumb: {
+      "@context": "https://schema.org", "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aitechblogs.netlify.app" },
+        { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://aitechblogs.netlify.app/blog" },
+        { "@type": "ListItem", "position": 3, "name": cat, "item": `https://aitechblogs.netlify.app/category/${encodeURIComponent(cat.toLowerCase())}` },
+        { "@type": "ListItem", "position": 4, "name": t, "item": postUrl }
+      ]
+    },
+    website: {
+      "@context": "https://schema.org", "@type": "Blog", "@id": "https://aitechblogs.netlify.app/#blog",
+      "name": "TechBlog AI", "description": "AI and technology insights", "url": "https://aitechblogs.netlify.app",
+      "publisher": { "@type": "Organization", "name": "TechBlog AI" }, "inLanguage": "en-US"
+    }
+  };
+}
+
 function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler = false) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
-  const desc = escapeHtml(post.excerpt || post.meta_description || "Read the latest tech insights on TechBlog AI");
+  const desc = escapeHtml(post.excerpt || post.meta_description || "Tech insights on TechBlog AI");
   const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
   const author = escapeHtml(post.author || "TechBlog AI Team");
   const publishDate = post.created_at || post.published_at || new Date().toISOString();
   const modifiedDate = post.updated_at || publishDate;
   const category = escapeHtml(post.category || "Technology");
-  const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
-  const wordCount = post.word_count || 1000;
-  const readingTime = Math.ceil(wordCount / 200); // Average reading speed
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+  const tagsString = tags.map(t => escapeHtml(t)).join(", ");
+  const readingTime = Math.ceil((post.word_count || 1000) / 200);
   
-  // Determine content to display based on bot type
+  const schemas = generateSchemas(post, postUrl);
+  
   let contentHtml = '';
   if (includeFullContent && post.content) {
     if (isAICrawler) {
-      // For AI crawlers: use the full, cleaned content
-      let fullContent = post.content || "";
-      
-      // Additional safety cleaning
-      fullContent = cleanHtmlForAI(fullContent);
-      
-      // NO TRUNCATION for AI crawlers - show full content
-      contentHtml = `
-      <div class="article-preview">
-        <p>${desc}</p>
-        <div class="full-content">${fullContent}</div>
-      </div>`;
+      const fullContent = cleanHtmlForAI(post.content || "");
+      contentHtml = `<div class="article-preview"><p>${desc}</p><div class="full-content">${fullContent}</div></div>`;
     } else {
-      // For traditional bots: escape HTML and show limited content
       const escapedContent = escapeHtml(post.content);
-      const maxLength = 1500; // Less content for traditional bots
-      const displayContent = escapedContent.length > maxLength 
-        ? escapedContent.substring(0, maxLength) + '...' 
-        : escapedContent;
-      
-      contentHtml = `
-      <div class="article-preview">
-        <p>${desc}</p>
-        <div class="full-content">${displayContent}</div>
-      </div>`;
+      const displayContent = escapedContent.length > 1500 ? escapedContent.substring(0, 1500) + '...' : escapedContent;
+      contentHtml = `<div class="article-preview"><p>${desc}</p><div class="full-content">${displayContent}</div></div>`;
     }
   } else if (post.content) {
-    // Traditional search engines get brief preview (escaped)
     const preview = escapeHtml(post.content.substring(0, 500));
-    contentHtml = `
-      <p>${desc}</p>
-      <div class="article-preview">${preview}${post.content.length > 500 ? '...' : ''}</div>`;
+    contentHtml = `<p>${desc}</p><div class="article-preview">${preview}${post.content.length > 500 ? '...' : ''}</div>`;
   } else {
-    // Fallback to description only
     contentHtml = `<p>${desc}</p>`;
   }
 
+  const breadcrumbHtml = `<nav aria-label="Breadcrumb" class="breadcrumb"><ol itemscope itemtype="https://schema.org/BreadcrumbList">
+    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+      <a itemprop="item" href="https://aitechblogs.netlify.app"><span itemprop="name">Home</span></a>
+      <meta itemprop="position" content="1" /></li>
+    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+      <a itemprop="item" href="https://aitechblogs.netlify.app/blog"><span itemprop="name">Blog</span></a>
+      <meta itemprop="position" content="2" /></li>
+    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+      <a itemprop="item" href="https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"><span itemprop="name">${category}</span></a>
+      <meta itemprop="position" content="3" /></li>
+    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+      <span itemprop="name">${title}</span><meta itemprop="position" content="4" /></li>
+  </ol></nav>`;
+
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns# article: https://ogp.me/ns/article#">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Primary Meta Tags -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>${title} | TechBlog AI</title>
   <meta name="title" content="${title}" />
   <meta name="description" content="${desc}" />
   <meta name="author" content="${author}" />
-  <meta name="keywords" content="${escapeHtml(post.keywords || tags)}" />
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-  
-  <!-- Canonical URL -->
+  <meta name="keywords" content="${escapeHtml(post.keywords || tagsString)}" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <link rel="canonical" href="${postUrl}" />
-  
-  <!-- Open Graph / Facebook -->
   <meta property="fb:app_id" content="1829393364607774" />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="${postUrl}" />
   <meta property="og:title" content="${title}" />
   <meta property="og:description" content="${desc}" />
   <meta property="og:image" content="${img}" />
+  <meta property="og:image:secure_url" content="${img}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${title}" />
   <meta property="og:site_name" content="TechBlog AI" />
+  <meta property="og:locale" content="en_US" />
   <meta property="article:published_time" content="${publishDate}" />
+  <meta property="article:modified_time" content="${modifiedDate}" />
   <meta property="article:author" content="${author}" />
   <meta property="article:section" content="${category}" />
-  
-  <!-- Twitter Card -->
+  ${tags.map(tag => `<meta property="article:tag" content="${escapeHtml(tag)}" />`).join('\n  ')}
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="${postUrl}" />
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${desc}" />
   <meta name="twitter:image" content="${img}" />
+  <meta name="twitter:image:alt" content="${title}" />
   <meta name="twitter:site" content="@AiTechBlogs" />
   <meta name="twitter:creator" content="@AiTechBlogs" />
-  
-  <!-- Schema.org JSON-LD - Enhanced Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": "${title}",
-    "description": "${desc}",
-    "image": {
-      "@type": "ImageObject",
-      "url": "${img}",
-      "width": 1200,
-      "height": 630
-    },
-    "url": "${postUrl}",
-    "datePublished": "${publishDate}",
-    "dateModified": "${modifiedDate}",
-    "author": {
-      "@type": "Person",
-      "name": "${author}",
-      "url": "https://aitechblogs.netlify.app"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "TechBlog AI",
-      "url": "https://aitechblogs.netlify.app",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://aitechblogs.netlify.app/blog-icon.svg",
-        "width": 100,
-        "height": 100
-      }
-    },
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": "${postUrl}"
-    },
-    "articleSection": "${category}",
-    "keywords": "${escapeHtml(post.keywords || tags)}",
-    "wordCount": ${wordCount},
-    "timeRequired": "PT${readingTime}M",
-    "inLanguage": "en-US"
-  }
-  </script>
-  
-  <!-- Breadcrumb Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": "https://aitechblogs.netlify.app"
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "${category}",
-        "item": "https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "name": "${title}",
-        "item": "${postUrl}"
-      }
-    ]
-  }
-  </script>
-  
-  <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  
+  <meta name="twitter:label1" content="Reading time" />
+  <meta name="twitter:data1" content="${readingTime} min read" />
+  <script type="application/ld+json">${escapeJson(schemas.article)}</script>
+  <script type="application/ld+json">${escapeJson(schemas.breadcrumb)}</script>
+  <script type="application/ld+json">${escapeJson(schemas.website)}</script>
+  <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
+  <link rel="preconnect" href="https://techblogai-backend.onrender.com" />
+  <link rel="alternate" type="application/rss+xml" title="TechBlog AI RSS Feed" href="https://aitechblogs.netlify.app/rss.xml" />
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 0 20px;
-      line-height: 1.6;
-      color: #333;
-    }
-    h1 { color: #1a1a1a; margin-bottom: 10px; }
-    .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
-    .content { margin-top: 30px; }
-    .article-preview { 
-      margin: 20px 0; 
-      white-space: normal !important;
-    }
-    .full-content { 
-      margin-top: 15px; 
-      line-height: 1.8;
-    }
-    .full-content h2, .full-content h3, .full-content h4 {
-      margin-top: 1.5em;
-      margin-bottom: 0.5em;
-      color: #1a1a1a;
-    }
-    .full-content h2 { font-size: 1.5em; }
-    .full-content h3 { font-size: 1.25em; }
-    .full-content h4 { font-size: 1.1em; }
-    .full-content p {
-      margin-bottom: 1em;
-    }
-    .full-content ul, .full-content ol {
-      margin-left: 1.5em;
-      margin-bottom: 1em;
-    }
-    .full-content li {
-      margin-bottom: 0.5em;
-    }
-    .full-content a {
-      color: #3b82f6;
-      text-decoration: underline;
-    }
-    .full-content strong, .full-content b {
-      font-weight: 600;
-    }
-    .full-content em, .full-content i {
-      font-style: italic;
-    }
-    .full-content blockquote {
-      border-left: 3px solid #ccc;
-      padding-left: 1em;
-      margin-left: 0;
-      font-style: italic;
-      color: #555;
-    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;margin:0 auto;padding:20px;line-height:1.6;color:#333;background:#fff}
+    .breadcrumb{margin:20px 0;padding:10px 0;border-bottom:1px solid #e5e7eb}
+    .breadcrumb ol{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.875rem}
+    .breadcrumb li{display:flex;align-items:center}
+    .breadcrumb li:not(:last-child)::after{content:'›';margin-left:8px;color:#9ca3af;font-weight:bold}
+    .breadcrumb a{color:#3b82f6;text-decoration:none;transition:color .2s}
+    .breadcrumb a:hover{color:#2563eb;text-decoration:underline}
+    .breadcrumb li:last-child{color:#6b7280;font-weight:500}
+    article{margin-top:20px}
+    h1{color:#1a1a1a;font-size:2rem;margin-bottom:15px;line-height:1.2;font-weight:700}
+    .meta{color:#666;font-size:.9em;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid #e5e7eb;display:flex;flex-wrap:wrap;gap:12px}
+    .content{margin-top:30px}
+    .article-preview{margin:20px 0;white-space:normal}
+    .full-content{margin-top:15px;line-height:1.8;font-size:1.05rem}
+    .full-content h2,.full-content h3,.full-content h4{margin-top:1.5em;margin-bottom:.5em;color:#1a1a1a;font-weight:600}
+    .full-content h2{font-size:1.5em}
+    .full-content h3{font-size:1.25em}
+    .full-content h4{font-size:1.1em}
+    .full-content p{margin-bottom:1em}
+    .full-content ul,.full-content ol{margin-left:1.5em;margin-bottom:1em}
+    .full-content li{margin-bottom:.5em}
+    .full-content a{color:#3b82f6;text-decoration:underline}
+    .full-content strong,.full-content b{font-weight:600}
+    .full-content blockquote{border-left:3px solid #3b82f6;padding:1em;margin:1em 0;font-style:italic;color:#555;background:#f9fafb}
+    .full-content code{background:#f3f4f6;padding:2px 6px;border-radius:3px;font-family:'Courier New',monospace;font-size:.9em}
+    .disclaimer{margin-top:2em;padding:1em;background:#f3f4f6;border-left:3px solid #3b82f6;font-size:.9em;color:#4b5563}
+    @media (max-width:640px){body{padding:15px}h1{font-size:1.5rem}.breadcrumb{font-size:.8rem}.full-content{font-size:1rem}}
   </style>
 </head>
 <body>
-  <article>
-    <h1>${title}</h1>
+  ${breadcrumbHtml}
+  <article itemscope itemtype="https://schema.org/TechArticle">
+    <h1 itemprop="headline">${title}</h1>
     <div class="meta">
-      By ${author} • ${category} • ${new Date(publishDate).toLocaleDateString()}
+      <span><span itemprop="author" itemscope itemtype="https://schema.org/Person">By <span itemprop="name">${author}</span></span></span>
+      <span>•</span><span itemprop="articleSection">${category}</span>
+      <span>•</span><time itemprop="datePublished" datetime="${publishDate}">${new Date(publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+      <span>•</span><span>${readingTime} min read</span>
     </div>
-    <div class="content">
+    <div class="content" itemprop="articleBody">
       ${contentHtml}
-      <p><em>${isAICrawler ? 'This content has been optimized for AI training and analysis. Full interactive version available at the original URL.' : 'This is a preview for search engines and social media. The full interactive article requires JavaScript to be enabled.'}</em></p>
+      <div class="disclaimer"><em>${isAICrawler ? 'Content optimized for AI analysis. Full interactive version at original URL.' : 'Preview for search engines. Full article requires JavaScript.'}</em></div>
     </div>
+    <meta itemprop="dateModified" content="${modifiedDate}" />
   </article>
-  
-  <!-- Trigger SPA load for browsers with JS -->
-  <script>
-    if (typeof window !== 'undefined') {
-      window.location.href = '${postUrl}';
-    }
-  </script>
+  <script>if(typeof window!=='undefined'&&window.navigator&&!navigator.userAgent.match(/bot|crawler|spider/i)){window.location.href='${postUrl}'}</script>
 </body>
 </html>`;
 }
 
-// Generates fallback HTML when post is not found
 function generateFallbackHtml(slug) {
   const url = `https://aitechblogs.netlify.app/post/${slug}`;
-  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Article - TechBlog AI</title>
-  <meta property="og:title" content="TechBlog AI Article" />
-  <meta property="og:type" content="article" />
+  <title>Article Not Found - TechBlog AI</title>
+  <meta name="description" content="Article not found. Explore more on TechBlog AI." />
+  <meta property="og:title" content="Article Not Found - TechBlog AI" />
+  <meta property="og:type" content="website" />
   <meta property="og:url" content="${url}" />
   <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
-  <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="${url}" />
+  <meta name="robots" content="noindex, follow" />
+  <link rel="canonical" href="https://aitechblogs.netlify.app" />
+  <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-align:center}
+    .container{max-width:500px;background:rgba(255,255,255,.1);backdrop-filter:blur(10px);padding:40px;border-radius:20px;box-shadow:0 8px 32px 0 rgba(31,38,135,.37)}
+    h1{font-size:3rem;margin-bottom:20px;font-weight:700}
+    p{font-size:1.1rem;margin-bottom:30px;opacity:.9}
+    a{display:inline-block;padding:12px 30px;background:#fff;color:#667eea;text-decoration:none;border-radius:50px;font-weight:600;transition:transform .2s,box-shadow .2s}
+    a:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,0,0,.2)}
+  </style>
 </head>
 <body>
-  <h1>Loading Article...</h1>
-  <p>If you're not redirected, <a href="${url}">click here</a>.</p>
-  <script>window.location.href = '${url}';</script>
+  <div class="container">
+    <h1>404</h1>
+    <p>Article not found.</p>
+    <a href="https://aitechblogs.netlify.app">Return Home</a>
+  </div>
+  <script>if(typeof window!=='undefined'&&!navigator.userAgent.match(/bot|crawler|spider/i)){setTimeout(function(){window.location.href='https://aitechblogs.netlify.app'},3000)}</script>
 </body>
 </html>`;
 }
 
-/* ================= EDGE FUNCTION CONFIG ================= */
 export const config = {
   path: "/post/*",
-  // Run on all requests to /post/* routes
   onError: "bypass"
 };

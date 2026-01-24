@@ -14,7 +14,6 @@ export async function submitSitemapToSearchEngines() {
   }
 
   lastPing = now;
-
   const sitemapUrl = encodeURIComponent(
     `${process.env.FRONTEND_URL || "https://aitechblogs.netlify.app"}/sitemap.xml`
   );
@@ -50,7 +49,7 @@ export async function submitSitemapToSearchEngines() {
   return results;
 }
 
-// Submit single URL via IndexNow (optional)
+// Submit single URL via IndexNow
 export async function submitUrlToIndexNow(url) {
   const apiKey = process.env.INDEXNOW_API_KEY;
 
@@ -59,7 +58,7 @@ export async function submitUrlToIndexNow(url) {
   const payload = JSON.stringify({
     host: "aitechblogs.netlify.app",
     key: apiKey,
-    keyLocation: `https://aitechblogs.netlify.app/${apiKey}.txt`,
+    keyLocation: `https://aitechblogs.netlify.app/e5a87ec5960d4731872eaf123214d831.txt`,
     urlList: [url],
   });
 
