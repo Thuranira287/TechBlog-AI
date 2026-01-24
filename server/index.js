@@ -111,33 +111,78 @@ app.get('/api/health', (req, res) => {
 // Sitemap generator
 app.get('/sitemap.xml', async (req, res) => {
   try {
+    const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
+
+    // Dynamic posts
     const [posts] = await pool.execute(
       `SELECT slug, updated_at FROM posts WHERE status = 'published' ORDER BY published_at DESC`
     );
-    
-    const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
-    
+
+    // Dynamic categories
+    const [categories] = await pool.execute(
+      `SELECT slug FROM categories ORDER BY name ASC`
+    );
+
+    // Static pages
+    const STATIC_PAGES = [
+  { slug: "", changefreq: "daily", priority: 1.0 },
+  { slug: "about", changefreq: "monthly", priority: 0.6 },
+  { slug: "privacy", changefreq: "monthly", priority: 0.6 },
+  { slug: "cookies", changefreq: "monthly", priority: 0.6 },
+  { slug: "terms", changefreq: "monthly", priority: 0.6 },
+  { slug: "contact", changefreq: "monthly", priority: 0.6 },
+  { slug: "posts", changefreq: "weekly", priority: 0.8 },
+  { slug: "advertise", changefreq: "monthly", priority: 0.5 },
+  { slug: "jobs", changefreq: "weekly", priority: 0.7 },
+];
+
+    // Build sitemap XML
     let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    <url>
-      <loc>${baseUrl}</loc>
-      <changefreq>daily</changefreq>
-      <priority>1.0</priority>
-    </url>`;
-    
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+    // Homepage
+    sitemap += `
+  <url>
+    <loc>${baseUrl}</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+    // Static pages
+    staticPages.forEach(page => {
+      sitemap += `
+  <url>
+    <loc>${baseUrl}${page.url}</loc>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>`;
+    });
+
+    // Categories
+    categories.forEach(cat => {
+      sitemap += `
+  <url>
+    <loc>${baseUrl}/category/${cat.slug}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+    });
+
+    // Posts
     posts.forEach(post => {
-        sitemap += `
-    <url>
-      <loc>${baseUrl}/post/${post.slug}</loc>
-      <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
-      <changefreq>weekly</changefreq>
-      <priority>0.8</priority>
-    </url>`;
-      });
-    
-    sitemap += '\n</urlset>';
-    
-    res.set('Content-Type', 'text/xml');
+      sitemap += `
+  <url>
+    <loc>${baseUrl}/post/${post.slug}</loc>
+    <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    });
+
+    sitemap += `
+</urlset>`;
+
+    res.set('Content-Type', 'application/xml');
     res.send(sitemap);
   } catch (error) {
     console.error('Error generating sitemap:', error);
