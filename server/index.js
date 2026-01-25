@@ -125,7 +125,6 @@ app.get('/sitemap.xml', async (req, res) => {
 
     // Static pages
     const STATIC_PAGES = [
-  { slug: "", changefreq: "daily", priority: 1.0 },
   { slug: "about", changefreq: "monthly", priority: 0.6 },
   { slug: "privacy", changefreq: "monthly", priority: 0.6 },
   { slug: "cookies", changefreq: "monthly", priority: 0.6 },
@@ -149,10 +148,10 @@ app.get('/sitemap.xml', async (req, res) => {
   </url>`;
 
     // Static pages
-    staticPages.forEach(page => {
+    STATIC_PAGES.forEach(page => {
       sitemap += `
   <url>
-    <loc>${baseUrl}${page.url}</loc>
+    <loc>${baseUrl}/${page.slug}</loc>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
   </url>`;

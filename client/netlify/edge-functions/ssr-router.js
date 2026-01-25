@@ -28,7 +28,7 @@ export default async (request, context) => {
               "Vary": "User-Agent",
               "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
               "Link": `<${postUrl}>; rel="canonical"`,
-              "Content-Security-Policy": "default-src 'self'; script-src 'self' 'sha256-Vp0M+LPP+Ul66BtfpMpu6WtrB55Xop5xNjJsjrV01Yk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
+              "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
               "X-Content-Type-Options": "nosniff",
               "X-Frame-Options": "DENY",
               "Referrer-Policy": "strict-origin-when-cross-origin",
