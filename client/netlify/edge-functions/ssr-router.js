@@ -200,7 +200,8 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
       <a itemprop="item" href="https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"><span itemprop="name">${category}</span></a>
       <meta itemprop="position" content="3" /></li>
     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-      <span itemprop="name">${title}</span><meta itemprop="position" content="4" /></li>
+      <a itemprop="item" href="${postUrl}"><span itemprop="name">${title}</span></a>
+      <meta itemprop="position" content="4" /></li>
   </ol></nav>`;
 
   return `<!DOCTYPE html>
