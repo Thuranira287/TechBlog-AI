@@ -134,7 +134,7 @@ function generateSchemas(post, postUrl) {
       "author": { "@type": "Person", "name": a, "url": "https://aitechblogs.netlify.app/about" },
       "publisher": {
         "@type": "Organization", "name": "TechBlog AI", "url": "https://aitechblogs.netlify.app",
-        "logo": { "@type": "ImageObject", "url": "https://aitechblogs.netlify.app/blog-icon.svg", "width": 100, "height": 100 },
+        "logo": { "@type": "ImageObject", "url": "https://aitechblogs.netlify.app/favicon.ico", "width": 100, "height": 100 },
         "sameAs": ["https://twitter.com/AiTechBlogs", "https://facebook.com/aitechblogs"]
       },
       "mainEntityOfPage": { "@type": "WebPage", "@id": postUrl },
@@ -247,7 +247,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
   <script type="application/ld+json">${escapeJson(schemas.article)}</script>
   <script type="application/ld+json">${escapeJson(schemas.breadcrumb)}</script>
   <script type="application/ld+json">${escapeJson(schemas.website)}</script>
-  <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
   <link rel="preconnect" href="https://techblogai-backend.onrender.com" />
   <link rel="alternate" type="application/rss+xml" title="TechBlog AI RSS Feed" href="https://aitechblogs.netlify.app/rss.xml" />
   <style>
@@ -317,7 +317,7 @@ function generateFallbackHtml(slug) {
   <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
   <meta name="robots" content="noindex, follow" />
   <link rel="canonical" href="https://aitechblogs.netlify.app" />
-  <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-align:center}

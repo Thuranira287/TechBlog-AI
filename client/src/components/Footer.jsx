@@ -204,9 +204,14 @@ const Footer = () => {
             © {currentYear} TechBlog AI. All rights reserved.
           </p>
           <div className="flex space-x-4 mt-2 md:mt-0">
-            <Link to="/sitemap.xml" className="text-gray-400 hover:text-white text-xs">
+            <a
+              href="/sitemap.xml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white text-xs"
+              >
               Sitemap
-            </Link>
+            </a>
             <Link to="/advertise" className="text-gray-400 hover:text-white text-xs">
               Advertise
             </Link>

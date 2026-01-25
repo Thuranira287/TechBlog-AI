@@ -125,68 +125,61 @@ app.get('/sitemap.xml', async (req, res) => {
 
     // Static pages
     const STATIC_PAGES = [
-  { slug: "about", changefreq: "monthly", priority: 0.6 },
-  { slug: "privacy", changefreq: "monthly", priority: 0.6 },
-  { slug: "cookies", changefreq: "monthly", priority: 0.6 },
-  { slug: "terms", changefreq: "monthly", priority: 0.6 },
-  { slug: "contact", changefreq: "monthly", priority: 0.6 },
-  { slug: "posts", changefreq: "weekly", priority: 0.8 },
-  { slug: "advertise", changefreq: "monthly", priority: 0.5 },
-  { slug: "jobs", changefreq: "weekly", priority: 0.7 },
-];
+      { path: "/about", changefreq: "monthly", priority: 0.6 },
+      { path: "/policy/privacy", changefreq: "monthly", priority: 0.6 },
+      { path: "/policy/cookie", changefreq: "monthly", priority: 0.6 },
+      { path: "/policy/terms", changefreq: "monthly", priority: 0.6 },
+      { path: "/advertise", changefreq: "monthly", priority: 0.5 },
+      { path: "/jobs", changefreq: "weekly", priority: 0.7 },
+    ];
 
     // Build sitemap XML
     let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
-
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
     // Homepage
     sitemap += `
-  <url>
-    <loc>${baseUrl}</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>`;
-
-    // Static pages
+    <url>
+      <loc>${baseUrl}</loc>
+      <changefreq>daily</changefreq>
+      <priority>1.0</priority>
+    </url>`;
     STATIC_PAGES.forEach(page => {
       sitemap += `
-  <url>
-    <loc>${baseUrl}/${page.slug}</loc>
-    <changefreq>${page.changefreq}</changefreq>
-    <priority>${page.priority}</priority>
-  </url>`;
+      <url>
+        <loc>${baseUrl}${page.path}</loc>
+        <changefreq>${page.changefreq}</changefreq>
+        <priority>${page.priority}</priority>
+      </url>`;
     });
-
-    // Categories
     categories.forEach(cat => {
       sitemap += `
-  <url>
-    <loc>${baseUrl}/category/${cat.slug}</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>`;
-    });
+    <url>
+      <loc>${baseUrl}/category/${cat.slug}</loc>
+      <changefreq>weekly</changefreq>
+      <priority>0.6</priority>
+    </url>`;
+      });
 
     // Posts
     posts.forEach(post => {
       sitemap += `
-  <url>
-    <loc>${baseUrl}/post/${post.slug}</loc>
-    <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`;
-    });
+    <url>
+      <loc>${baseUrl}/post/${post.slug}</loc>
+      <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.8</priority>
+    </url>`;
+      });
 
     sitemap += `
-</urlset>`;
+  </urlset>`;
 
     res.set('Content-Type', 'application/xml');
     res.send(sitemap);
-  } catch (error) {
-    console.error('Error generating sitemap:', error);
-    res.status(500).send('Error generating sitemap');
-  }
+    } catch (error) {
+      console.error('Error generating sitemap:', error);
+      res.status(500).send('Error generating sitemap');
+    }
 });
 
 // Robots.txt
@@ -199,7 +192,7 @@ Sitemap: ${process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app'}/sitema
   res.send(robots);
 });
 
-// Debug endpoints
+// endpoints
 if (process.env.NODE_ENV === 'development') {
   app.get('/api/debug/db', async (req, res) => {
     try {
@@ -255,14 +248,14 @@ app.use((err, req, res, next) => {
 // ====== Stats Endpoint ======
 app.get('/api/stats', async (req, res) => {
   try {
-    // Get monthly visitors (last 30 days)
+    // monthly visitors (last 30 days)
     const [visitorResult] = await pool.execute(`
       SELECT COUNT(DISTINCT ip_address) as monthly_visitors
       FROM analytics 
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     `);
     
-    // Get affiliate clicks (last 30 days)
+    // affiliate clicks (last 30 days)
     const [affiliateResult] = await pool.execute(`
       SELECT affiliate_name as name, 
              COUNT(*) as clicks,
@@ -274,17 +267,17 @@ app.get('/api/stats', async (req, res) => {
       LIMIT 5
     `);
     
-    // Get total posts
+    // total posts
     const [postsResult] = await pool.execute(
       'SELECT COUNT(*) as total_posts FROM posts WHERE status = "published"'
     );
     
-    // Get total categories
+    // total categories
     const [categoriesResult] = await pool.execute(
       'SELECT COUNT(*) as total_categories FROM categories'
     );
     
-    // Get top categories
+    // top categories
     const [topCategories] = await pool.execute(`
       SELECT c.name, COUNT(p.id) as post_count
       FROM categories c

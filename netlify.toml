@@ -108,5 +108,11 @@
     Content-Type = "text/plain"
     Cache-Control = "public, max-age=86400"
 
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=86400"
+
 # ================= REDIRECTS =================
 # All redirects are now handled by the Edge Function and _redirects file

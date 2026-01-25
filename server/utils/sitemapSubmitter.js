@@ -1,7 +1,7 @@
 import https from "https";
 
 let lastPing = 0;
-const PING_INTERVAL = 60 * 1000; // 1 minute
+const PING_INTERVAL = 60 * 1000;
 
 // Submit sitemap to Google & Bing
 export async function submitSitemapToSearchEngines() {
