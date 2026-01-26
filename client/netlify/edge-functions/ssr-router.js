@@ -1,4 +1,3 @@
-
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
@@ -17,6 +16,9 @@ export default async (request, context) => {
           fetchPostMeta(slug, isFullContentBot),
           getViteAssets(context)
         ]);
+       
+        console.log(`[Edge] Post data received:`, post ? 'SUCCESS' : 'NULL');
+        console.log(`[Edge] Assets loaded:`, assets ? 'SUCCESS' : 'NULL');
        
         if (post && assets) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
@@ -59,7 +61,8 @@ export default async (request, context) => {
             }
           });
         }
-       
+        
+        console.error(`[Edge] Post or assets missing - Post: ${!!post}, Assets: ${!!assets}`);
         return new Response(generateFallbackHtml(slug), {
           status: 404,
           headers: {
@@ -110,8 +113,10 @@ async function fetchPostMeta(slug, fullContent = false) {
   const endpoint = fullContent ? 'full' : 'meta';
   const url = `https://techblogai-backend.onrender.com/api/posts/${slug}/${endpoint}`;
  
+  console.log(`[Edge] Fetching: ${url}`);
+  
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
     const response = await fetch(url, {
@@ -123,7 +128,17 @@ async function fetchPostMeta(slug, fullContent = false) {
       }
     });
     clearTimeout(timeout);
-    return response.ok ? await response.json() : null;
+    
+    console.log(`[Edge] Response status: ${response.status}`);
+    
+    if (!response.ok) {
+      console.error(`[Edge] API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log(`[Edge] Post data keys:`, Object.keys(data || {}));
+    return data;
   } catch (error) {
     clearTimeout(timeout);
     console.error("[Edge] Fetch error:", error.message);
@@ -445,7 +460,6 @@ function generateHumanShell({ slug, post, assets }) {
 </body>
 </html>`;
 }
-
 
 function generateFallbackHtml(slug) {
   const url = `https://aitechblogs.netlify.app/post/${slug}`;

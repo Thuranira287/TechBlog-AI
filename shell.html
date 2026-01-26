@@ -1,179 +1,32 @@
-<!doctype html>
-<html lang="en" class="scroll-smooth">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/blog-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    <meta name="theme-color" content="#0f172a" />
-    <!--Google Search console SEO-->
-    <meta name="google-site-verification" content="ywxxXNhDUVU2qs0RdOkmXTMmrEubdVxYoUbUIGiq-M4" />
-    
-    <!-- Primary Meta Tags -->
-    <meta name="keywords" content="AI tutorials, web development, JavaScript, React, Python, machine learning, programming guides, tech news, cybersecurity" />
-    <meta name="author" content="TechBlog AI Team" />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <meta name="theme-color" content="#3b82f6" />
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="fb:app_id" content="1829393364607774" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://aitechblogs.netlify.app/" />
-    <meta property="og:title" content="TechBlog AI - Practical AI & Web Development Guides" />
-    <meta property="og:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis. Build real projects today." />
-    <!-- Screenshot as OG image -->
-    <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="TechBlog AI Screenshot - Your trusted source for the latest technology news, AI insights, web development tutorials, and industry trends." />    
-    <meta property="og:site_name" content="TechBlog AI" />
-    <meta property="og:locale" content="en_US" />
-    
-    <!--Twitter Card tags-->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="TechBlog AI - Practical AI & Web Development Guides" />
-    <meta name="twitter:description" content="Master AI and web development with our practical tutorials, step-by-step guides, and expert tech analysis." />
-    <meta name="twitter:image" content="https://aitechblogs.netlify.app/og-image.png" />
-    <meta name="twitter:site" content="@AiTechBlogs" />
-    <meta name="twitter:creator" content="@AiTechBlogs" />
-    
-    <!-- Canonical URL 
-    <link rel="canonical" href="https://aitechblogs.netlify.app/" />
-    -->
-    <!-- Favicon / Shortcut icons -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-
-    <!-- Apple / iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-
-    <!-- Android / PWA -->
-    <link rel="manifest" href="/site.webmanifest" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
-
-    <!-- Preconnect & Preload -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "WebSite",
-          "@id": "https://aitechblogs.netlify.app/#website",
-          "name": "TechBlog AI",
-          "url": "https://aitechblogs.netlify.app/",
-          "description": "Practical AI and web development tutorials, guides, and tech analysis",
-          "publisher": {
-            "@type": "Organization",
-            "name": "TechBlog AI",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://aitechblogs.netlify.app/favicon.ico",
-              "width": 100,
-              "height": 100
-            }
-          },
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://aitechblogs.netlify.app/search?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
-        },
-        {
-          "@type": "WebPage",
-          "@id": "https://aitechblogs.netlify.app/jobs/#webpage",
-          "name": "Tech Jobs & Careers",
-          "url": "https://aitechblogs.netlify.app/jobs",
-          "description": "Find tech jobs, internships, and career opportunities at leading companies.",
-          "isPartOf": {
-            "@id": "https://aitechblogs.netlify.app/#website"
-          }
-        }
-      ]
-    }
-    </script>
-    
-    <!-- AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922"
-     crossorigin="anonymous">
-    </script>
-    
-    <!-- CSS loading screen -->
-    <style>
-      .loading { 
-        position: fixed; top: 0; left: 0; 
-        width: 100%; height: 100%; 
-        background: #ffffff;
-        display: flex; align-items: center; 
-        justify-content: center; z-index: 9999; 
-      }
-      .loading-spinner {
-        width: 60px; height: 60px;
-        border: 4px solid rgba(59,130,246,0.1);
-        border-top-color: #3b82f6;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-
-    <!-- Main CSS -->
-    
-
-    
-    <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
-    <script type="module" crossorigin src="/assets/index-236e139b.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-1922245e.js">
-    <link rel="modulepreload" crossorigin href="/assets/utils-e495e890.js">
-    <link rel="stylesheet" href="/assets/index-6ec598c0.css">
-  </head>
-  <body>
-    <!-- Loading screen  -->
-    <div class="loading" id="loading-screen">
-      <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <p class="loading-text">Loading TechBlog AI...</p>
-      </div>
-    </div>
-    
-    <div id="root"></div>
-    
-    <!-- Preload main script -->
-    
-    
-    <!-- Script to hide loading screen after timeout -->
-    <script>
-      setTimeout(function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-          loadingScreen.classList.add('loading-hidden');
-          setTimeout(() => loadingScreen.remove(), 300);
-        }
-      }, 3000);
-      
-      // Hide loading screen when page is fully loaded
-      window.addEventListener('load', function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-          loadingScreen.classList.add('loading-hidden');
-          setTimeout(() => loadingScreen.remove(), 300);
-        }
-      });
-    </script>
-    
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L2JCRCT3F3"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-L2JCRCT3F3');
-    </script>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Article Not Found - TechBlog AI</title>
+  <meta name="description" content="Article not found. Explore more on TechBlog AI." />
+  <meta property="og:title" content="Article Not Found - TechBlog AI" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aitechblogs.netlify.app/post/top-10-ai-trends-shaping-our-future-in-2025" />
+  <meta property="og:image" content="https://aitechblogs.netlify.app/og-image.png" />
+  <meta name="robots" content="noindex, follow" />
+  <link rel="canonical" href="https://aitechblogs.netlify.app" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-align:center}
+    .container{max-width:500px;background:rgba(255,255,255,.1);backdrop-filter:blur(10px);padding:40px;border-radius:20px;box-shadow:0 8px 32px 0 rgba(31,38,135,.37)}
+    h1{font-size:3rem;margin-bottom:20px;font-weight:700}
+    p{font-size:1.1rem;margin-bottom:30px;opacity:.9}
+    a{display:inline-block;padding:12px 30px;background:#fff;color:#667eea;text-decoration:none;border-radius:50px;font-weight:600;transition:transform .2s,box-shadow .2s}
+    a:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,0,0,.2)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>404</h1>
+    <p>Article not found.</p>
+    <a href="https://aitechblogs.netlify.app">Return Home</a>
+  </div>
+</body>
 </html>
