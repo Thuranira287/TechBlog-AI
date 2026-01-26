@@ -11,24 +11,48 @@ export default async (request, context) => {
    
     console.log(`[Edge] ${url.pathname}, Bot:${isBot}, Full:${isFullContentBot}`);
 
-    if (isBot) {
+    if (slug) {
       try {
-        const post = await fetchPostMeta(slug, isFullContentBot);
+        const [post, assets] = await Promise.all([
+          fetchPostMeta(slug, isFullContentBot),
+          getViteAssets(context)
+        ]);
        
-        if (post) {
+        if (post && assets) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-          const html = generateBotHtml(post, postUrl, isFullContentBot, isFullContentBot);
-         
+          
+          // Serve bot-optimized HTML for crawlers
+          if (isBot) {
+            const html = generateBotHtml(post, postUrl, isFullContentBot, isFullContentBot);
+            return new Response(html, {
+              status: 200,
+              headers: {
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
+                "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+                "Vary": "User-Agent",
+                "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
+                "Link": `<${postUrl}>; rel="canonical"`,
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+              }
+            });
+          }
+          
+          // Serve optimized human shell for real users
+          const html = generateHumanShell({ slug, post, assets });
           return new Response(html, {
             status: 200,
             headers: {
               "Content-Type": "text/html; charset=utf-8",
               "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
-              "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+              "X-Robots-Tag": "index, follow",
               "Vary": "User-Agent",
-              "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
+              "X-Rendered-By": "Edge-SSR-Human",
               "Link": `<${postUrl}>; rel="canonical"`,
-              "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
+              "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://techblogai-backend.onrender.com;",
               "X-Content-Type-Options": "nosniff",
               "X-Frame-Options": "DENY",
               "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -56,6 +80,21 @@ export default async (request, context) => {
     return context.rewrite("/index.html");
   }
 };
+
+let cachedManifest;
+
+async function getViteAssets(context) {
+  if (cachedManifest) return cachedManifest;
+
+  try {
+    const manifestRes = await context.env.ASSETS.fetch("/manifest.json");
+    cachedManifest = await manifestRes.json();
+    return cachedManifest;
+  } catch (error) {
+    console.error("[Edge] Manifest error:", error);
+    return null;
+  }
+}
 
 function detectBot(userAgent = "") {
   const bots = ['googlebot', 'google-inspectiontool', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
@@ -209,6 +248,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>${title} | TechBlog AI</title>
   <meta name="title" content="${title}" />
@@ -248,6 +288,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
   <script type="application/ld+json">${escapeJson(schemas.article)}</script>
   <script type="application/ld+json">${escapeJson(schemas.breadcrumb)}</script>
   <script type="application/ld+json">${escapeJson(schemas.website)}</script>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
   <link rel="preconnect" href="https://techblogai-backend.onrender.com" />
   <link rel="alternate" type="application/rss+xml" title="TechBlog AI RSS Feed" href="https://aitechblogs.netlify.app/rss.xml" />
@@ -298,10 +339,113 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
     </div>
     <meta itemprop="dateModified" content="${modifiedDate}" />
   </article>
-  <script>if(typeof window!=='undefined'&&window.navigator&&!navigator.userAgent.match(/bot|crawler|spider/i)){window.location.href='${postUrl}'}</script>
 </body>
 </html>`;
 }
+
+function generateHumanShell({ slug, post, assets }) {
+  const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
+  const desc = escapeHtml(post.excerpt || post.meta_description || "Tech insights on TechBlog AI");
+  const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
+  const author = escapeHtml(post.author || "TechBlog AI Team");
+  const publishDate = post.created_at || post.published_at || new Date().toISOString();
+  const modifiedDate = post.updated_at || publishDate;
+  const category = escapeHtml(post.category || "Technology");
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+  const readingTime = Math.ceil((post.word_count || 1000) / 200);
+  const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
+  
+  const schemas = generateSchemas(post, postUrl);
+  
+  const entry = assets["index.html"];
+  const js = "/" + entry.file;
+  const css = entry.css ? entry.css.map(c => `<link rel="stylesheet" href="/${c}">`).join("\n  ") : "";
+
+  return `<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns# article: https://ogp.me/ns/article#">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  
+  <title>${title} | TechBlog AI</title>
+  <meta name="description" content="${desc}" />
+  <meta name="author" content="${author}" />
+  <meta name="keywords" content="${tags.map(t => escapeHtml(t)).join(', ')}" />
+  
+  <link rel="canonical" href="${postUrl}" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="${postUrl}" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${desc}" />
+  <meta property="og:image" content="${img}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="TechBlog AI" />
+  <meta property="article:published_time" content="${publishDate}" />
+  <meta property="article:modified_time" content="${modifiedDate}" />
+  <meta property="article:author" content="${author}" />
+  
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${desc}" />
+  <meta name="twitter:image" content="${img}" />
+  <meta name="twitter:site" content="@AiTechBlogs" />
+  
+  <script type="application/ld+json">${escapeJson(schemas.article)}</script>
+  <script type="application/ld+json">${escapeJson(schemas.breadcrumb)}</script>
+  
+  <link rel="preload" href="${js}" as="script" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://techblogai-backend.onrender.com" />
+  <link rel="dns-prefetch" href="https://techblogai-backend.onrender.com" />
+  
+  ${css}
+  
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;background:#fff;min-height:100vh}
+    #root{max-width:800px;margin:0 auto;padding:20px}
+    article{margin-top:20px}
+    h1{color:#1a1a1a;font-size:2rem;margin-bottom:15px;line-height:1.2;font-weight:700}
+    .meta{color:#666;font-size:.9em;margin:15px 0;padding-bottom:15px;border-bottom:1px solid #e5e7eb;display:flex;flex-wrap:wrap;gap:12px}
+    .excerpt{color:#555;font-size:1.05rem;line-height:1.7;margin:20px 0}
+    .loading{margin-top:30px;padding:20px;background:#f9fafb;border-radius:8px;color:#666;text-align:center}
+    .spinner{display:inline-block;width:20px;height:20px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin 1s linear infinite;margin-right:10px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (max-width:640px){#root{padding:15px}h1{font-size:1.5rem}}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <article itemscope itemtype="https://schema.org/TechArticle">
+      <h1 itemprop="headline">${title}</h1>
+      <div class="meta">
+        <span itemprop="author" itemscope itemtype="https://schema.org/Person">By <span itemprop="name">${author}</span></span>
+        <span>•</span>
+        <span itemprop="articleSection">${category}</span>
+        <span>•</span>
+        <time itemprop="datePublished" datetime="${publishDate}">${new Date(publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+        <span>•</span>
+        <span>${readingTime} min read</span>
+      </div>
+      <div class="excerpt" itemprop="description">${desc}</div>
+      <div class="loading">
+        <span class="spinner"></span>
+        <span>Loading full article...</span>
+      </div>
+      <meta itemprop="dateModified" content="${modifiedDate}" />
+      <meta itemprop="image" content="${img}" />
+    </article>
+  </div>
+  <script type="module" src="${js}"></script>
+</body>
+</html>`;
+}
+
 
 function generateFallbackHtml(slug) {
   const url = `https://aitechblogs.netlify.app/post/${slug}`;
@@ -335,7 +479,6 @@ function generateFallbackHtml(slug) {
     <p>Article not found.</p>
     <a href="https://aitechblogs.netlify.app">Return Home</a>
   </div>
-  <script>if(typeof window!=='undefined'&&!navigator.userAgent.match(/bot|crawler|spider/i)){setTimeout(function(){window.location.href='https://aitechblogs.netlify.app'},3000)}</script>
 </body>
 </html>`;
 }
@@ -343,4 +486,4 @@ function generateFallbackHtml(slug) {
 export const config = {
   path: "/post/*",
   onError: "bypass"
-};
+}
