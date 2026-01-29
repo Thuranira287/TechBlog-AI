@@ -45,10 +45,10 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
-      fontSrc: ["'self'", "https:", "data:"],
+      fontSrc: ["'self'", "https:"],
       formAction: ["'self'"],
       frameAncestors: ["'self'", "https://www.google.com"],
-      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      imgSrc: ["'self'", "https:", "blob:"],
       objectSrc: ["'none'"],
       scriptSrc: ["'self'"],
       scriptSrcAttr: ["'none'"],

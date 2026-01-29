@@ -26,7 +26,7 @@ export default async (request, context) => {
           }
 
           // If not cached, fetch from backend
-          const categoryData = await fetchCategoryMeta(categorySlug, isAICrawler);
+          const categoryData = await fetchCategoryMeta(categorySlug, isAICrawler, context);
           
           if (categoryData) {
             const html = generateCategoryBotHtml(categoryData, categorySlug, isAICrawler);
@@ -40,7 +40,8 @@ export default async (request, context) => {
                 "X-Robots-Tag": "index, follow, max-image-preview:large",
                 "Vary": "User-Agent",
                 "X-Rendered-By": "Edge-SSR-Category",
-                "X-Cache": "MISS"
+                "X-Cache": "MISS",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob:; connect-src 'self' http://localhost:5000 https://www.google-analytics.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';"
               }
             });
             
@@ -52,7 +53,7 @@ export default async (request, context) => {
             return response;
           }
           
-          // Fallback for 404
+          // Fallback
           return new Response(generateCategoryFallback(categorySlug), {
             status: 404,
             headers: {
@@ -76,7 +77,7 @@ export default async (request, context) => {
   }
 };
 
-// Reuse your existing detectBot function
+//detectBot function
 function detectBot(userAgent = "") {
   const bots = ['googlebot', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
     'facebot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp',
@@ -85,11 +86,9 @@ function detectBot(userAgent = "") {
   return bots.some(bot => userAgent.toLowerCase().includes(bot));
 }
 
-// OPTIMIZED Category Data Fetching (Lightweight)
-async function fetchCategoryMeta(categorySlug, fullContent = false) {
+// OPTIMIZED Category Data Fetching
+async function fetchCategoryMeta(categorySlug, fullContent = false, context) {
   const cacheKey = `backend-category-${categorySlug}-${fullContent ? 'full' : 'lite'}`;
-  
-  // Check Edge cache for backend responses too
   const cache = await caches.open('backend-cache');
   const cached = await cache.match(cacheKey);
   
@@ -98,12 +97,11 @@ async function fetchCategoryMeta(categorySlug, fullContent = false) {
   }
   
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout for free tier
+  const timeout = setTimeout(() => controller.abort(), 3000);
   
   try {
-    // LIGHTWEIGHT endpoint - separate from your main API
-    const url = `https://techblogai-backend.onrender.com/api/edge/category/${categorySlug}${
-      fullContent ? '?full=true' : ''
+    const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=1${
+        fullContent ? '&limit=20' : ''
     }`;
     
     const response = await fetch(url, {
@@ -139,12 +137,14 @@ async function fetchCategoryMeta(categorySlug, fullContent = false) {
     
     // Return minimal fallback data
     return {
-      category: {
+    category: {
         name: categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         description: `Latest ${categorySlug.replace(/-/g, ' ')} articles and technology insights`,
         slug: categorySlug
-      },
-      posts: [] // Empty array to prevent errors
+    },
+    posts: [],
+    total: 0,
+    currentPage: 1
     };
   }
 }
@@ -152,6 +152,7 @@ async function fetchCategoryMeta(categorySlug, fullContent = false) {
 function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false) {
   const category = categoryData.category || {};
   const posts = categoryData.posts || [];
+  
   
   const categoryName = escapeHtml(category.name || categorySlug.replace(/-/g, ' '));
   const categoryDesc = escapeHtml(
@@ -186,10 +187,10 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
     }
   };
   
-  // Generate posts HTML (limited for performance)
+  // Generate posts HTML for performance
   let postsHtml = '';
   if (posts.length > 0) {
-    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 6);
+    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 9);
     
     postsHtml = displayPosts.map(post => `
       <article class="category-post" itemscope itemtype="https://schema.org/TechArticle">
@@ -349,7 +350,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
 </html>`;
 }
 
-// Helper functions (reuse from your existing file)
+// Helper functions
 function escapeHtml(text = "") {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");

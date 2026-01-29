@@ -2,8 +2,6 @@ router.get('/category/:categorySlug', async (req, res) => {
   try {
     const { categorySlug } = req.params;
     const { full } = req.query; // For AI crawlers
-    
-    // SIMPLE query - no complex pagination for Edge
     const [category] = await pool.execute(
       `SELECT id, name, slug, description FROM categories WHERE slug = ?`,
       [categorySlug]
@@ -13,7 +11,7 @@ router.get('/category/:categorySlug', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
     
-    // Get minimal post data (no JOINs if possible)
+    // Get minimal post data 
     const [posts] = await pool.execute(`
       SELECT id, title, slug, excerpt, published_at, author_id,
              (SELECT name FROM authors WHERE id = posts.author_id) as author_name
@@ -23,7 +21,7 @@ router.get('/category/:categorySlug', async (req, res) => {
       LIMIT ${full ? 20 : 6}  // More for AI, less for regular bots
     `, [category[0].id]);
     
-    // For AI crawlers, add some content
+    // For AI crawlers, include full content
     if (full === 'true') {
       const postIds = posts.map(p => p.id);
       if (postIds.length > 0) {
