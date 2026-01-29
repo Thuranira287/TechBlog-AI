@@ -11,6 +11,10 @@
 
 # ================= EDGE FUNCTIONS =================
 [[edge_functions]]
+  path = "/category/*"
+  function = "category-ssr"
+
+[[edge_functions]]
   function = "ssr-router"
   path = "/post/*"
 
@@ -26,6 +30,11 @@
 
 # ================= CACHE HEADERS =================
 # Cache for Edge Function responses (bot-rendered HTML)
+[[headers]]
+  for = "/category/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 [[headers]]
   for = "/post/*"
   [headers.values]
@@ -115,4 +124,4 @@
     Cache-Control = "public, max-age=86400"
 
 # ================= REDIRECTS =================
-# All redirects are now handled by the Edge Function and _redirects file
+# All redirects are  handled by the Edge Function and _redirects file
