@@ -38,6 +38,7 @@ export default async (request, context) => {
               headers: {
                 "Content-Type": "text/html; charset=utf-8",
                 "Cache-Control": "public, max-age=1800, s-maxage=3600",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob:; connect-src 'self' http://localhost:5000 https://www.google-analytics.com https://analytics.ahrefs.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
                 "X-Robots-Tag": "index, follow, max-image-preview:large",
                 "Vary": "User-Agent",
                 "X-Rendered-By": "Edge-SSR-Category",
@@ -180,6 +181,13 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
       }
     ]
   };
+    const breadcrumbHtml = `
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="https://aitechblogs.netlify.app">Home</a> › 
+      <a href="https://aitechblogs.netlify.app/category">Categories</a> › 
+      <span>${categoryName}</span>
+    </nav>
+  `;
 
   // Generate posts HTML with featured images
   let postsHtml = '';
@@ -465,6 +473,29 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
       font-size: 0.95rem;
       color: #374151;
     }
+      /* Breadcrumb Styles */
+    .breadcrumb {
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+    }
+    .breadcrumb a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .breadcrumb span {
+      color: #6b7280;
+      font-weight: 500;
+    }
+    .breadcrumb a:not(:last-child)::after {
+      content: '›';
+      margin: 0 8px;
+      color: #9ca3af;
+    }
     
     /* Responsive */
     @media (max-width: 768px) {
@@ -485,6 +516,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   </style>
 </head>
 <body>
+  ${breadcrumbHtml}
   <header class="category-header">
     <h1>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''}</h1>
     <p>${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}</p>
