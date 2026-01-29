@@ -7,41 +7,41 @@ export default async (request, context) => {
     // Detect if this is a category page
     if (pathParts[0] === 'category' && pathParts[1]) {
       const categorySlug = pathParts[1];
+      const page = url.searchParams.get('page') || 1;
       const isBot = detectBot(userAgent);
       const isAICrawler = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot']
         .some(bot => userAgent.toLowerCase().includes(bot));
 
-      console.log(`[Edge-Category] ${categorySlug}, Bot:${isBot}, AI:${isAICrawler}`);
+      console.log(`[Edge-Category] ${categorySlug}, Page:${page}, Bot:${isBot}, AI:${isAICrawler}`);
 
       if (isBot) {
         try {
           // Use Edge Cache FIRST before hitting backend
-          const cacheKey = `category-${categorySlug}-${isAICrawler ? 'full' : 'meta'}`;
+          const cacheKey = `category-${categorySlug}-page-${page}-${isAICrawler ? 'full' : 'meta'}`;
           const cache = await caches.open('category-cache');
           const cached = await cache.match(cacheKey);
           
           if (cached) {
-            console.log(`[Edge-Category] Cache HIT for ${categorySlug}`);
+            console.log(`[Edge-Category] Cache HIT for ${categorySlug} page ${page}`);
             return cached;
           }
 
           // If not cached, fetch from backend
-          const categoryData = await fetchCategoryMeta(categorySlug, isAICrawler, context);
+          const categoryData = await fetchCategoryMeta(categorySlug, page, isAICrawler, context);
           
           if (categoryData) {
-            const html = generateCategoryBotHtml(categoryData, categorySlug, isAICrawler);
+            const html = generateCategoryBotHtml(categoryData, categorySlug, page, isAICrawler);
             
             // Create response with Edge caching
             const response = new Response(html, {
               status: 200,
               headers: {
                 "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, max-age=1800, s-maxage=3600", // 30 min - 1 hour cache
+                "Cache-Control": "public, max-age=1800, s-maxage=3600",
                 "X-Robots-Tag": "index, follow, max-image-preview:large",
                 "Vary": "User-Agent",
                 "X-Rendered-By": "Edge-SSR-Category",
-                "X-Cache": "MISS",
-                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob:; connect-src 'self' http://localhost:5000 https://www.google-analytics.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';"
+                "X-Cache": "MISS"
               }
             });
             
@@ -77,18 +77,9 @@ export default async (request, context) => {
   }
 };
 
-//detectBot function
-function detectBot(userAgent = "") {
-  const bots = ['googlebot', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
-    'facebot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp',
-    'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user',
-    'bot/', 'crawler', 'spider', 'scraper', 'fetch'];
-  return bots.some(bot => userAgent.toLowerCase().includes(bot));
-}
-
 // OPTIMIZED Category Data Fetching
-async function fetchCategoryMeta(categorySlug, fullContent = false, context) {
-  const cacheKey = `backend-category-${categorySlug}-${fullContent ? 'full' : 'lite'}`;
+async function fetchCategoryMeta(categorySlug, page = 1, fullContent = false, context) {
+  const cacheKey = `backend-category-${categorySlug}-page-${page}-${fullContent ? 'full' : 'lite'}`;
   const cache = await caches.open('backend-cache');
   const cached = await cache.match(cacheKey);
   
@@ -100,9 +91,8 @@ async function fetchCategoryMeta(categorySlug, fullContent = false, context) {
   const timeout = setTimeout(() => controller.abort(), 3000);
   
   try {
-    const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=1${
-        fullContent ? '&limit=20' : ''
-    }`;
+    const limit = fullContent ? 20 : 10;
+    const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=${page}&limit=${limit}`;
     
     const response = await fetch(url, {
       signal: controller.signal,
@@ -137,22 +127,25 @@ async function fetchCategoryMeta(categorySlug, fullContent = false, context) {
     
     // Return minimal fallback data
     return {
-    category: {
+      category: {
         name: categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         description: `Latest ${categorySlug.replace(/-/g, ' ')} articles and technology insights`,
         slug: categorySlug
-    },
-    posts: [],
-    total: 0,
-    currentPage: 1
+      },
+      posts: [],
+      total: 0,
+      currentPage: Number(page) || 1,
+      totalPages: 1
     };
   }
 }
 
-function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false) {
+function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawler = false) {
   const category = categoryData.category || {};
   const posts = categoryData.posts || [];
-  
+  const totalPosts = categoryData.total || posts.length;
+  const currentPage = categoryData.currentPage || Number(page) || 1;
+  const totalPages = categoryData.totalPages || 1;
   
   const categoryName = escapeHtml(category.name || categorySlug.replace(/-/g, ' '));
   const categoryDesc = escapeHtml(
@@ -162,58 +155,108 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
   
   const categoryUrl = `https://aitechblogs.netlify.app/category/${categorySlug}`;
   
-  // Generate structured data
-  const schemas = {
-    category: {
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      "name": `${categoryName} Articles`,
-      "description": categoryDesc,
-      "url": categoryUrl,
-      "mainEntity": {
-        "@type": "ItemList",
-        "itemListElement": posts.slice(0, 10).map((post, index) => ({
-          "@type": "ListItem",
-          "position": index + 1,
-          "item": {
-            "@type": "TechArticle",
-            "headline": post.title,
-            "url": `https://aitechblogs.netlify.app/post/${post.slug}`,
-            "description": post.excerpt,
-            "datePublished": post.published_at
-          }
-        }))
+  // Generate breadcrumb schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://aitechblogs.netlify.app"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": "https://aitechblogs.netlify.app/blog"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": categoryName,
+        "item": categoryUrl
       }
-    }
+    ]
   };
-  
-  // Generate posts HTML for performance
+
+  // Generate posts HTML with featured images
   let postsHtml = '';
   if (posts.length > 0) {
-    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 9);
+    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 10);
     
-    postsHtml = displayPosts.map(post => `
-      <article class="category-post" itemscope itemtype="https://schema.org/TechArticle">
-        <h3 itemprop="headline">
-          <a href="/post/${post.slug}" itemprop="url">${escapeHtml(post.title)}</a>
-        </h3>
-        <div class="post-meta">
-          <time datetime="${post.published_at}">${
-            new Date(post.published_at).toLocaleDateString('en-US', { 
-              year: 'numeric', month: 'short', day: 'numeric' 
-            })
-          }</time>
-          ${post.author_name ? `<span> • By ${escapeHtml(post.author_name)}</span>` : ''}
-        </div>
-        <p itemprop="description">${escapeHtml(post.excerpt || '')}</p>
-        ${isAICrawler && post.content ? 
-          `<div class="ai-full-content">${cleanHtmlForAI(post.content.substring(0, 2000))}</div>` : 
-          ''
-        }
-      </article>
-    `).join('');
+    postsHtml = displayPosts.map(post => {
+      const featuredImage = post.featured_image || 
+                           `https://aitechblogs.netlify.app/placeholder-${categorySlug}.jpg`;
+      const imageAlt = post.title ? `${post.title} - Featured Image` : 'Article Featured Image';
+      const wordCount = post.word_count || post.content?.length || 500;
+      const readTime = Math.ceil(wordCount / 200);
+      
+      return `
+        <article class="category-post" itemscope itemtype="https://schema.org/TechArticle">
+          ${post.featured_image ? `
+            <div class="post-image">
+              <img src="${featuredImage}" alt="${imageAlt}" loading="lazy" />
+            </div>
+          ` : ''}
+          
+          <div class="post-content">
+            <h3 itemprop="headline">
+              <a href="/post/${post.slug}" itemprop="url">${escapeHtml(post.title)}</a>
+            </h3>
+            <div class="post-meta">
+              <time datetime="${post.published_at}">${
+                new Date(post.published_at).toLocaleDateString('en-US', { 
+                  year: 'numeric', month: 'short', day: 'numeric' 
+                })
+              }</time>
+              ${post.author_name && post.author_name !== 'Admin' ? 
+                `<span> • By ${escapeHtml(post.author_name)}</span>` : 
+                '<span> • By Admin</span>'
+              }
+              <span> • ${readTime} min read</span>
+            </div>
+            <p itemprop="description">${escapeHtml(post.excerpt || '')}</p>
+            ${isAICrawler && post.content ? 
+              `<div class="ai-full-content">${cleanHtmlForAI(post.content.substring(0, 2000))}</div>` : 
+              ''
+            }
+          </div>
+        </article>
+      `;
+    }).join('');
   } else {
-    postsHtml = `<p>No articles found in this category yet. Check back soon!</p>`;
+    postsHtml = `<p class="no-posts">No articles found in this category yet. Check back soon!</p>`;
+  }
+  
+  // Generate pagination HTML (if needed)
+  let paginationHtml = '';
+  if (totalPages > 1) {
+    paginationHtml = `
+      <div class="pagination" role="navigation" aria-label="Pagination">
+        ${currentPage > 1 ? 
+          `<a href="${categoryUrl}?page=${currentPage - 1}" class="prev" rel="prev">← Previous</a>` : 
+          '<span class="prev disabled">← Previous</span>'
+        }
+        
+        <div class="page-numbers">
+          ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            const pageNum = i + 1;
+            return pageNum === currentPage ? 
+              `<span class="current" aria-current="page">${pageNum}</span>` :
+              `<a href="${categoryUrl}?page=${pageNum}">${pageNum}</a>`;
+          }).join('')}
+          
+          ${totalPages > 5 ? `<span class="ellipsis">...</span>` : ''}
+        </div>
+        
+        ${currentPage < totalPages ? 
+          `<a href="${categoryUrl}?page=${currentPage + 1}" class="next" rel="next">Next →</a>` : 
+          '<span class="next disabled">Next →</span>'
+        }
+      </div>
+    `;
   }
   
   return `<!DOCTYPE html>
@@ -221,27 +264,27 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${categoryName} Articles | TechBlog AI</title>
-  <meta name="description" content="${categoryDesc}" />
+  <title>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI</title>
+  <meta name="description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
   <meta name="keywords" content="${escapeHtml(categoryName)}, technology, AI, programming, tech news" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
-  <link rel="canonical" href="${categoryUrl}" />
+  <meta name="robots" content="${currentPage === 1 ? 'index, follow' : 'index, follow'}, max-image-preview:large" />
+  <link rel="canonical" href="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
   
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="${categoryUrl}" />
-  <meta property="og:title" content="${categoryName} Articles | TechBlog AI" />
-  <meta property="og:description" content="${categoryDesc}" />
+  <meta property="og:url" content="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
+  <meta property="og:title" content="${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
+  <meta property="og:description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
   <meta property="og:image" content="https://aitechblogs.netlify.app/og-category.png" />
   <meta property="og:image:alt" content="${categoryName} Articles" />
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${categoryName} Articles | TechBlog AI" />
-  <meta name="twitter:description" content="${categoryDesc}" />
+  <meta name="twitter:title" content="${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
+  <meta name="twitter:description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
   
   <!-- Structured Data -->
-  <script type="application/ld+json">${escapeJson(schemas.category)}</script>
+  <script type="application/ld+json">${escapeJson(breadcrumbSchema)}</script>
   
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -254,6 +297,8 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
       color: #333;
       background: #fff;
     }
+    
+    /* Category Header */
     .category-header {
       padding: 40px 0;
       border-bottom: 2px solid #e5e7eb;
@@ -268,7 +313,18 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
       font-size: 1.1rem;
       color: #666;
       max-width: 800px;
+      margin-bottom: 10px;
     }
+    .post-count {
+      font-size: 0.9rem;
+      color: #6b7280;
+      background: #f3f4f6;
+      padding: 4px 12px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+    
+    /* Posts Grid */
     .posts-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -277,30 +333,131 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
     }
     .category-post {
       background: #f9fafb;
-      padding: 25px;
-      border-radius: 8px;
+      border-radius: 12px;
       border: 1px solid #e5e7eb;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .category-post:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .post-image {
+      height: 200px;
+      overflow: hidden;
+    }
+    .post-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+    .category-post:hover .post-image img {
+      transform: scale(1.05);
+    }
+    .post-content {
+      padding: 25px;
     }
     .category-post h3 {
       font-size: 1.3rem;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      line-height: 1.4;
     }
     .category-post h3 a {
-      color: #2563eb;
+      color: #1a1a1a;
       text-decoration: none;
     }
     .category-post h3 a:hover {
-      text-decoration: underline;
+      color: #2563eb;
     }
     .post-meta {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #6b7280;
       margin-bottom: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .post-meta span {
+      display: inline-block;
     }
     .category-post p {
       color: #4b5563;
       line-height: 1.7;
+      font-size: 0.95rem;
     }
+    .no-posts {
+      text-align: center;
+      padding: 60px;
+      color: #6b7280;
+      font-size: 1.1rem;
+      grid-column: 1 / -1;
+    }
+    
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 30px 0;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 40px;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .pagination a {
+      color: #3b82f6;
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .pagination a:hover {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    .pagination .disabled {
+      color: #9ca3af;
+      padding: 8px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      opacity: 0.5;
+    }
+    .page-numbers {
+      display: flex;
+      gap: 8px;
+    }
+    .page-numbers span.current {
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 6px;
+    }
+    .page-numbers .ellipsis {
+      padding: 8px;
+      color: #6b7280;
+    }
+    
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      color: #6b7280;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 40px;
+    }
+    footer a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* AI Content */
     .ai-full-content {
       margin-top: 20px;
       padding-top: 20px;
@@ -308,6 +465,8 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
       font-size: 0.95rem;
       color: #374151;
     }
+    
+    /* Responsive */
     @media (max-width: 768px) {
       .posts-grid {
         grid-template-columns: 1fr;
@@ -315,15 +474,22 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
       .category-header h1 {
         font-size: 2rem;
       }
+      .pagination {
+        flex-direction: column;
+        text-align: center;
+      }
+      .page-numbers {
+        justify-content: center;
+      }
     }
   </style>
 </head>
 <body>
   <header class="category-header">
-    <h1>${categoryName}</h1>
-    <p>${categoryDesc}</p>
+    <h1>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''}</h1>
+    <p>${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}</p>
     ${posts.length > 0 ? 
-      `<div class="post-count">${posts.length} articles</div>` : 
+      `<div class="post-count">${totalPosts} articles • Page ${currentPage} of ${totalPages}</div>` : 
       ''
     }
   </header>
@@ -332,9 +498,11 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
     ${postsHtml}
   </main>
   
-  <footer style="text-align: center; padding: 40px 0; color: #6b7280; border-top: 1px solid #e5e7eb;">
+  ${paginationHtml}
+  
+  <footer>
     <p>Category page generated by Edge SSR • 
-      <a href="https://aitechblogs.netlify.app" style="color: #3b82f6;">View Full Site</a>
+      <a href="https://aitechblogs.netlify.app">View Full Site</a>
     </p>
   </footer>
   
@@ -343,7 +511,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
     const ua = navigator.userAgent.toLowerCase();
     const isBot = /bot|crawler|spider|googlebot|bingbot|duckduckbot|slurp/.test(ua);
     if (!isBot) {
-      window.location.href = '${categoryUrl}';
+      window.location.href = '${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}';
     }
   </script>
 </body>
@@ -351,6 +519,14 @@ function generateCategoryBotHtml(categoryData, categorySlug, isAICrawler = false
 }
 
 // Helper functions
+function detectBot(userAgent = "") {
+  const bots = ['googlebot', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
+    'facebot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp',
+    'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user',
+    'bot/', 'crawler', 'spider', 'scraper', 'fetch'];
+  return bots.some(bot => userAgent.toLowerCase().includes(bot));
+}
+
 function escapeHtml(text = "") {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
