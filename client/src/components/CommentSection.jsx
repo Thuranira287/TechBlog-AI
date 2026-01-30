@@ -81,7 +81,7 @@ const CommentSection = ({ postId }) => {
     }
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('❌ Error fetching comments:', err);
+      console.error('Error fetching comments:', err);
       console.error('Response:', err?.response?.data);
       console.error('Status:', err?.response?.status);
     }
@@ -155,7 +155,7 @@ const CommentSection = ({ postId }) => {
       // Send to backend
       await blogAPI.reactToComment(commentId, type);
     } catch (err) {
-      console.error('❌ Error reacting to comment:', err);
+      console.error('Error reacting to comment:', err);
       fetchComments();
       alert('Failed to save reaction. Please try again.');
     } finally {
@@ -231,7 +231,6 @@ const CommentSection = ({ postId }) => {
       fetchComments();
       return true;
     } catch (err) {
-      console.error('❌ Error submitting comment:', err);
       alert('Error submitting comment. Please try again.');
       return false;
     }
@@ -286,15 +285,12 @@ const CommentSection = ({ postId }) => {
       fetchComments();
       alert('Comment deleted successfully');
     } catch (err) {
-      console.error('❌ Error deleting comment:', err);
+      console.error(' Error deleting comment:', err);
       alert('Failed to delete comment');
     }
   };
 
-  /* -----------------------------
-     Format Date
-  ----------------------------- */
-
+//Format Date
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
       year: 'numeric',

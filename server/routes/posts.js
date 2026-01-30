@@ -1,5 +1,6 @@
 import express from "express";
 import pool from "../config/db.js";
+import e from "express";
 
 const router = express.Router();
 
@@ -20,9 +21,9 @@ router.get("/", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const cursor = req.query.cursor || null;
-
     let query;
     let params = [];
+
 
     if (cursor) {
       query = `
@@ -88,7 +89,7 @@ router.get("/", async (req, res) => {
 
   } catch (error) {
     process.env.NODE_ENV === 'development' &&
-    console.error("❌ Error fetching posts:", error);
+    console.error("Error fetching posts:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -139,7 +140,7 @@ router.get("/category/:categorySlug", async (req, res) => {
       `;
       params = [categoryId, cursor];
     } else {
-      // Offset-based pagination - use string interpolation for LIMIT and OFFSET
+      // Offset-based pagination 
       const page = Number(req.query.page) || 1;
       const offset = (page - 1) * limit;
       
@@ -208,8 +209,6 @@ router.get("/category/:categorySlug", async (req, res) => {
     res.json(response);
     
   } catch (error) {
-    process.env.NODE_ENV === 'development' &&
-    console.error("❌ Error fetching category posts:", error);
     res.status(500).json({
       error: "Internal server error",
       details: error.message 
@@ -217,12 +216,9 @@ router.get("/category/:categorySlug", async (req, res) => {
   }
 });
 
-// GET post metadata ONLY (lightweight for traditional search engines)
+// GET post metadata ONLY 
 router.get('/:slug/meta', async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔍 [META] Fetching meta for post slug: "${req.params.slug}"`);
-    }
     const query = `
       SELECT 
         p.id,
@@ -256,13 +252,11 @@ router.get('/:slug/meta', async (req, res) => {
     
     if (!rows || rows.length === 0) {
       process.env.NODE_ENV === 'development' &&
-      console.log(`❌ [META] Post not found for meta: ${req.params.slug}`);
+      console.log(`[META] Post not found for meta: ${req.params.slug}`);
       return res.status(404).json({ error: 'Post not found' });
     }
     
     const post = rows[0];
-    process.env.NODE_ENV === 'development' &&
-    console.log(`✅ [META] Meta found for: ${post.title}`);
     
     // Parse tags
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
@@ -291,9 +285,6 @@ router.get('/:slug/meta', async (req, res) => {
     });
     
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('❌ [META] Meta endpoint error:', error);
-    }
     res.status(500).json({ 
       error: 'Internal server error', 
       details: error.message 
@@ -301,13 +292,10 @@ router.get('/:slug/meta', async (req, res) => {
   }
 });
 
-// GET post with FULL CONTENT (for AI crawlers like ChatGPT, Claude, Perplexity)
+// GET post with FULL CONTENT for AI crawlers 
 router.get('/:slug/full', async (req, res) => {
   try {
     const userAgent = req.headers['user-agent'] || '';
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔍 [FULL] Fetching full content for post slug: "${req.params.slug}" | UA: ${userAgent.substring(0, 50)}`);
-    }
     const query = `
       SELECT 
         p.id,
@@ -342,7 +330,7 @@ router.get('/:slug/full', async (req, res) => {
     
     if (!rows || rows.length === 0) {
       process.env.NODE_ENV === 'development' &&
-      console.log(`❌ [FULL] Post not found: ${req.params.slug}`);
+      console.log(`[FULL] Post not found: ${req.params.slug}`);
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -358,7 +346,7 @@ router.get('/:slug/full', async (req, res) => {
     }
 
     process.env.NODE_ENV === 'development' &&
-    console.log(`✅ [FULL] Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
+    console.log(`[FULL] Full content served for: ${post.title} (${post.content?.length || 0} chars)`);
     
     // Parse tags
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
@@ -368,7 +356,7 @@ router.get('/:slug/full', async (req, res) => {
       title: post.title,
       slug: post.slug,
       excerpt: post.excerpt,
-      content: post.content, // FULL CONTENT
+      content: post.content,
       featured_image: getFullImageUrl(post.featured_image),
       created_at: post.created_at,
       updated_at: post.updated_at,
@@ -389,7 +377,7 @@ router.get('/:slug/full', async (req, res) => {
     
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('❌ [FULL] Full content endpoint error:', error);
+      console.error('[FULL] Full content endpoint error:', error);
     }
     res.status(500).json({ 
       error: 'Internal server error', 
@@ -398,6 +386,152 @@ router.get('/:slug/full', async (req, res) => {
   }
 });
 
+// Search posts, contents, tags, keywords
+router.get("/search", async (req, res) => {
+  try {
+    const searchTerm = req.query.q || req.query.search || '';
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const offset = (page - 1) * limit;
+
+    process.env.NODE_ENV === 'development' &&
+    console.log(`🔍 [SEARCH] "${searchTerm}" | Page ${page}`);
+
+    if (!searchTerm.trim()) {
+      return res.json({
+        posts: [],
+        total: 0,
+        page: 1,
+        totalPages: 0,
+        hasMore: false
+      });
+    }
+
+    //FULLTEXT BOOLEAN MODE 
+    const booleanSearchTerm = searchTerm.split(' ')
+      .map(word => word.length > 2 ? `${word}*` : word)
+      .join(' ');
+
+    const query = `
+      SELECT 
+        p.*,
+        MATCH(p.title, p.excerpt, p.content, p.tags, p.keywords) 
+        AGAINST (? IN BOOLEAN MODE) AS relevance,
+        a.name AS author_name,
+        c.name AS category_name,
+        c.slug AS category_slug
+      FROM posts p
+      LEFT JOIN authors a ON p.author_id = a.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.status = 'published'
+        AND MATCH(p.title, p.excerpt, p.content, p.tags, p.keywords) 
+        AGAINST (? IN BOOLEAN MODE)
+      ORDER BY relevance DESC, p.published_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    try {
+      const [rows] = await pool.execute(query, [booleanSearchTerm, booleanSearchTerm]);
+      if (rows.length > 0) {
+        // Process and return results
+        const posts = rows.map(post => ({
+          ...post,
+          featured_image: getFullImageUrl(post.featured_image),
+          tags: typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || []
+        }));
+
+        // Get count
+        const countQuery = `
+          SELECT COUNT(*) AS total
+          FROM posts p
+          WHERE p.status = 'published'
+            AND MATCH(p.title, p.excerpt, p.content, p.tags, p.keywords) 
+            AGAINST (? IN BOOLEAN MODE)
+        `;
+        const [countResult] = await pool.execute(countQuery, [booleanSearchTerm]);
+        const total = countResult[0].total;
+
+        return res.json({
+          posts,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasMore: page < Math.ceil(total / limit)
+        });
+      }
+    } catch (ftError) {
+      process.env.NODE_ENV === 'development' &&
+      console.log(' [SEARCH] FULLTEXT failed, falling back to LIKE');
+    }
+
+    //Fallback to LIKE if FULLTEXT fails
+    const words = searchTerm.split(/\s+/).filter(w => w.length > 0);
+    const conditions = words.map(word => 
+      `(p.title LIKE ? OR p.excerpt LIKE ? OR p.content LIKE ? OR p.tags LIKE ? OR p.keywords LIKE ?)`
+    ).join(' AND ');
+
+    const fallbackQuery = `
+      SELECT 
+        p.*,
+        a.name AS author_name,
+        c.name AS category_name,
+        c.slug AS category_slug
+      FROM posts p
+      LEFT JOIN authors a ON p.author_id = a.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.status = 'published'
+        AND ${conditions}
+      ORDER BY p.published_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    // Build params for LIKE patterns
+    const params = [];
+    words.forEach(word => {
+      const pattern = `%${word}%`;
+      for (let i = 0; i < 5; i++) {
+        params.push(pattern);
+      }
+    });
+
+    const [rows] = await pool.execute(fallbackQuery, params);
+    process.env.NODE_ENV === 'development' &&
+    console.log(`[SEARCH] LIKE found ${rows.length} posts`);
+
+    const posts = rows.map(post => ({
+      ...post,
+      featured_image: getFullImageUrl(post.featured_image),
+      tags: typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || []
+    }));
+
+    // Get count for LIKE
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM posts p
+      WHERE p.status = 'published'
+        AND ${conditions}
+    `;
+    const [countResult] = await pool.execute(countQuery, params);
+    const total = countResult[0].total;
+
+    res.json({
+      posts,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page < Math.ceil(total / limit)
+    });
+
+  } catch (error) {
+    console.error(" [SEARCH] Error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 // GET single post by slug
 router.get("/:slug", async (req, res) => {
   try {
@@ -427,13 +561,13 @@ router.get("/:slug", async (req, res) => {
 
     if (posts.length === 0) {
       process.env.NODE_ENV === 'development' &&
-      console.log(`❌ Post not found: ${req.params.slug}`);
+      console.log(`Post not found: ${req.params.slug}`);
       return res.status(404).json({ error: "Post not found" });
     }
 
     let post = posts[0];
     process.env.NODE_ENV === 'development' &&
-    console.log(`✅ Post found: ${post.title}`);
+    console.log(` Post found: ${post.title}`);
 
     // Parse tags to array
     const tags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags || [];
@@ -482,8 +616,7 @@ router.get("/:slug", async (req, res) => {
       `UPDATE posts SET view_count = view_count + 1 WHERE id = ?`, 
       [completePost.id]
     );
-
-    // Fetch related posts (with SEO fields)
+    // Fetch related posts & SEO fields
     const [relatedPosts] = await pool.execute(
       `SELECT 
         p.id, 
@@ -500,14 +633,14 @@ router.get("/:slug", async (req, res) => {
       [post.category_id, post.id]
     );
 
-    // Add full image URLs to related posts too
+    // image URLs
     const relatedPostsWithFullUrls = relatedPosts.map(relatedPost => ({
       ...relatedPost,
       featured_image: getFullImageUrl(relatedPost.featured_image),
       tags: typeof relatedPost.tags === 'string' ? JSON.parse(relatedPost.tags) : relatedPost.tags || []
     }));
     process.env.NODE_ENV === 'development' &&
-    console.log(`📄 Found ${relatedPosts.length} related posts`);
+    console.log(`Found ${relatedPosts.length} related posts`);
 
     res.json({ 
       ...completePost, 
@@ -515,7 +648,7 @@ router.get("/:slug", async (req, res) => {
     });
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error("❌ Error fetching post:", error);
+      console.error("Error fetching post:", error);
     }
     res.status(500).json({ 
       error: "Internal server error",

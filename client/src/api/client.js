@@ -91,7 +91,7 @@ const responseInterceptor = (error) => {
     return Promise.reject({
       ...error,
       isTimeout: true,
-      message: 'Request took too long. Please check your connection.'
+      message: 'Request took too long. Please check your connection and refresh the page.'
     });
   }
   
@@ -123,13 +123,18 @@ adminApi.interceptors.response.use(null, responseInterceptor);
 
 // API methods
 export const blogAPI = {
-  getPosts: (page = 1, limit = 10, category = null, search = null) => {
-    const params = { page, limit }
-    if (category) params.category = category
-    if (search) params.search = search
-    return api.get('/posts', { params });
-  },
+  getPosts: (page = 1, limit = 20) =>
+    api.get('/posts', { params: { page, limit } }),
 
+  searchPosts: (query, page = 1, limit = 20) =>
+    api.get('/posts/search', {
+      params: {
+        q: query,
+        page,
+        limit
+      }
+    }),
+    
   getPost: (slug) => api.get(`/posts/${slug}`),
 
   getCategoryPosts: (categorySlug, page = 1) => 

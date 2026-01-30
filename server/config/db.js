@@ -18,11 +18,11 @@ const createDatabaseIfNotExists = async () => {
 
     await tempConnection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME}\``);
     if (process.env.NODE_ENV !== 'production') {
-    console.log(`✅ Database '${process.env.DB_NAME}' ensured`);}
+    console.log(`Database '${process.env.DB_NAME}' ensured`);}
     await tempConnection.end();
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-    console.error('❌ Error creating database:', error.message);}
+    console.error('Error creating database:', error.message);}
     process.exit(1);
   }
 };
@@ -49,7 +49,7 @@ const checkAndFixPosts = async () => {
   try {
     const connection = await pool.getConnection();
     if (process.env.NODE_ENV !== 'production') {
-    console.log('🔍 Checking existing posts...');}
+    console.log('Checking existing posts...');}
     
     const [posts] = await connection.execute(`
       SELECT p.id, p.title, p.status, p.category_id, c.name as category_name, c.slug as category_slug
@@ -58,20 +58,18 @@ const checkAndFixPosts = async () => {
     `);
 
 if (process.env.NODE_ENV !== 'production') {
-  console.log(`📊 Found ${posts.length} posts`);
+  console.log(`Found ${posts.length} posts`);
 }
 
     
     const publishedPosts = posts.filter(p => p.status === "published");
     const postsWithCategories = publishedPosts.filter(p => p.category_id !== null);
     if (process.env.NODE_ENV !== 'production') {
-    console.log(`📈 Published posts: ${publishedPosts.length}`);
-    console.log(`📈 Published posts with categories: ${postsWithCategories.length}`);}
+    console.log(`Published posts with categories: ${postsWithCategories.length}`);}
     
     if (publishedPosts.length > 0 && postsWithCategories.length === 0) {
       if (process.env.NODE_ENV !== 'production') {
-      console.log('⚠️  Published posts found but no categories assigned!');
-      console.log('💡 Assigning categories to published posts...');}
+      console.log(' Published posts found but no categories assigned!');}
       
       const [categories] = await connection.execute('SELECT id FROM categories LIMIT 1');
       if (categories.length > 0) {
@@ -81,12 +79,12 @@ if (process.env.NODE_ENV !== 'production') {
           [defaultCategoryId]
         );
         if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Assigned default category to published posts');}
+        console.log('Assigned default category to published posts');}
       }
     }
   } catch (tableError) {
     if (process.env.NODE_ENV !== 'production') {
-      console.log('⚠️  Could not check posts table:', tableError.message);}
+      console.log('Could not check posts table:', tableError.message);}
       return; // Exit gracefully if there's a table issue
     } finally {
     if (connection) {
@@ -100,13 +98,13 @@ export const connectDB = async () => {
   try {
     const connection = await pool.getConnection();
     if (process.env.NODE_ENV !== 'production') {
-    console.log('✅ MySQL Connected successfully');}
+    console.log('MySQL Connected successfully');}
     connection.release();
 
     await initializeTables();
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-    console.error('❌ Database connection failed:', error.message);}
+    console.error('Database connection failed:', error.message);}
     process.exit(1);
   }
 };
@@ -190,7 +188,7 @@ const initializeTables = async () => {
 
     connection.release();
     if (process.env.NODE_ENV !== 'production') {
-    console.log('✅ Database tables initialized');}
+    console.log('Database tables initialized');}
 
     await insertEssentialData();
   } catch (error) {
@@ -203,13 +201,13 @@ const insertEssentialData = async () => {
   try {
     const connection = await pool.getConnection();
     if (process.env.NODE_ENV !== 'production') {
-    console.log('📝 Setting up essential data for admin...');}
+    console.log('Setting up essential data for admin...');}
 
     // 1. Create categories if they don't exist
     const [categories] = await connection.execute('SELECT COUNT(*) as count FROM categories');
     if (categories[0].count === 0) {
       if (process.env.NODE_ENV !== 'production') {
-      console.log('🗂️ Creating categories...');}
+      console.log('Creating categories...');}
       
       const sampleCategories = [
         ['Technology', 'technology', 'Latest tech news and tutorials'],
@@ -225,10 +223,10 @@ const insertEssentialData = async () => {
         );
       }
       if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ Categories created');}
+      console.log('Categories created');}
     } else {
       if (process.env.NODE_ENV !== 'production') {
-      console.log(`📊 Found ${categories[0].count} existing categories`);}
+      console.log(`Found ${categories[0].count} existing categories`);}
     }
 
     // 2. Create default author if none exists
@@ -247,10 +245,10 @@ const insertEssentialData = async () => {
         ]
       );
       if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ Default author created');}
+      console.log('Default author created');}
     } else {
       if (process.env.NODE_ENV !== 'production') {
-      console.log(`📊 Found ${authors[0].count} existing authors`);}
+      console.log(`Found ${authors[0].count} existing authors`);}
     }
 
     // 3. Create admin user if none exists
@@ -264,18 +262,18 @@ const insertEssentialData = async () => {
         );
        } else {
         if (process.env.NODE_ENV !== 'production') {
-        console.log(`📊 Found ${adminUsers[0].count} existing admin user(s)`);}
+        console.log(`Found ${adminUsers[0].count} existing admin user(s)`);}
       }
     connection.release();
     if (process.env.NODE_ENV !== 'production') {
-    console.log('✅ Essential data setup completed');}
+    console.log('Essential data setup completed');}
     
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      console.error('❌ Error setting up essential data:', error.message);
-      console.log('📊 Current Database Status:');
-      console.log('- Published Posts: 0');
-      console.log('- Draft Posts: 0');
+      console.error('Error setting up essential data:', error.message);
+      console.log('Current Database Status:');
+      console.log('Published Posts: 0');
+      console.log('Draft Posts: 0');
     }
   }
 };

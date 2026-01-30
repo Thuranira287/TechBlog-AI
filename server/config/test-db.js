@@ -10,10 +10,10 @@ const test = async () => {
       password: process.env.DB_PASSWORD,
       port: process.env.DB_PORT || 3307
     });
-    console.log('✅ MySQL connection successful');
+    console.log('MySQL connection successful');
     await conn.end();
   } catch (err) {
-    console.error('❌ Connection failed:', err.message);
+    console.error('Connection failed:', err.message);
   }
 };
 

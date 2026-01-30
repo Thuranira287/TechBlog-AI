@@ -117,7 +117,7 @@ const PostEditor = () => {
     
     // Debug: Log what's being sent
     if (process.env.NODE_ENV !== 'production') {
-    console.log('📤 FormData contents:');}
+    console.log(' FormData contents:');}
     for (let [key, value] of postData.entries()) {
       if (process.env.NODE_ENV !== 'production') {
       console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);}
@@ -129,18 +129,16 @@ const PostEditor = () => {
       if (imagePreview && !imagePreview.startsWith('blob:')) {
         postData.append('existing_featured_image', imagePreview);
       }
-      if (process.env.NODE_ENV !== 'production') {
-      console.log(`🔄 Updating post ID: ${id}`);}
       response = await blogAPI.updateAdminPost(id, postData);
     } else {
-      console.log('🆕 Creating new post');
+      console.log('Creating new post');
       response = await blogAPI.createAdminPost(postData);
     }
 
-    console.log('✅ Success:', response.data);
+    console.log('Success:', response.data);
     navigate('/admin/dashboard');
   } catch (error) {
-    console.error('❌ Error saving post:', error);
+    console.error('Error saving post:', error);
     console.error('Full error:', error);
     
     let errorMessage = 'Error saving post. Please try again.';

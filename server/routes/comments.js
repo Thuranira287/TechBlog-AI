@@ -78,7 +78,7 @@ router.get('/post/:postId', async (req, res) => {
     console.log(`Found ${comments.length} comments for post ${postId}`);
     res.json(comments);
   } catch (err) {
-    process.env.NODE_ENV === 'development' && console.error('❌ Error fetching comments:', err);
+    process.env.NODE_ENV === 'development' && console.error('Error fetching comments:', err);
     res.status(500).json({ 
       error: 'Failed to fetch comments',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
-    console.error('❌ Error creating comment:', err);
+    console.error('Error creating comment:', err);
     res.status(500).json({ 
       error: 'Failed to create comment',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -253,7 +253,7 @@ router.post('/:id/reactions', async (req, res) => {
 
   } catch (err) {
     await connection.rollback();
-    console.error('❌ Error handling reaction:', err);
+    console.error('Error handling reaction:', err);
     
     // Handle specific MySQL errors
     let statusCode = 500;
@@ -288,7 +288,7 @@ router.get('/:id/reactions/:user_email', async (req, res) => {
       type: reactions.length ? reactions[0].type : null 
     });
   } catch (err) {
-    console.error('❌ Error fetching reaction:', err);
+    console.error('Error fetching reaction:', err);
     res.status(500).json({ 
       error: 'Failed to fetch reaction status',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -316,7 +316,7 @@ router.get('/admin', async (req, res) => {
     );
     res.json(comments);
   } catch (err) {
-    console.error('❌ Error fetching admin comments:', err);
+    console.error('Error fetching admin comments:', err);
     res.status(500).json({ 
       error: 'Failed to fetch comments',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -358,7 +358,7 @@ router.put('/admin/:id', async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
-    console.error('❌ Error updating comment:', err);
+    console.error('Error updating comment:', err);
     res.status(500).json({ 
       error: 'Failed to update comment',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -401,7 +401,7 @@ router.delete('/admin/:id', async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
-    console.error('❌ Error deleting comment:', err);
+    console.error('Error deleting comment:', err);
     res.status(500).json({ 
       error: 'Failed to delete comment',
       message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -427,7 +427,7 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
     
     res.json(stats[0]);
   } catch (err) {
-    process.env.NODE_ENV === 'development' && console.error('❌ Error fetching comment stats:', err);
+    process.env.NODE_ENV === 'development' && console.error('Error fetching comment stats:', err);
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });

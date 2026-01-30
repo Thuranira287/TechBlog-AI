@@ -149,7 +149,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     // Validate required fields
     if (!title || !slug || !content || !category_id) {
       process.env.NODE_ENV !== 'production' &&
-      console.error('❌ Missing required fields');
+      console.error('Missing required fields');
       return res.status(400).json({
         error: 'Missing required fields',
         required: ['title', 'slug', 'content', 'category_id'],
@@ -163,7 +163,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     
     if (!author_id) {
       process.env.NODE_ENV !== 'production' &&
-      console.error('❌ No author found in database');
+      console.error('No author found in database');
       return res.status(500).json({ error: 'No author configured in system' });
     }
 
@@ -172,14 +172,14 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
     if (req.file) {
       try {
         process.env.NODE_ENV !== 'production' &&
-        console.log('📸 Uploading featured image...');
+        console.log('Uploading featured image...');
         const uploadResult = await uploadBufferToCloudinary(req.file.buffer);
         featured_image = uploadResult.secure_url;
         process.env.NODE_ENV !== 'production' &&
-        console.log('✅ Image uploaded:', featured_image);
+        console.log('Image uploaded:', featured_image);
       } catch (uploadError) {
         process.env.NODE_ENV !== 'production' &&
-        console.error('❌ Image upload failed:', uploadError);
+        console.error('Image upload failed:', uploadError);
       }
     }
 
@@ -223,8 +223,6 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       status: status || 'draft',
       view_count: 0
     };
-    process.env.NODE_ENV !== 'production' && 
-    console.log('🛠️ Prepared values for insertion:');
     Object.entries(safeValues).forEach(([key, value]) => {
       process.env.NODE_ENV !== 'production' &&
       console.log(`  ${key}: ${value === null ? 'NULL' : typeof value === 'string' ? `"${value.substring(0, 30)}..."` : value}`);
@@ -266,8 +264,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       safeValues.status  // For published_at conditional
     ]);
     process.env.NODE_ENV !== 'production' &&
-    console.log(`✅ Post created with ID: ${result.insertId}`);
-
+    console.log(`Post created with ID: ${result.insertId}`);
     // Fetch the created post with joins
     const [newPost] = await pool.execute(`
       SELECT p.*, 
@@ -309,7 +306,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
 
   } catch (error) {
     process.env.NODE_ENV !== 'production' &&
-    console.error('❌ Error creating post:', error);
+    console.error('Error creating post:', error);
     
     // Enhanced error handling
     if (error.code === 'ER_DUP_ENTRY') {
@@ -351,7 +348,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       tags, status, existing_featured_image 
     } = req.body;
     process.env.NODE_ENV !== 'production' &&
-    console.log('🔄 Updating post ID:', req.params.id);
+    console.log('Updating post ID:', req.params.id);
 
     // Get existing post first
     const [existingPosts] = await pool.execute('SELECT * FROM posts WHERE id = ?', [req.params.id]);
