@@ -9,7 +9,7 @@ export default async (request, context) => {
       const categorySlug = pathParts[1];
       const page = url.searchParams.get('page') || 1;
       const isBot = detectBot(userAgent);
-      const isAICrawler = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot']
+      const isAICrawler = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot', 'googlebot', 'google-inspectiontool', 'bingbot', 'duckduckbot', 'slurp', 'baiduspider']
         .some(bot => userAgent.toLowerCase().includes(bot));
 
       console.log(`[Edge-Category] ${categorySlug}, Page:${page}, Bot:${isBot}, AI:${isAICrawler}`);

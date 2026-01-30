@@ -5,7 +5,7 @@ export default async (request, context) => {
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
 
     const isBot = detectBot(userAgent);
-    const fullContentCrawlers = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot'];
+    const fullContentCrawlers = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot', 'googlebot', 'google-inspectiontool', 'bingbot', 'duckduckbot', 'slurp', 'baiduspider'];
     const isFullContentBot = fullContentCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
 
     console.log(`[Edge] ${url.pathname}, Bot:${isBot}, Full:${isFullContentBot}`);
@@ -177,9 +177,8 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
       const fullContent = cleanHtmlForAI(post.content || "");
       contentHtml = `<div class="article-preview"><p>${desc}</p><div class="full-content">${fullContent}</div></div>`;
     } else {
-      const escapedContent = escapeHtml(post.content);
-      const displayContent = escapedContent.length > 1500 ? escapedContent.substring(0, 1500) + '...' : escapedContent;
-      contentHtml = `<div class="article-preview"><p>${desc}</p><div class="full-content">${displayContent}</div></div>`;
+      const fullContent = post.content;
+      contentHtml = `<div class="article-preview"><p>${desc}</p><div class="full-content">${fullContent}</div></div>`;
     }
   } else if (post.content) {
     const preview = escapeHtml(post.content.substring(0, 500));
@@ -199,9 +198,11 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
       <a itemprop="item" href="https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"><span itemprop="name">${category}</span></a>
       <meta itemprop="position" content="3" /></li>
     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-      <span itemprop="name">${title}</span><meta itemprop="position" content="4" /></li>
-      <a itemprop="item" href="${postUrl}"><span itemprop="name">${title}</span></a>
-      <meta itemprop="position" content="4" /></li>
+      <a itemprop="item" href="${postUrl}">
+        <span itemprop="name">${title}</span>
+      </a>
+      <meta itemprop="position" content="4" />
+    </li>
   </ol></nav>`;
 
   return `<!DOCTYPE html>
@@ -294,11 +295,9 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
     </div>
     <div class="content" itemprop="articleBody">
       ${contentHtml}
-      <div class="disclaimer"><em>${isAICrawler ? 'Content optimized for AI analysis. Full interactive version at original URL.' : 'Preview for search engines. Full article requires JavaScript.'}</em></div>
     </div>
     <meta itemprop="dateModified" content="${modifiedDate}" />
   </article>
-  <script>if(typeof window!=='undefined'&&window.navigator&&!navigator.userAgent.match(/bot|crawler|spider/i)){window.location.href='${postUrl}'}</script>
 </body>
 </html>`;
 }
