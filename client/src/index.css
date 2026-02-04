@@ -302,3 +302,10 @@ body {
 .grayscale-0 {
   filter: grayscale(0%);
 }
+/* Responsive Image Styling in articles */
+.responsive-img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 20px auto;  
+}
