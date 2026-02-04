@@ -186,19 +186,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   // Generate posts HTML with featured images
   let postsHtml = '';
   if (posts.length > 0) {
-    let POSTS_PER_PAGE = 9;
-    if (typeof window !== 'undefined') {
-      const screenWidth = window.innerWidth;
-
-      if (screenWidth <= 1024 && screenWidth > 768) {
-        POSTS_PER_PAGE = 8;
-      } else if (screenWidth <= 768) {
-        POSTS_PER_PAGE = 6;
-      }
-    }
-    
-    const startIndex = 0;
-    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 9);
     
     postsHtml = displayPosts.map(post => {
       const featuredImage = post.featured_image || 
