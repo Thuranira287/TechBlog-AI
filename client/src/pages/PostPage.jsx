@@ -42,23 +42,55 @@ const PostPage = () => {
     })
   }
 
-  const sharePost = () => {
-    if (!post) return;
+const sharePost = (platform = 'native') => {
+  if (!post) return;
+  
+  const shareUrl = `https://aitechblogs.netlify.app/post/${post.slug}/`;
+  const shareText = post.twitter_title || post.title;
+  const shareDescription = post.twitter_description || post.og_description || post.excerpt;
+  
+  // Native share API (mobile devices)
+  if (platform === 'native' && navigator.share) {
+    navigator.share({
+      title: shareText,
+      text: shareDescription,
+      url: shareUrl,
+    }).catch(err => console.log('Share cancelled'));
+    return;
+  }
+  
+  // Platform-specific sharing
+    const shareUrls = {
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+      
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+      
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`,
+      
+      telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+      
+      reddit: `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareText)}`,
+      
+      pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&description=${encodeURIComponent(shareDescription)}`,
+      
+      email: `mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(shareDescription + '\n\n' + shareUrl)}`,
+      
+      copy: shareUrl // For copy to clipboard
+    };
     
-    const shareUrl = `https://aitechblogs.netlify.app/post/${post.slug}/`;
-    const shareText = post.twitter_title || post.title;
-    const shareDescription = post.twitter_description || post.og_description || post.excerpt;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: shareText,
-        text: shareDescription,
-        url: shareUrl,
+    if (platform === 'copy') {
+      // Copy to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('Link copied to clipboard!');
+        // Or use a toast notification instead
       });
     } else {
-      // Twitter-specific sharing
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
-      window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+      const url = shareUrls[platform];
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer,width=600,height=400');
+      }
     }
   };
 
@@ -124,8 +156,8 @@ const PostPage = () => {
         <meta name="twitter:description" content={post.twitter_description || post.og_description || post.meta_description || post.excerpt} />
         <meta name="twitter:image" content={imageUrl} />
         <meta name="twitter:image:alt" content={post.title} />
-        <meta name="twitter:site" content="@techblogai" />
-        <meta name="twitter:creator" content="@techblogai" />
+        <meta name="twitter:site" content="@AiTechBlogs" />
+        <meta name="twitter:creator" content="@TechBlog AI" />
         
         {/* Article Specific */}
         <meta property="article:published_time" content={post.published_at} />
@@ -145,23 +177,23 @@ const PostPage = () => {
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "BlogPosting",
+            "@type": "TechArticle",
             headline: post.meta_title || post.title,
             description: post.meta_description || post.excerpt,
             image: imageUrl,
             datePublished: post.published_at,
             dateModified: post.updated_at,
-            author: { 
-              "@type": "Person", 
-              name: post.author_name,
-              url: post.author_id ? `${SITE_URL}/author/${post.author_id}` : SITE_URL
+            author: {
+              "@id": `${SITE_URL}/about#alexander-zachary`
             },
             publisher: {
               "@type": "Organization",
               name: "TechBlog AI",
               logo: {
                 "@type": "ImageObject",
-                url: `${SITE_URL}/blog-icon.svg`,
+                url: `${SITE_URL}/TechBlogAI.jpg`,
+                width: 512,
+                height: 512
               },
             },
             mainEntityOfPage: {

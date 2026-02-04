@@ -144,14 +144,14 @@ function generateSchemas(post, postUrl) {
       "@context": "https://schema.org", "@type": "BreadcrumbList",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aitechblogs.netlify.app" },
-        { "@type": "ListItem", "position": 2, "name": cat, "item": `https://aitechblogs.netlify.app/category/${encodeURIComponent(cat.toLowerCase())}` },
+        { "@type": "ListItem", "position": 2, "name": cat, "item": `https://aitechblogs.netlify.app/category/${cat .toLowerCase().replace(/\s+/g, "-")}`},
         { "@type": "ListItem", "position": 3, "name": t, "item": postUrl }
       ]
     },
     website: {
-      "@context": "https://schema.org", "@type": "BlogPosting", "@id": "https://aitechblogs.netlify.app/#category",
+      "@context": "https://schema.org", "@type": "website", "@id": "https://aitechblogs.netlify.app/#website",
       "name": "TechBlog AI", "description": "AI and technology insights", "url": "https://aitechblogs.netlify.app",
-      "publisher": { "@type": "Organization", "name": "TechBlog AI" }, "inLanguage": "en-US"
+      "publisher": { "@type": "Organization", "@id": "https://aitechblogs.netlify.app/#organization", "name": "TechBlog AI" }, "inLanguage": "en-US"
     }
   };
 }

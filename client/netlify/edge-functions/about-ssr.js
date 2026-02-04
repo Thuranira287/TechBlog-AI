@@ -39,14 +39,14 @@ function generateAboutHtml() {
   const SITE = {
     url: "https://aitechblogs.netlify.app",
     name: "TechBlog AI",
-    logo: "https://aitechblogs.netlify.app/logo.png"
+    logo: "https://aitechblogs.netlify.app/TechBlogAI.jpg"
   };
 
   const AUTHOR = {
     name: "Alexander Zachary",
     role: "Senior AI & Full-Stack Developer",
     bio: "Computer Science graduate with over 5 years of professional experience in full-stack development and artificial intelligence. Founder of TechBlog AI, combining technical expertise with pedagogical clarity to create practical, accessible learning resources.",
-    image: "https://aitechblogs.netlify.app/avatar.jpg",
+    image: "https://aitechblogs.netlify.app/author-avatar.jpg",
     location: "Nairobi, Kenya",
     email: "contact@techblogai.com",
     sameAs: [
