@@ -97,7 +97,7 @@ router.get("/", async (req, res) => {
 // GET posts by category (OFFSET + CURSOR) WITH SEO FIELDS
 router.get("/category/:categorySlug", async (req, res) => {
   try {
-    const limit = 10;
+    const limit = 9;
     const cursor = req.query.cursor || null;
     
     const [categoryCheck] = await pool.execute(

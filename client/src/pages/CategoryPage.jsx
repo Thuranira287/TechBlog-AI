@@ -24,25 +24,6 @@ const CategoryPage = () => {
   useEffect(() => {
     fetchCategoryPosts()
   }, [category, currentPage])
-  const [displayPosts, setDisplayPosts] = useState([])
-
-  useEffect(() => {
-    if (posts.length === 0) return
-
-    const handleResize = () => {
-      let POSTS_PER_PAGE = 9 // desktop default
-      const width = window.innerWidth
-
-      if (width <= 1024 && width > 768) POSTS_PER_PAGE = 8 // tablet
-      if (width <= 768) POSTS_PER_PAGE = 6 // mobile
-
-      setDisplayPosts(posts.slice(0, POSTS_PER_PAGE))
-    }
-
-    handleResize() // initial slice
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [posts])
 
   const fetchCategoryPosts = async () => {
     try {
@@ -225,7 +206,7 @@ const CategoryPage = () => {
           ) : posts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayPosts.map((post) => (
+                {posts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
               </div>
