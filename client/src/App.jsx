@@ -6,7 +6,7 @@ import CSPMeta from "./components/CPSMeta";
 // Layout
 import Layout from "./components/Layout";
 
-// Core pages (eager load)
+// Core pages
 import HomePage from "./pages/HomePage";
 import PostPage from "./pages/PostPage";
 import CategoryPage from "./pages/CategoryPage";
@@ -74,7 +74,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    // Redirect to login if not authenticated
+    // Redirect to login
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
@@ -92,60 +92,120 @@ const AdminLoadingFallback = () => (
 );
 
 function App() {
-  const [consentGiven, setConsentGiven] = useState(false);
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
+  const [adsenseLoaded, setAdsenseLoaded] = useState(false);
 
+  // Check for existing consent on mount and load scripts accordingly
   useEffect(() => {
-    // Check for existing cookie consent on app load
     const savedConsent = localStorage.getItem("techblog_cookie_consent");
-    if (savedConsent === 'accepted') {
-      setConsentGiven(true);
-      loadAnalytics();
+    
+    if (savedConsent === "accepted" || savedConsent === "customized") {
+      // User has made a choice — check granular preferences
+      const analyticsConsent = localStorage.getItem("techblog_analytics_consent");
+      const adsConsent = localStorage.getItem("techblog_ads_consent");
+
+      if (analyticsConsent === "true") {
+        loadAnalytics();
+      }
+      if (adsConsent === "true") {
+        loadAdSense();
+      }
     }
   }, []);
 
   const loadAnalytics = () => {
-    if (analyticsLoaded) return;
+    if (analyticsLoaded || window.location.hostname === 'localhost') return;
     
-    // Load Google Analytics only if consent given
-    if (window.location.hostname !== 'localhost' && !analyticsLoaded) {
-      const script = document.createElement('script');
-      script.src = 'https://www.googletagmanager.com/gtag/js?id=YOUR_GA_ID';
-      script.async = true;
-      document.head.appendChild(script);
-      
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){ dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', 'YOUR_GA_ID', {
-        anonymize_ip: true,
-        allow_google_signals: false,
-        allow_ad_personalization_signals: false
-      });
-      
-      setAnalyticsLoaded(true);
-      if (process.env.NODE_ENV !== 'production') {
-      console.log("Analytics loaded with privacy settings");}
+    const script = document.createElement('script');
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-L2JCRCT3F3';
+    script.async = true;
+    document.head.appendChild(script);
+    
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag('js', new Date());
+    gtag('config', 'YOUR_GA_ID', {
+      anonymize_ip: true,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    });
+    
+    setAnalyticsLoaded(true);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("Google Analytics loaded with privacy settings");
     }
   };
 
-  const enableAnalytics = () => {
-    setConsentGiven(true);
-    loadAnalytics();
+  const loadAdSense = () => {
+    if (adsenseLoaded || window.location.hostname === 'localhost') return;
+
+    const script = document.createElement('script');
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    document.head.appendChild(script);
+
+    setAdsenseLoaded(true);
     if (process.env.NODE_ENV !== 'production') {
-    console.log("Analytics enabled (user accepted)");}
+      console.log("Google AdSense loaded");
+    }
   };
 
-  const disableAnalytics = () => {
-    // Remove any existing analytics cookies
+  const clearAnalyticsCookies = () => {
     document.cookie.split(";").forEach(cookie => {
       const cookieName = cookie.split("=")[0].trim();
       if (cookieName.includes('_ga') || cookieName.includes('_gid')) {
+        // Clear with multiple domain variants to ensure removal
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
       }
     });
+  };
+
+  const clearAdSenseCookies = () => {
+    document.cookie.split(";").forEach(cookie => {
+      const cookieName = cookie.split("=")[0].trim();
+      // Common AdSense cookie patterns
+      if (cookieName === 'NID' || 
+          cookieName === 'IDE' || 
+          cookieName === 'SAPISID' ||
+          cookieName === '1P_JAR' ||
+          cookieName === 'HSID' ||
+          cookieName === 'SID') {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+      }
+    });
+  };
+
+  const handleCookieAccept = ({ analytics, ads }) => {
+    if (analytics && !analyticsLoaded) {
+      loadAnalytics();
+    }
+    if (ads && !adsenseLoaded) {
+      loadAdSense();
+    }
+
     if (process.env.NODE_ENV !== 'production') {
-    console.log("Analytics disabled (user declined)");}
+      console.log("User consent:", { analytics, ads });
+    }
+  };
+
+  const handleCookieDecline = ({ analytics, ads }) => {
+    // Clear cookies for declined services
+    if (!analytics) {
+      clearAnalyticsCookies();
+    }
+    if (!ads) {
+      clearAdSenseCookies();
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("User declined:", { analytics: !analytics, ads: !ads });
+    }
   };
 
   return (
@@ -161,9 +221,8 @@ function App() {
           <Layout>
             {/* CookieConsent */}
             <CookieConsent 
-              onAccept={enableAnalytics} 
-              onDecline={disableAnalytics}
-              privacyLink="/policy/privacy#cookies"
+              onAccept={handleCookieAccept} 
+              onDecline={handleCookieDecline}
             />
             
             <Routes>
@@ -172,7 +231,13 @@ function App() {
               <Route path="/post/:slug" element={<PostPage />} />
               <Route path="/category/:category" element={<CategoryPage />} />
               <Route path="/search" element={<SearchPage />} />
+              
+              {/* Policy routes */}
+              <Route path="/privacy" element={<Navigate to="/policy/privacy" replace />} />
+              <Route path="/terms" element={<Navigate to="/policy/terms" replace />} />
+              <Route path="/cookie" element={<Navigate to="/policy/cookie" replace />} />
               <Route path="/policy/:type" element={<PolicyPage />} />
+              
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/about" element={<About />} />
               <Route path="/author" element={<AuthorBio compact={false} />} />
@@ -180,7 +245,7 @@ function App() {
               <Route path="/jobs" element={<JobsPage />} />
               <Route path="/jobs/:id" element={<JobDetails />} />
               
-              {/* Protected Admin Routes with Lazy Loading */}
+              {/* Protected Routes */}
               <Route 
                 path="/admin/dashboard" 
                 element={
@@ -229,6 +294,7 @@ function App() {
                     </ProtectedRoute>
                   } 
               />
+              
               {/* 404 Catch-all */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

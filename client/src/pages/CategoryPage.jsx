@@ -223,7 +223,7 @@ const CategoryPage = () => {
               <p className="text-gray-600 mb-6">
                 {pagination.currentPage > pagination.totalPages
                   ? `There are only ${pagination.totalPages} page${pagination.totalPages !== 1 ? 's' : ''} in this category.`
-                  : 'There are no published posts in this category yet.'
+                  : 'There are no published posts in this category yet. Browse All Categories'
                 }
               </p>
               <div className="flex gap-4 justify-center">
@@ -235,7 +235,7 @@ const CategoryPage = () => {
                 </a>
                 <a 
                   href="/" 
-                  className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-green-100 transition-colors"
                 >
                   Browse All Categories
                 </a>

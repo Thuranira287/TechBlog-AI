@@ -89,7 +89,7 @@ async function fetchCategoryMeta(categorySlug, page = 1, fullContent = false, co
   }
   
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000);
+  const timeout = setTimeout(() => controller.abort(), 5000);
   
   try {
     const limit = fullContent ? 20 : 10;
@@ -170,12 +170,6 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
       {
         "@type": "ListItem",
         "position": 2,
-        "name": "Blog",
-        "item": "https://aitechblogs.netlify.app/blog"
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
         "name": categoryName,
         "item": categoryUrl
       }
@@ -192,7 +186,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   // Generate posts HTML with featured images
   let postsHtml = '';
   if (posts.length > 0) {
-    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 10);
+    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 9);
     
     postsHtml = displayPosts.map(post => {
       const featuredImage = post.featured_image || 
@@ -238,7 +232,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
     postsHtml = `<p class="no-posts">No articles found in this category yet. Check back soon!</p>`;
   }
   
-  // Generate pagination HTML (if needed)
+  // Generate pagination HTML
   let paginationHtml = '';
   if (totalPages > 1) {
     paginationHtml = `

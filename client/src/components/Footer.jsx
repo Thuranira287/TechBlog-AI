@@ -170,7 +170,7 @@ const Footer = () => {
                   <Facebook className="h-3 w-3" />
                 </a>
                 <a
-                  href="https://x.com/ranviah?s=09"
+                  href="https://x.com/TechBlogsAI"
                   aria-label="Twitter"
                   title="Twitter"
                   className="text-gray-400 hover:text-white transition-colors"

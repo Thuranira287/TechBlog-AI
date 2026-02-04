@@ -130,11 +130,11 @@ function generateSchemas(post, postUrl) {
       "headline": t, "description": d,
       "image": { "@type": "ImageObject", "url": img, "width": 1200, "height": 630 },
       "url": postUrl, "datePublished": pub, "dateModified": mod,
-      "author": { "@type": "Person", "name": a, "url": "https://aitechblogs.netlify.app/about" },
+      "author": { "@type": "Person", "@id": "https://aitechblogs.netlify.app/about#alexander-zachary", "name": a, "url": "https://aitechblogs.netlify.app/about", "sameAs": ["https://twitter.com/AiTechBlogs", "https://facebook.com/alexander.thuranira.1044"] },
       "publisher": {
         "@type": "Organization", "name": "TechBlog AI", "url": "https://aitechblogs.netlify.app",
-        "logo": { "@type": "ImageObject", "url": "https://aitechblogs.netlify.app/favicon.ico", "width": 100, "height": 100 },
-        "sameAs": ["https://twitter.com/AiTechBlogs", "https://facebook.com/aitechblogs"]
+        "logo": { "@type": "ImageObject", "url": "https://aitechblogs.netlify.app/TechBlogAI.jpg", "width": 512, "height": 512 },
+        "sameAs": ["https://twitter.com/AiTechBlogs", "https://facebook.com/alexander.thuranira.1044"]
       },
       "mainEntityOfPage": { "@type": "WebPage", "@id": postUrl },
       "articleSection": cat, "keywords": tags.join(", "), "wordCount": wc,
@@ -144,13 +144,12 @@ function generateSchemas(post, postUrl) {
       "@context": "https://schema.org", "@type": "BreadcrumbList",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aitechblogs.netlify.app" },
-        { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://aitechblogs.netlify.app/blog" },
-        { "@type": "ListItem", "position": 3, "name": cat, "item": `https://aitechblogs.netlify.app/category/${encodeURIComponent(cat.toLowerCase())}` },
-        { "@type": "ListItem", "position": 4, "name": t, "item": postUrl }
+        { "@type": "ListItem", "position": 2, "name": cat, "item": `https://aitechblogs.netlify.app/category/${encodeURIComponent(cat.toLowerCase())}` },
+        { "@type": "ListItem", "position": 3, "name": t, "item": postUrl }
       ]
     },
     website: {
-      "@context": "https://schema.org", "@type": "Blog", "@id": "https://aitechblogs.netlify.app/#blog",
+      "@context": "https://schema.org", "@type": "BlogPosting", "@id": "https://aitechblogs.netlify.app/#category",
       "name": "TechBlog AI", "description": "AI and technology insights", "url": "https://aitechblogs.netlify.app",
       "publisher": { "@type": "Organization", "name": "TechBlog AI" }, "inLanguage": "en-US"
     }
@@ -288,7 +287,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
   <article itemscope itemtype="https://schema.org/TechArticle">
     <h1 itemprop="headline">${title}</h1>
     <div class="meta">
-      <span><span itemprop="author" itemscope itemtype="https://schema.org/Person">By <span itemprop="name">${author}</span></span></span>
+      <span><span itemprop="author" itemscope itemtype="https://schema.org/Person">By <a href="https://aitechblogs.netlify.app/about" itemprop="url"> <span itemprop="name">${author}</span></a></span></span>
       <span>•</span><span itemprop="articleSection">${category}</span>
       <span>•</span><time itemprop="datePublished" datetime="${publishDate}">${new Date(publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
       <span>•</span><span>${readingTime} min read</span>
