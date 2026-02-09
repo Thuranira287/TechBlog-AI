@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from "react";
 
+// Cookie utility functions
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
+const setCookie = (name, value, days = 30) => {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = `expires=${date.toUTCString()}`;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${value}; ${expires}; path=/; SameSite=Strict${secure}`;
+};
+
 export default function CookieCustomizeModal({ isOpen, onClose, onSave }) {
   const [analytics, setAnalytics] = useState(true);
   const [ads, setAds] = useState(true);
 
-  // Sync toggles from saved preferences whenever modal opens
+  // Sync toggles from saved cookie preferences whenever modal opens
   useEffect(() => {
     if (!isOpen) return;
-    const savedAnalytics = localStorage.getItem("techblog_analytics_consent");
-    const savedAds = localStorage.getItem("techblog_ads_consent");
+    
+    // Read preferences from cookies
+    const savedAnalytics = getCookie("techblog_analytics_consent");
+    const savedAds = getCookie("techblog_ads_consent");
+    
     if (savedAnalytics !== null) setAnalytics(savedAnalytics === "true");
     if (savedAds !== null) setAds(savedAds === "true");
   }, [isOpen]);
@@ -16,13 +35,30 @@ export default function CookieCustomizeModal({ isOpen, onClose, onSave }) {
   const handleSave = () => {
     const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
 
-    // Base consent "customized" so we know the user made granular choices
-    localStorage.setItem("techblog_cookie_consent", "customized");
-    localStorage.setItem("techblog_consent_expiry", expiryDate.toString());
+    // Save preferences in cookies
+    setCookie("techblog_cookie_consent", "customized");
+    setCookie("techblog_consent_expiry", expiryDate.toString());
+    setCookie("techblog_analytics_consent", analytics.toString());
+    setCookie("techblog_ads_consent", ads.toString());
 
-    // Granular preferences
-    localStorage.setItem("techblog_analytics_consent", analytics.toString());
-    localStorage.setItem("techblog_ads_consent", ads.toString());
+    // Clear service cookies if declined
+    const clearServiceCookies = () => {
+      document.cookie.split(";").forEach(cookie => {
+        const cookieName = cookie.split("=")[0].trim();
+        // Analytics cookies
+        if (cookieName.includes('_ga') || cookieName.includes('_gid')) {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+        // AdSense cookies
+        if (cookieName === 'NID' || cookieName === 'IDE') {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+      });
+    };
+
+    if (!analytics || !ads) {
+      clearServiceCookies();
+    }
 
     onSave({ analytics, ads });
     onClose();

@@ -1,6 +1,6 @@
-import { jsPDF } from "jspdf";
+const { jsPDF } = require('jspdf');
 
-export const handler = async () => {
+exports.handler = async function(event, context) {
   try {
     // Create PDF document
     const doc = new jsPDF();
@@ -39,7 +39,6 @@ export const handler = async () => {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     
-    // sample data
     const insights = [
       { label: "Monthly Unique Visitors", value: "5,000+" },
       { label: "Return Visitor Rate", value: "45%" },
@@ -109,24 +108,22 @@ export const handler = async () => {
     });
 
     // ====== Generate PDF ======
-    const pdfArrayBuffer = doc.output('arraybuffer');
-    const base64 = Buffer.from(pdfArrayBuffer).toString('base64');
-
+    const pdfBuffer = doc.output('arraybuffer');
+    
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="TechBlogAI_MediaKit.pdf"',
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache'
       },
-      body: base64,
+      body: Buffer.from(pdfBuffer).toString('base64'),
       isBase64Encoded: true
     };
-
     
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-    console.error("PDF generation error:", err);}
+    console.error("PDF generation error:", err);
     
     return {
       statusCode: 500,
@@ -136,7 +133,8 @@ export const handler = async () => {
       },
       body: JSON.stringify({ 
         error: "Failed to generate PDF",
-        message: err.message
+        message: err.message,
+        note: "Please email advertise@techblogai.com for the media kit"
       })
     };
   }

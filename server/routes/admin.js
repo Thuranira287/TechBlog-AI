@@ -3,6 +3,7 @@ import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { parser, uploadBufferToCloudinary } from "../config/cloudinary.js";
 import { submitSitemapToSearchEngines, submitUrlToIndexNow } from "../utils/sitemapSubmitter.js";
+import sanitizeHtml from 'sanitize-html';
 
 const router = express.Router();
 
@@ -198,13 +199,27 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
         parsedTags = [tags];
       }
     }
+    // Sanitize content first
+    const cleanContent = content ? sanitizeHtml(content, {
+      allowedTags: [
+        'p', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li',
+        'h1','h2','h3','h4','blockquote','code','pre','br','span','img'
+      ],
+      allowedAttributes: {
+        a: ['href','name','target','rel'],
+        img: ['src','alt','title','width','height'],
+        span: ['style']
+      },
+      allowedSchemes: ['http','https','mailto']
+    }) : null;
+
 
     // CONVERT ALL UNDEFINED VALUES TO NULL
     const safeValues = {
       title: title || null,
       slug: slug || null,
       excerpt: excerpt || null,
-      content: content || null,
+      content: cleanContent,
       author_id: parseInt(author_id),
       category_id: parseInt(category_id),
       featured_image: featured_image || null,
@@ -243,7 +258,7 @@ router.post('/posts', parser.single('featured_image'), async (req, res) => {
       safeValues.title,
       safeValues.slug,
       safeValues.excerpt,
-      safeValues.content,
+      cleanContent,
       safeValues.author_id,
       safeValues.category_id,
       safeValues.featured_image,
@@ -385,13 +400,27 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
     } else {
       parsedTags = typeof existingPost.tags === 'string' ? JSON.parse(existingPost.tags) : existingPost.tags || [];
     }
+    const cleanContent = content 
+    ? sanitizeHtml(content, {
+        allowedTags: [
+          'p', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li',
+          'h1','h2','h3','h4','blockquote','code','pre','br','span','img'
+        ],
+        allowedAttributes: {
+          a: ['href','name','target','rel'],
+          img: ['src','alt','title','width','height'],
+          span: ['style']
+        },
+        allowedSchemes: ['http','https','mailto']
+      })
+    : existingPost.content;
 
     // Prepare update values
     const updateValues = {
       title: title || existingPost.title,
       slug: slug || existingPost.slug,
       excerpt: excerpt !== undefined ? excerpt : existingPost.excerpt,
-      content: content || existingPost.content,
+      content: cleanContent,
       category_id: category_id || existingPost.category_id,
       featured_image: featured_image,
       meta_title: meta_title !== undefined ? meta_title : existingPost.meta_title,
@@ -420,7 +449,7 @@ router.put('/posts/:id', parser.single('featured_image'), async (req, res) => {
       updateValues.title,
       updateValues.slug,
       updateValues.excerpt,
-      updateValues.content,
+      cleanContent,
       updateValues.category_id,
       updateValues.featured_image,
       updateValues.meta_title,

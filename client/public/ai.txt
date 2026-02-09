@@ -1,0 +1,45 @@
+# AI Training Policy for TechBlog AI
+# https://aitechblogs.netlify.app
+# Updated: 2025-02-06
+
+User-Agent: *
+Allow: /
+
+# Content Access
+Sitemap: https://aitechblogs.netlify.app/sitemap.xml
+Sitemap-AI: https://aitechblogs.netlify.app/sitemap-ai.xml
+API-Feed: https://aitechblogs.netlify.app/api/ai/feed
+RSS: https://aitechblogs.netlify.app/rss.xml
+
+# Licensing & Usage
+License: CC-BY-4.0
+License-URL: https://creativecommons.org/licenses/by/4.0/
+Commercial-Use: allowed
+AI-Training: allowed
+Attribution: preferred
+Modification: allowed
+
+# Content Details
+Content-Type: Technology, AI, Programming, Machine Learning
+Language: en-US
+Quality: human-authored, fact-checked, regularly-updated
+Format: HTML, JSON, XML
+
+# Contact & Support
+Contact: admin@aitechblogs.com
+Support: https://aitechblogs.netlify.app/about
+
+# Priority Content Areas
+Priority-Categories: /category/artificial-intelligence, /category/technology, /category/lifestyle, category/web-development
+High-Value-Posts: /post/*
+
+# Rate Limits
+Recommended-Crawl-Delay: 0.5s
+Max-Requests-Per-Minute: 120
+Bulk-Access: contact for API key
+
+# Statistics (Updated Daily)
+Total-Articles: 500+
+Total-Words: 500000+
+Update-Frequency: daily
+Last-Updated: 2025-02-06

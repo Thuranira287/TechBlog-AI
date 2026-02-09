@@ -16,20 +16,15 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      // Verify token with backend
       const response = await blogAPI.getMe();
-      if (response.data) {
-        setUser(response.data);
+      if (response.data.valid) {
+        setUser(response.data.user);
+      } else {
+        setUser(null);
       }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      localStorage.removeItem('authToken');
+    } catch (err) {
+      console.error('Auth check error:', err);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -38,20 +33,24 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await blogAPI.login(credentials);
-      const { token, user } = response.data;
-      
-      localStorage.setItem('authToken', token);
-      setUser(user);
+      setUser(response.data.user);
       return { success: true };
-    } catch (error) {
-      setError(error.response?.data?.error || 'Login failed');
-      return { success: false, error: error.response?.data?.error };
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Login failed';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await blogAPI.logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      window.location.href = '/admin/login';
+    }
   };
 
   const value = {
@@ -60,7 +59,7 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     logout,
-    checkAuth
+    checkAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

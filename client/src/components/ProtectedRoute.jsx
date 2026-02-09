@@ -1,43 +1,9 @@
-import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { blogAPI } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const location = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    validateToken();
-  }, []);
-
-  const validateToken = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        setIsAuthenticated(false);
-        setLoading(false);
-        return;
-      }
-
-      // Validate token with backend
-      const response = await blogAPI.get('/auth/verify');
-      
-      if (response.data && response.data.valid) {
-        setIsAuthenticated(true);
-      } else {
-        localStorage.removeItem('authToken');
-        setIsAuthenticated(false);
-      }
-    } catch (error) {
-      console.error('Token validation error:', error);
-      localStorage.removeItem('authToken');
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -47,9 +13,12 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!isAuthenticated) {
-    // Redirect to login if not authenticated
+  if (!user) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  }
+
+  if (requireAdmin && user.role !== 'admin') {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

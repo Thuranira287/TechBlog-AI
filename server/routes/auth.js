@@ -49,8 +49,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    res.cookie('admin_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
     res.json({
-      token,
       user: {
         id: user.id,
         username: user.username,
@@ -65,6 +71,15 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 });
 
+// Logout route
+router.post('/logout', (req, res) => {
+  res.clearCookie('admin_token', {
+    httpOnly: true,
+    sameSite: 'Strict',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  res.json({ success: true });
+});
 
 // GET current user
 router.get('/me', authenticateToken, async (req, res) => {

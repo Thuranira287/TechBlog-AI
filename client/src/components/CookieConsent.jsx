@@ -1,6 +1,26 @@
 import React, { useEffect, useState, useRef } from "react";
 import CookieCustomizeModal from "./CookieCustomizeModal";
 
+// Cookie utility functions
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
+const setCookie = (name, value, days = 30) => {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = `expires=${date.toUTCString()}`;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${value}; ${expires}; path=/; SameSite=Strict${secure}`;
+};
+
+const deleteCookie = (name) => {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+};
+
 export default function CookieConsent({ 
   onAccept = () => {}, 
   onDecline = () => {}
@@ -21,23 +41,43 @@ export default function CookieConsent({
   }, []);
 
   useEffect(() => {
-    const savedConsent = localStorage.getItem("techblog_cookie_consent");
-    const consentExpiry = localStorage.getItem("techblog_consent_expiry");
+    // Check for existing cookie consent
+    const consentStatus = getCookie('techblog_consent_status');
+    const consentExpiry = getCookie('techblog_consent_expiry');
     const now = Date.now();
 
-    // Expired consent clear and re-show
+    // Check if consent has expired (30 days)
     if (consentExpiry && now > parseInt(consentExpiry)) {
-      localStorage.removeItem("techblog_cookie_consent");
-      localStorage.removeItem("techblog_consent_expiry");
-      localStorage.removeItem("techblog_analytics_consent");
-      localStorage.removeItem("techblog_ads_consent");
+      // Clear expired cookies
+      deleteCookie('techblog_consent_status');
+      deleteCookie('techblog_consent_expiry');
+      deleteCookie('techblog_analytics_consent');
+      deleteCookie('techblog_ads_consent');
+      
+      // Also clear service cookies
+      clearServiceCookies();
     }
 
-    const currentConsent = localStorage.getItem("techblog_cookie_consent");
-    if (!currentConsent) {
+    // Show banner if no consent or expired
+    if (!consentStatus) {
       showBanner(10000);
     }
   }, []);
+
+  // Clear Google Analytics and AdSense cookies
+  const clearServiceCookies = () => {
+    document.cookie.split(";").forEach(cookie => {
+      const cookieName = cookie.split("=")[0].trim();
+      // Analytics cookies
+      if (cookieName.includes('_ga') || cookieName.includes('_gid')) {
+        deleteCookie(cookieName);
+      }
+      // AdSense cookies
+      if (cookieName === 'NID' || cookieName === 'IDE') {
+        deleteCookie(cookieName);
+      }
+    });
+  };
 
   // Auto-focus the banner when it becomes visible
   useEffect(() => {
@@ -76,22 +116,29 @@ export default function CookieConsent({
 
   const handleAccept = () => {
     const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
-    localStorage.setItem("techblog_cookie_consent", "accepted");
-    localStorage.setItem("techblog_consent_expiry", expiryDate.toString());
-    // When user accepts all, enable both analytics and ads
-    localStorage.setItem("techblog_analytics_consent", "true");
-    localStorage.setItem("techblog_ads_consent", "true");
+    
+    // Save consent in cookies
+    setCookie('techblog_consent_status', 'accepted');
+    setCookie('techblog_consent_expiry', expiryDate.toString());
+    setCookie('techblog_analytics_consent', 'true');
+    setCookie('techblog_ads_consent', 'true');
+    
     setVisible(false);
     onAccept({ analytics: true, ads: true });
   };
 
   const handleDecline = () => {
     const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
-    localStorage.setItem("techblog_cookie_consent", "declined");
-    localStorage.setItem("techblog_consent_expiry", expiryDate.toString());
-    // When user declines, disable both analytics and ads
-    localStorage.setItem("techblog_analytics_consent", "false");
-    localStorage.setItem("techblog_ads_consent", "false");
+    
+    // Save declined status in cookies
+    setCookie('techblog_consent_status', 'declined');
+    setCookie('techblog_consent_expiry', expiryDate.toString());
+    setCookie('techblog_analytics_consent', 'false');
+    setCookie('techblog_ads_consent', 'false');
+    
+    // Clear service cookies
+    clearServiceCookies();
+    
     setVisible(false);
     onDecline({ analytics: false, ads: false });
   };
@@ -102,11 +149,26 @@ export default function CookieConsent({
   };
 
   const handleCustomizeSave = ({ analytics, ads }) => {
+    const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    
+    // Save customized preferences in cookies
+    setCookie('techblog_consent_status', 'customized');
+    setCookie('techblog_consent_expiry', expiryDate.toString());
+    setCookie('techblog_analytics_consent', analytics.toString());
+    setCookie('techblog_ads_consent', ads.toString());
+    
+    // Clear cookies for declined services
+    if (!analytics || !ads) {
+      clearServiceCookies();
+    }
+    
     if (analytics || ads) {
       onAccept({ analytics, ads });
     } else {
       onDecline({ analytics, ads });
     }
+    
+    setShowCustomizeModal(false);
   };
 
   // Dismiss on backdrop click (mobile)

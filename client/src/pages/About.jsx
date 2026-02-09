@@ -3,33 +3,6 @@ import AuthorBio from "../components/AuthorBio";
 import { Link } from "react-router-dom";
 import { useBlog } from "../context/BlogContext";
 
-const handleDecline = () => {
-  const expiryDate = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
-  localStorage.setItem("techblog_cookie_consent", "declined");
-  localStorage.setItem("techblog_consent_expiry", expiryDate.toString());
-  
-  // Clear ALL third-party cookies with partitioned attribute
-  const cookies = document.cookie.split(";");
-  cookies.forEach(cookie => {
-    const [name] = cookie.split("=");
-    const trimmedName = name.trim();
-    
-    // Clear common third-party cookies
-    if (trimmedName.includes('_ga') || 
-        trimmedName.includes('_gid') || 
-        trimmedName === 'IDE' || 
-        trimmedName === 'test_cookie') {
-      
-      // Clear with partitioned attribute
-      document.cookie = `${trimmedName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}; SameSite=None; Secure; Partitioned`;
-      document.cookie = `${trimmedName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure; Partitioned`;
-    }
-  });
-  
-  setConsent("declined");
-  onDecline();
-};
-
 export default function About() {
   const { categories } = useBlog();
   return (

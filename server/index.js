@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB, pool } from './config/db.js';
 import postsRouter from './routes/posts.js';
@@ -10,115 +11,222 @@ import commentsRouter from './routes/comments.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
 import jobsRouter from './routes/jobs.js';
+import aiRouter from './routes/ai.js';
+import feedRouter from './routes/feed.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Production or Development mode
+const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// ========== CRITICAL FIX: Middleware Order ==========
+
+// 1. Trust proxy FIRST
 app.set('trust proxy', 1);
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-
-// CORS Configuration
+// 2. CORS Configuration - Fixed with proper function
 const corsOptions = {
-  origin: [
-    'https://aitechblogs.netlify.app',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:8888'
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin && isDevelopment) {
+      return callback(null, true);
+    }
+    
+    const allowedOrigins = [
+      'https://aitechblogs.netlify.app',
+      'https://techblogai-backend.onrender.com',
+      'http://localhost:5173',
+      'http://localhost:5000',
+      'http://localhost:8888'
+    ];
+    
+    // Check if the origin is in the allowed list or is a development origin
+    if (
+      allowedOrigins.includes(origin) ||
+      (isDevelopment && origin?.includes('localhost')) ||
+      (isProduction && origin?.endsWith('.netlify.app'))
+    ) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'X-CSRF-Token',
+    'X-API-Key',
+    'Cache-Control',
+    'x-request-id',
+    'X-Request-Type'
+  ],
+  exposedHeaders: [
+    'Content-Range',
+    'X-Content-Range',
+    'X-Total-Count',
+    'X-RateLimit-Limit',
+    'X-RateLimit-Remaining',
+    'X-RateLimit-Reset'
+  ],
+  maxAge: 86400,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-//Configure Helmet to allow cross-origin images
-app.use(helmet({
+// CORS middleware
+app.use(cors(corsOptions));
+app.options('/api/*', cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+//Rate limiting 
+const rateLimitConfig = {
+  windowMs: isDevelopment ? 60 * 1000 : 15 * 60 * 1000,
+  max: isDevelopment ? 1000 : 100,
+  message: {
+    error: 'Too many requests, please try again later.',
+    retryAfter: isDevelopment ? 60 : 900
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  skip: (req, res) => {
+    if (req.path === '/api/health' || req.path.startsWith('/uploads/')) {
+      return true;
+    }
+    return false;
+  },
+  handler: (req, res, next, options) => {
+    res.status(429).json({
+      error: options.message.error,
+      retryAfter: options.message.retryAfter,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+const limiter = rateLimit(rateLimitConfig);
+
+// Rate limiting to API routes only
+app.use('/api', limiter);
+
+//Helmet CSP headers
+const helmetConfig = {
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
-      fontSrc: ["'self'", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
       formAction: ["'self'"],
-      frameAncestors: ["'self'", "https://www.google.com"],
-      imgSrc: ["'self'", "https:", "blob:"],
+      frameAncestors: ["'self'"],
+      frameSrc: ["'self'"],
+      imgSrc: ["'self'", "https:", "blob:", "data:", "http://localhost:*"],
       objectSrc: ["'none'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       scriptSrcAttr: ["'none'"],
       styleSrc: ["'self'", "https:", "'unsafe-inline'"],
-      upgradeInsecureRequests: [],
+      connectSrc: [
+        "'self'",
+        "https://techblogai-backend.onrender.com",
+        "https://aitechblogs.netlify.app",
+        "http://localhost:*",
+        "ws://localhost:*"
+      ],
+      upgradeInsecureRequests: isProduction ? [] : null,
     },
   },
+  // Disable strict transport security in development
+  hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false
+};
+
+app.use(helmet(helmetConfig));
+
+// ========== Routes ==========
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads', {
+  setHeaders: (res, path) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=31536000');
+  }
 }));
 
-app.use(limiter);
-app.use(cors(corsOptions)); // Use CORS before other middleware
-app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-
-// CORS handling for images
-app.use('/uploads', (req, res, next) => {
-  // CORS headers specifically for images
-  res.header('Access-Control-Allow-Origin', 'https://aitechblogs.netlify.app');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
+// Development 
+if (isDevelopment) {
+  app.use('/api/admin', (req, res, next) => {
+    console.log(`Admin Route: ${req.method} ${req.path}`);
+    next();
+  });
   
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
-if (process.env.NODE_ENV === 'development') {
-app.use('/api/admin', (req, res, next) => {
-  console.log(`🛣️  Route hit: ${req.method} ${req.path}`);
-  console.log(`📡 Original URL: ${req.originalUrl}`);
-  next();
-});
+  // Debug endpoint for CORS
+  app.get('/api/debug/cors', (req, res) => {
+    res.json({
+      origin: req.headers.origin,
+      headers: req.headers,
+      method: req.method,
+      url: req.url,
+      timestamp: new Date().toISOString()
+    });
+  });
 }
 
-// Serve uploaded files statically - AFTER the CORS middleware
-app.use('/uploads', express.static('uploads'));
-
-// Routes
+// API Routes
 app.use('/api/posts', postsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/jobs', jobsRouter);
-app.use('/api/admin/jobs', jobsRouter);
+app.use('/api/ai', aiRouter);
+app.use('/api', feedRouter);
 
-// Health check
+// ========== Health Check ==========
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
+    environment: process.env.NODE_ENV,
+    cors: {
+      origin: req.headers.origin,
+      allowed: true
+    }
   });
 });
 
-// Sitemap generator
+// Helper to escape XML special characters
+function escapeXml(unsafe) {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// Sitemap generator 
 app.get('/sitemap.xml', async (req, res) => {
   try {
     const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
 
-    // Dynamic posts
+    // posts
     const [posts] = await pool.execute(
       `SELECT slug, updated_at FROM posts WHERE status = 'published' ORDER BY published_at DESC`
     );
 
-    // Dynamic categories
+    // categories
     const [categories] = await pool.execute(
       `SELECT slug FROM categories ORDER BY name ASC`
     );
@@ -175,6 +283,7 @@ app.get('/sitemap.xml', async (req, res) => {
   </urlset>`;
 
     res.set('Content-Type', 'application/xml');
+    res.set('Cache-Control', 'public, max-age=3600');
     res.send(sitemap);
     } catch (error) {
       console.error('Error generating sitemap:', error);
@@ -182,15 +291,156 @@ app.get('/sitemap.xml', async (req, res) => {
     }
 });
 
-// Robots.txt
-app.get('/robots.txt', (req, res) => {
-  const robots = `User-agent: *
-Allow: /
-Sitemap: ${process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app'}/sitemap.xml`;
+
+// AI Training-optimized sitemap
+app.get('/sitemap-ai.xml', async (req, res) => {
+  try {
+    const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
+    const apiUrl = process.env.BACKEND_URL || 'https://techblogai-backend.onrender.com';
+
+    const [posts] = await pool.execute(
+      `SELECT p.slug, p.title, p.updated_at, p.content, c.name AS category_name
+       FROM posts p
+       LEFT JOIN categories c ON p.category_id = c.id
+       WHERE p.status = 'published'
+       ORDER BY p.updated_at DESC
+       LIMIT 1000`
+    );
+
+    let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:ai="https://schema.org/">
+  <!-- AI Training Sitemap for TechBlog AI -->
+  <!-- License: CC BY 4.0 -->
+  <!-- Contact: admin@aitechblogs.com -->
   
-  res.set('Content-Type', 'text/plain');
-  res.send(robots);
+  <url>
+    <loc>${escapeXml(baseUrl + '/api/ai/feed')}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <ai:dataset>
+      <ai:name>TechBlog AI Complete Dataset</ai:name>
+      <ai:description>Full content feed for AI discovery, training, and research</ai:description>
+      <ai:license>https://creativecommons.org/licenses/by/4.0/</ai:license>
+      <ai:format>application/json</ai:format>
+    </ai:dataset>
+  </url>
+
+    <!-- RSS Feed -->
+  <url>
+    <loc>${escapeXml(baseUrl + '/rss.xml')}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <ai:dataset>
+      <ai:name>TechBlog AI RSS Feed</ai:name>
+      <ai:description>Latest posts in RSS format for AI discovery</ai:description>
+      <ai:license>https://creativecommons.org/licenses/by/4.0/</ai:license>
+      <ai:format>application/rss+xml</ai:format>
+    </ai:dataset>
+  </url>
+`;
+    
+    posts.forEach(post => {
+      const contentText = post.content ? post.content.replace(/<[^>]*>/g, '').trim() : '';
+      const wordCount = contentText ? contentText.split(/\s+/).length : 50;
+      const readTime = Math.max(1, Math.ceil(wordCount / 200));
+      const tagList = post.tags ? post.tags.split(',') : [];
+
+      sitemap += `
+  <url>
+    <loc>${escapeXml(baseUrl + '/post/' + post.slug)}</loc>
+    <lastmod>${new Date(post.updated_at).toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <ai:article>
+      <ai:title>${escapeXml(post.title)}</ai:title>
+      <ai:author>${escapeXml(post.author_name || 'Admin')}</ai:author>
+      <ai:category>${escapeXml(post.category_name || 'Technology')}</ai:category>
+      <ai:tags>${escapeXml(tagList.join(','))}</ai:tags>
+      <ai:contentUrl>${escapeXml(apiUrl + '/api/posts/' + post.slug + '/full')}</ai:contentUrl>
+      <ai:wordCount>${wordCount}</ai:wordCount>
+      <ai:readingTime>${readTime}min</ai:readingTime>
+      <ai:license>CC-BY-4.0</ai:license>
+      <ai:discovery>true</ai:discovery>
+    </ai:article>
+  </url>`;
+    });
+
+    sitemap += `
+</urlset>`;
+
+    res.set('Content-Type', 'application/xml');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.set('X-Robots-Tag', 'all');
+    res.send(sitemap);
+  } catch (error) {
+    console.error('Error generating AI sitemap:', error);
+    res.status(500).send('Error generating AI sitemap');
+  }
 });
+
+// Robots.txt
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.send('User-agent: *\nDisallow: /');
+  });
+} else {
+app.get('/robots.txt', (req, res) => {
+  const baseUrl = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
+  
+  const robots = `# TechBlog AI - Robots.txt
+# Updated: ${new Date().toISOString().split('T')[0]}
+
+# General Web Crawlers
+User-agent: *
+Allow: /
+Crawl-delay: 1
+
+# AI Training Crawlers - Priority Access
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: Anthropic-AI
+User-agent: Claude-Web
+User-agent: Google-Extended
+User-agent: cohere-ai
+User-agent: PerplexityBot
+User-agent: YouBot
+Allow: /
+Crawl-delay: 0.5
+
+# Search Engine Bots
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Slurp
+User-agent: DuckDuckBot
+User-agent: CCBot
+Allow: /
+Crawl-delay: 0.5
+
+# Disallow commercial crawlers
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: dotbot
+User-agent: rogerbot
+Disallow: /
+
+# Sitemaps
+Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/sitemap-ai.xml
+
+# AI Training Resources
+# API Feed: ${baseUrl}/api/ai/feed
+# License: https://creativecommons.org/licenses/by/4.0/
+# Contact: admin@aitechblogs.netlify.app`;
+  
+  res.type('text/plain');
+  res.set('Cache-Control', 'public, max-age=86400'); // Cache 24 hours
+  res.send(robots);
+});}
 
 // endpoints
 if (process.env.NODE_ENV === 'development') {
@@ -429,7 +679,10 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 API available at http://localhost:${PORT}/api`);
-      console.log(`🗺️ Sitemap at http://localhost:${PORT}/sitemap.xml`);
+      console.log(`AI Training Feed at http://localhost:${PORT}/api/ai/feed`);
+      console.log(`Sitemap at http://localhost:${PORT}/sitemap.xml`);
+      console.log(`AI Sitemap at http://localhost:${PORT}/sitemap-ai.xml`);
+      console.log(`RSS feed at http://localhost:${PORT}/api/rss.xml`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

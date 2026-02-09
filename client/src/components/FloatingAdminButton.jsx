@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Settings, X, LogOut, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '../context/ContextAuth';
 
 const FloatingAdminButton = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const isLoggedIn = localStorage.getItem('authToken');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    window.location.href = '/';
+  const { user, logout } = useAuth();
+  const isLoggedIn = !!user;
+  
+  const handleLogout = async() => {
+    logout();
     setIsOpen(false);
   };
 

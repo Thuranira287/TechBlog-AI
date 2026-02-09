@@ -1,6 +1,5 @@
 import express from "express";
 import pool from "../config/db.js";
-import e from "express";
 
 const router = express.Router();
 
@@ -342,7 +341,7 @@ router.get('/:slug/full', async (req, res) => {
     
     if (isAICrawler) {
       process.env.NODE_ENV === 'development' &&
-      console.log(`🤖 [AI CRAWLER] Full content accessed by: ${userAgent.substring(0, 50)}`);
+      console.log(`[AI CRAWLER] Full content accessed by: ${userAgent.substring(0, 50)}`);
     }
 
     process.env.NODE_ENV === 'development' &&

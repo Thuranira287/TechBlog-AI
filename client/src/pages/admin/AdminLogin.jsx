@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { blogAPI } from '../../api/client';
+import { useAuth } from '../../context/ContextAuth';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,12 +16,12 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      const response = await blogAPI.login(formData);
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000);
-      localStorage.setItem('authTokenExpiry', expiryTime.toString());
-      navigate('/admin/dashboard');
+      const result = await login(formData);
+      if (result.success) {
+        navigate('/admin/dashboard');
+      } else {
+        setError(result.error || 'Login failed');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {

@@ -113,61 +113,97 @@ export default function Advertise() {
     fetchLogos();
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      setStatsLoading(true);
-      const response = await api.get('/stats');
-      
-      if (response.data.success) {
-        const data = response.data.data;
-        
-        // monthly visitors
-        const visitorsNum = data.monthlyVisitors;
-        if (visitorsNum >= 1000) {
-          setMonthlyVisitors(`${(visitorsNum / 1000).toFixed(1)}k+`);
-        } else {
-          setMonthlyVisitors(`${visitorsNum}+`);
-        }
-        
-        // affiliate clicks
-        if (data.affiliates && data.affiliates.length > 0) {
-          const formattedAffiliates = data.affiliates.map(aff => ({
-            name: aff.name,
-            clicks: aff.clicks >= 1000 
-              ? `${(aff.clicks / 1000).toFixed(1)}k+` 
-              : `${aff.clicks}+`,
-            conversionRate: `${aff.conversionRate || "4.2"}%`
-          }));
-          setAffiliateClicks(formattedAffiliates);
-        } else {
-          setAffiliateClicks(defaultAffiliates);
-        }
-        
-        setLastUpdated(new Date(data.lastUpdated).toLocaleString());
-      } else {
-        setMonthlyVisitors("5,000+");
-        setAffiliateClicks(defaultAffiliates);
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      setMonthlyVisitors("5,000+");
+// Update the fetchStats function
+const fetchStats = async () => {
+  try {
+    setStatsLoading(true);
+    console.log('Fetching stats from Netlify function...');
+    
+    // IMPORTANT: Make sure you're calling the correct function name
+    const response = await fetch('/.netlify/functions/get-stats');
+    
+    if (!response.ok) {
+      console.error('Stats fetch failed:', response.status);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Stats data received:', data);
+    
+    // Format monthly visitors
+    const visitorsNum = parseInt(data.monthlyVisitors) || 5000;
+    setMonthlyVisitors(formatNumber(visitorsNum));
+    
+    // Format affiliate clicks - handle both property names
+    if (data.affiliates && data.affiliates.length > 0) {
+      const formattedAffiliates = data.affiliates.map(aff => ({
+        name: aff.name,
+        clicks: formatNumber(aff.clicks || 0),
+        conversionRate: aff.conversionRate ? `${aff.conversionRate}%` : 
+                       aff.conversion_rate ? `${aff.conversion_rate}%` : 
+                       calculateConversionRate(aff.name)
+      }));
+      setAffiliateClicks(formattedAffiliates);
+    } else {
       setAffiliateClicks(defaultAffiliates);
-    } finally {
-      setStatsLoading(false);
-      setLoading(false);
     }
-  };
+    
+    setLastUpdated(new Date(data.timestamp).toLocaleString());
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    setMonthlyVisitors("5,000+");
+    setAffiliateClicks(defaultAffiliates);
+  } finally {
+    setStatsLoading(false);
+    setLoading(false);
+  }
+};
 
-  const fetchLogos = async () => {
-    try {
-      const response = await api.get('/logos');
-      if (Array.isArray(response.data)) {
-        setLogos(response.data);
-      }
-    } catch (error) {
-      console.log('Using default logos:', error.message);
-    }
+const formatNumber = (num) => {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M+`;
+  } else if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}k+`;
+  } else {
+    return `${num}+`;
+  }
+};
+// Helper function to calculate conversion rates
+const calculateConversionRate = (name) => {
+  const rates = {
+    'DigitalOcean': '4.2%',
+    'Cloudflare': '3.8%', 
+    'Tech Learning Platforms': '4.5%',
+    'AWS': '3.5%',
+    'Google Cloud': '4.0%',
+    'Microsoft Azure': '3.2%'
   };
+  return rates[name] || '3.5%';
+};
+
+// Also update fetchLogos to use Netlify function if you have one
+const fetchLogos = async () => {
+  try {
+    // Try Netlify function first
+    const response = await fetch('/.netlify/functions/logos');
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setLogos(data);
+        return;
+      }
+    }
+    
+    // Fallback to Express API
+    const apiResponse = await api.get('/logos');
+    if (Array.isArray(apiResponse.data)) {
+      setLogos(apiResponse.data);
+    }
+  } catch (error) {
+    console.log('Using default logos:', error.message);
+  }
+};
+
   
   const defaultLogos = [
     { 
@@ -218,34 +254,81 @@ export default function Advertise() {
   const displayLogos = logos.length > 0 ? logos : defaultLogos;
 
   const handleDownload = async () => {
-    try {
-      setMediaKitLoading(true);
-      
-      // Try to fetch media kit from Netlify function
-      const response = await fetch('/.netlify/functions/generate-media-kit');
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "TechBlogAI_MediaKit.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      
-    } catch (err) {
-      console.error('Media kit error:', err);
-      alert("Media kit generation failed. Please email us at advertise@techblogai.com for details.");
-    } finally {
-      setMediaKitLoading(false);
+  try {
+    setMediaKitLoading(true);
+    console.log('Downloading media kit...');
+    
+    // IMPORTANT: Use the correct function name - note the dot before netlify
+    const mediaKitResponse = await fetch('/.netlify/functions/generate-media-kit');
+    
+    console.log('Media kit response status:', mediaKitResponse.status);
+    
+    if (!mediaKitResponse.ok) {
+      const errorData = await mediaKitResponse.json();
+      throw new Error(errorData.message || `HTTP error! status: ${mediaKitResponse.status}`);
     }
-  };
-
+    
+    // Get the PDF blob
+    const blob = await mediaKitResponse.blob();
+    console.log('PDF blob size:', blob.size, 'type:', blob.type);
+    
+    // Check if blob is valid
+    if (!blob || blob.size === 0) {
+      throw new Error('Empty PDF received from server');
+    }
+    
+    // Check if it's a PDF
+    if (!blob.type.includes('pdf')) {
+      console.warn('Received non-PDF content:', blob.type);
+      // Try to parse as text to see what we got
+      const text = await blob.text();
+      console.log('Received text:', text.substring(0, 200));
+      throw new Error('Server returned non-PDF content');
+    }
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "TechBlogAI_MediaKit.pdf";
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('PDF downloaded successfully');
+    
+  } catch (err) {
+    console.error('Media kit download error:', err);
+    
+    // Show user-friendly error
+    const errorMessage = err.message.includes('Failed to fetch') 
+      ? 'Cannot connect to server. Please check your connection.'
+      : err.message;
+    
+    alert(`Media kit download failed: ${errorMessage}\n\nPlease email us at advertise@techblogai.com for the media kit.`);
+    
+    // Try fallback: Direct download link
+    try {
+      console.log('Trying fallback download...');
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = 'https://techblogai.com/TechBlogAI_MediaKit.pdf'; // Or your actual URL
+      fallbackLink.download = 'TechBlogAI_MediaKit_Fallback.pdf';
+      fallbackLink.target = '_blank';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      document.body.removeChild(fallbackLink);
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+    }
+  } finally {
+    setMediaKitLoading(false);
+  }
+};
   const handleRefreshStats = () => {
     fetchStats();
   };
@@ -377,7 +460,7 @@ export default function Advertise() {
                     <td className="p-3 border border-gray-200 text-teal-600 font-bold">{affiliate.clicks}</td>
                     <td className="p-3 border border-gray-200">
                       <span className="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
-                        {affiliate.conversion}
+                        {affiliate.conversionRate}
                       </span>
                     </td>
                   </tr>

@@ -68,3 +68,4 @@ Allow: /
 
 # Sitemap
 Sitemap: https://aitechblogs.netlify.app/sitemap.xml
+Sitemap: https://aitechblogs.netlify.app/sitemap-ai.xml

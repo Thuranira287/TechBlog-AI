@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, Menu, X, Lock, User, LogOut, ChevronDown, Briefcase } from 'lucide-react'
 import { useBlog } from '../context/BlogContext'
+import { useAuth } from '../context/ContextAuth'
 import TechBlogAI from '../assets/TechBlogAI.jpg'
 
 const Header = () => {
@@ -9,11 +10,10 @@ const Header = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const { categories } = useBlog()
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   // Check if user is logged in
-  const isLoggedIn = localStorage.getItem('authToken')
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
-
+  const isLoggedIn = !!user
   // Secret trigger - show admin after 3 quick clicks on logo
   const [clickCount, setClickCount] = useState(0)
   const [lastClickTime, setLastClickTime] = useState(0)
@@ -53,11 +53,9 @@ const Header = () => {
     navigate('/') // Navigate to home after secret trigger
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
+  const handleLogout = async () => {
+    logout()
     setShowAdmin(false)
-    window.location.href = '/'
   }
 
   const handleAdminAccess = () => {
@@ -207,7 +205,7 @@ const Header = () => {
                           <User className="w-4 h-4 text-blue-600" />
                         )}
                       </div>
-                      <span className="hidden lg:inline text-sm font-medium">{user?.name}</span>
+                      <span className="hidden lg:inline text-sm font-medium">{user?.username}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
                     
@@ -252,14 +250,6 @@ const Header = () => {
                       Admin
                     </Link>
                   )}
-                  
-                  {/* Login Button 
-                  <Link
-                    to="/login"
-                    className="hidden sm:inline-flex items-center text-gray-700 hover:text-blue-600 font-medium text-sm px-4 py-2 rounded-lg hover:bg-blue-50"
-                  >
-                    Sign In
-                  </Link> */}
                 </>
               )}
 
