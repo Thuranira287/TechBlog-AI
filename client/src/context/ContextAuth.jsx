@@ -49,7 +49,6 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', err);
     } finally {
       setUser(null);
-      window.location.href = '/admin/login';
     }
   };
 

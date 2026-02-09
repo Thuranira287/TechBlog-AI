@@ -49,12 +49,6 @@ api.interceptors.request.use((config) => {
   const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
   config.headers['X-Request-ID'] = requestId;
   
-  // auth token 
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  
   // Cache busting for GET requests in development
   if (config.method === 'get' && import.meta.env.DEV) {
     config.params = {
@@ -73,11 +67,6 @@ api.interceptors.request.use((config) => {
 adminApi.interceptors.request.use((config) => {
   const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
   config.headers['X-Request-ID'] = requestId;
-  
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
   
   return config;
 });
@@ -169,15 +158,19 @@ const responseErrorHandler = (error) => {
       enhancedError.userMessage = 'The request was invalid. Please check your input.';
       break;
     
-    case 401:
-      enhancedError.message = 'Unauthorized';
-      enhancedError.userMessage = 'Please log in to continue.';
-      if (!window.location.pathname.includes('/login')) {
-        localStorage.removeItem('auth_token');
-        sessionStorage.removeItem('auth_token');
-        window.location.href = '/admin/login';
-      }
-      break;
+    case 401: {
+        const url = config?.url || '';
+        // Guests on /auth/verify should fail silently
+        if (url.includes('/auth/verify')) {
+          return Promise.reject(enhancedError);
+        }
+        // Admin routes → redirect
+        if (url.includes('/admin')) {
+          window.location.href = '/admin/login';
+        }
+
+        return Promise.reject(enhancedError);
+    }
     
     case 403:
       enhancedError.message = 'Forbidden';
