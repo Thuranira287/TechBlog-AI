@@ -4,28 +4,28 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 if (!import.meta.env.VITE_API_URL && import.meta.env.DEV) {
-  console.warn("⚠️ VITE_API_URL not set, using default:", API_BASE_URL);
+  console.warn("VITE_API_URL not set, using default:", API_BASE_URL);
 }
 
 // ========== Axios Instances Configuration ==========
 
-// Main API instance for regular requests
+// Main API instance
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: `${API_BASE_URL}`,
   timeout: 15000, // 15 seconds timeout
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  withCredentials: true, // Important for cookies/auth
+  withCredentials: true,
   xsrfCookieName: 'XSRF-TOKEN',
   xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
 // Admin API instance with longer timeout for uploads
 export const adminApi = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
-  timeout: 120000, // 120 seconds for admin uploads
+  baseURL: `${API_BASE_URL}`,
+  timeout: 120000, 
   headers: {
     'Content-Type': 'application/json',
   },
@@ -34,8 +34,8 @@ export const adminApi = axios.create({
 
 // SSR/Meta API instance for fast responses
 export const ssrApi = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
-  timeout: 5000, // 5 seconds for SSR
+  baseURL: `${API_BASE_URL}`,
+  timeout: 5000, 
   headers: {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
@@ -44,12 +44,12 @@ export const ssrApi = axios.create({
 
 // ========== Request Interceptors ==========
 
-// Add request ID for tracking
+// request ID for tracking
 api.interceptors.request.use((config) => {
   const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
   config.headers['X-Request-ID'] = requestId;
   
-  // Add auth token if available
+  // auth token 
   const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -69,7 +69,7 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Apply same interceptors to adminApi
+// interceptors to adminApi
 adminApi.interceptors.request.use((config) => {
   const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
   config.headers['X-Request-ID'] = requestId;
@@ -84,7 +84,7 @@ adminApi.interceptors.request.use((config) => {
 
 // ========== Response Interceptors ==========
 
-// Retry configuration
+// Retry 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000;
 const RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504];
@@ -93,12 +93,10 @@ const setupRetryInterceptor = (instance) => {
   instance.interceptors.response.use(null, async (error) => {
     const config = error.config;
     
-    // Don't retry if already retried max times
     if (!config || config.__retryCount >= MAX_RETRIES) {
       return Promise.reject(error);
     }
     
-    // Check if we should retry
     const shouldRetry = 
       error.code === 'ECONNABORTED' || 
       !error.response || 
@@ -113,12 +111,12 @@ const setupRetryInterceptor = (instance) => {
     config.__retryCount += 1;
     
     if (import.meta.env.DEV) {
-      console.log(`🔄 Retry attempt ${config.__retryCount} for ${config.url}`);
+      console.log(`Retry attempt ${config.__retryCount} for ${config.url}`);
     }
     
     // Exponential backoff with jitter
     const backoffDelay = RETRY_DELAY * Math.pow(2, config.__retryCount - 1);
-    const jitter = Math.random() * 500; // Add jitter to prevent thundering herd
+    const jitter = Math.random() * 500; 
     const delay = backoffDelay + jitter;
     
     return new Promise(resolve => {
@@ -131,7 +129,7 @@ const setupRetryInterceptor = (instance) => {
 setupRetryInterceptor(api);
 setupRetryInterceptor(adminApi);
 
-// Response interceptor with better error handling
+// Response interceptor 
 const responseErrorHandler = (error) => {
   const { response, code, message, config } = error;
   
@@ -155,7 +153,7 @@ const responseErrorHandler = (error) => {
   
   // Network error
   if (!response) {
-    console.error('🌐 Network error:', error.message);
+    console.error('Network error:', error.message);
     return Promise.reject({
       ...enhancedError,
       isNetworkError: true,
@@ -174,7 +172,6 @@ const responseErrorHandler = (error) => {
     case 401:
       enhancedError.message = 'Unauthorized';
       enhancedError.userMessage = 'Please log in to continue.';
-      // Redirect to login only if not already on login page
       if (!window.location.pathname.includes('/login')) {
         localStorage.removeItem('auth_token');
         sessionStorage.removeItem('auth_token');
@@ -195,7 +192,6 @@ const responseErrorHandler = (error) => {
     case 429:
       enhancedError.message = 'Too Many Requests';
       enhancedError.userMessage = 'Too many requests. Please wait a moment and try again.';
-      // Show a user-friendly alert
       if (typeof window !== 'undefined') {
         setTimeout(() => {
           alert('⚠️ Too many requests. Please wait a moment before trying again.');
@@ -283,7 +279,7 @@ export const blogAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   
   getMe: () => api.get('/auth/verify', {
-    headers: { 'Cache-Control': 'no-cache' } // Never cache auth check
+    headers: { 'Cache-Control': 'no-cache' }
   }),
 
   logout: () => api.post('/auth/logout'),
@@ -300,7 +296,7 @@ export const blogAPI = {
   createAdminPost: (postData) => {
     const formData = new FormData();
     
-    // Convert object to FormData if needed
+    // Convert object to FormData
     if (!(postData instanceof FormData)) {
       Object.keys(postData).forEach(key => {
         if (postData[key] !== null && postData[key] !== undefined) {
@@ -322,12 +318,11 @@ export const blogAPI = {
         'Content-Type': 'multipart/form-data',
         'X-Request-Type': 'post-upload'
       },
-      timeout: 120000, // 2 minutes for large uploads
+      timeout: 120000,
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round(
           (progressEvent.loaded * 100) / progressEvent.total
         );
-        // You can dispatch this to a global state if needed
         console.log(`Upload Progress: ${percentCompleted}%`);
       }
     });
@@ -375,7 +370,7 @@ export const blogAPI = {
   checkHealth: () => ssrApi.get('/health'),
 };
 
-// Utility function for API calls with error boundary
+// Utility function for API calls
 export const safeApiCall = async (apiCall, fallback = null) => {
   try {
     const response = await apiCall();
@@ -383,13 +378,11 @@ export const safeApiCall = async (apiCall, fallback = null) => {
   } catch (error) {
     console.error('API call failed:', error);
     
-    // Return fallback or throw error based on configuration
+    // Return fallback 
     if (fallback !== undefined) {
       return fallback;
     }
-    
-    // Re-throw for components to handle
-    throw error;
+        throw error;
   }
 };
 
