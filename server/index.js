@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import { authenticate } from './middleware/auth.js';
 import dotenv from 'dotenv';
 import { connectDB, pool } from './config/db.js';
 import postsRouter from './routes/posts.js';
@@ -68,7 +69,8 @@ const corsOptions = {
     'Cache-Control',
     'x-request-id',
     'X-Request-Type',
-    'Cookie'
+    'Cookie',
+    'Set-Cookie'  
   ],
   exposedHeaders: [
     'Content-Range',
@@ -76,7 +78,8 @@ const corsOptions = {
     'X-Total-Count',
     'X-RateLimit-Limit',
     'X-RateLimit-Remaining',
-    'X-RateLimit-Reset'
+    'X-RateLimit-Reset',
+    'Set-Cookie'  
   ],
   maxAge: 86400,
   preflightContinue: false,
