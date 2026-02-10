@@ -18,12 +18,10 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Production or Development mode
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-// ========== Middleware Order ==========
+// ========== Middleware ==========
 
 //Trust proxy
 app.set('trust proxy', 1);
@@ -31,7 +29,7 @@ app.set('trust proxy', 1);
 // CORS Configuration
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman)
+    // Allow requests with no origin
     if (!origin && isDevelopment) {
       return callback(null, true);
     }
@@ -45,7 +43,7 @@ const corsOptions = {
       'http://localhost:5000'
     ];
     
-    // Check if the origin is in the allowed list or is a development origin
+    // Check the origin
     if (
       allowedOrigins.includes(origin) ||
       (isDevelopment && origin?.includes('localhost')) ||
@@ -69,7 +67,8 @@ const corsOptions = {
     'X-API-Key',
     'Cache-Control',
     'x-request-id',
-    'X-Request-Type'
+    'X-Request-Type',
+    'Cookie'
   ],
   exposedHeaders: [
     'Content-Range',
@@ -188,7 +187,8 @@ app.use('/api/posts', postsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/auth', authRouter);
-app.use('/api/admin', authenticateToken, adminRouter);
+app.use('/api/admin', authenticate, adminRouter);
+app.use('/api/comments/delete', authenticate);
 app.use('/api/jobs', jobsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api', feedRouter);
