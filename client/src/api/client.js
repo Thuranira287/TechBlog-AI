@@ -159,18 +159,45 @@ const responseErrorHandler = (error) => {
       break;
     
     case 401: {
-        const url = config?.url || '';
-        // Guests on /auth/verify should fail silently
-        if (url.includes('/auth/verify')) {
-          return Promise.reject(enhancedError);
-        }
-        // Admin routes → redirect
-        if (url.includes('/admin')) {
-          window.location.href = '/admin/login';
-        }
-
-        return Promise.reject(enhancedError);
+  const url = config?.url || '';
+  
+  //public endpoint
+  const isPublicEndpoint = 
+    url.includes('/posts/') || 
+    url.includes('/categories') || 
+    url.includes('/comments/get') ||
+    url.includes('/jobs') ||
+    url.includes('/ai') ||
+    url.includes('/feed') ||
+    url.includes('/health') ||
+    url.includes('/stats') ||
+    url.includes('/logos');
+  
+  if (isPublicEndpoint) {
+    // PUBLIC ENDPOINT RETURNING 401
+    console.error('SERVER CONFIG ERROR: Public endpoint returned 401:', url);
+    enhancedError.message = 'Server configuration error';
+    enhancedError.userMessage = 'Website is temporarily unavailable. Please try again later.';
+    return Promise.reject(enhancedError);
+  }
+  
+  // Auth endpoints
+  if (url.includes('/auth/verify') || url.includes('/auth/me')) {
+    // Normal for guests - just reject
+    return Promise.reject(enhancedError);
+  }
+  
+  // Admin routes
+  if (url.includes('/admin')) {
+    if (typeof window !== 'undefined' && window.showAdminLogin) {
+      window.showAdminLogin();
+    } else if (typeof window !== 'undefined') {
+      window.location.href = '/admin/hidden-login';
     }
+  }
+  
+  return Promise.reject(enhancedError);
+}
     
     case 403:
       enhancedError.message = 'Forbidden';
