@@ -23,12 +23,12 @@ const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-// ========== CRITICAL FIX: Middleware Order ==========
+// ========== Middleware Order ==========
 
-// 1. Trust proxy FIRST
+//Trust proxy
 app.set('trust proxy', 1);
 
-// 2. CORS Configuration - Fixed with proper function
+// CORS Configuration
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, postman)
@@ -41,7 +41,8 @@ const corsOptions = {
       'https://techblogai-backend.onrender.com',
       'http://localhost:5173',
       'http://localhost:3000',
-      'http://localhost:8888'
+      'http://localhost:8888',
+      'http://localhost:5000'
     ];
     
     // Check if the origin is in the allowed list or is a development origin
@@ -85,7 +86,7 @@ const corsOptions = {
 
 // CORS middleware
 app.use(cors(corsOptions));
-app.options('/api/*', cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
@@ -187,10 +188,11 @@ app.use('/api/posts', postsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/auth', authRouter);
-app.use('/api/admin', adminRouter);
+app.use('/api/admin', authenticateToken, adminRouter);
 app.use('/api/jobs', jobsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api', feedRouter);
+app.use('/api/auth', authRouter);
 
 // ========== Health Check ==========
 app.get('/api/health', (req, res) => {
