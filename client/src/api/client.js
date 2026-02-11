@@ -192,7 +192,7 @@ const responseErrorHandler = (error) => {
     if (typeof window !== 'undefined' && window.showAdminLogin) {
       window.showAdminLogin();
     } else if (typeof window !== 'undefined') {
-      window.location.href = '/admin/hidden-login';
+      window.location.href = '/admin';
     }
   }
   
