@@ -216,7 +216,7 @@ const Footer = () => {
               Advertise
             </Link>
              <a
-              href="/sitemap.xml"
+              href="/sitemap-ai.xml"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white text-xs"

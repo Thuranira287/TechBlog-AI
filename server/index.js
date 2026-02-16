@@ -403,7 +403,7 @@ app.get('/sitemap-ai.xml', async (req, res) => {
   </url>
 
   <url>
-    <loc>${escapeXml(baseUrl + '/rss.xml')}</loc>
+    <loc>${escapeXml(apiUrl + '/api/rss.xml')}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>

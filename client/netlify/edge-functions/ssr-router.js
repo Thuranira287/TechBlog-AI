@@ -194,7 +194,7 @@ function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICr
     //SECTION for AI crawlers:
   const aiMetadata = isAICrawler ? `
     <!-- AI Training Metadata -->
-    <link rel="alternate" type="application/json" href="https://techblogai-backend.onrender.com/api/posts/${slug}/full" title="Structured Content for AI" />
+    <link rel="alternate" type="application/json" href="https://techblogai-backend.onrender.com/api/posts/${slug}/full" title="Full Structured Article Data" />
     <meta name="ai-content-declaration" content="public, training-allowed, commercial-allowed" />
     <meta name="content-license" content="CC-BY-4.0" />
     <meta name="content-purpose" content="educational, informational, ai-training" />
@@ -207,7 +207,7 @@ function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICr
       "@context": "https://schema.org",
       "@type": "Dataset",
       "name": "${escapeHtml(post.title)}",
-      "description": "Full article content for AI training and research",
+      "description": post.excerpt || "A summary of the article for AI training and research",
       "url": "${postUrl}",
       "license": "https://creativecommons.org/licenses/by/4.0/",
       "creator": {

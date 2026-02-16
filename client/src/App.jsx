@@ -17,6 +17,7 @@ import About from "./pages/About";
 import Advertise from "./pages/Advertise";
 import JobsPage from "./pages/JobsPage";
 import JobDetails from "./pages/JobDetails";
+import PublicDataset from "./pages/PublicDataset";
 
 // Lazy load admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -254,6 +255,7 @@ function AppContent() {
         <Route path="/advertise" element={<Advertise />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetails />} />
+        <Route path="/public-dataset" element={<PublicDataset />} />
         
         {/* Protected Routes */}
         <Route 
