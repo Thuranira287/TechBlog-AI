@@ -101,6 +101,15 @@ const PublicDataset = () => {
               JSON API Feed
             </a>
           </li>
+
+           <li>
+            <a
+              href="https://techblogai-backend.onrender.com/sitemap-ai.xml"
+              className="text-primary-600 hover:text-primary-700 hover:underline underline-offset-4 transition"
+            >
+              AI Sitemap
+            </a>
+          </li>
         </ul>
       </section>
 

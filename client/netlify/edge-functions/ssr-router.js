@@ -203,25 +203,25 @@ function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICr
     
     <!-- Machine-Readable Content Summary -->
     <script type="application/ld+json">
-    {
+    ${JSON.stringify({
       "@context": "https://schema.org",
       "@type": "Dataset",
-      "name": "${escapeHtml(post.title)}",
-      "description": post.excerpt || "A summary of the article for AI training and research",
-      "url": "${postUrl}",
+      "name": escapeHtml(post.title),
+      "description": (post.excerpt || "A summary of the article for AI training and research").slice(0, 400),
+      "url": postUrl,
       "license": "https://creativecommons.org/licenses/by/4.0/",
       "creator": {
         "@type": "Organization",
         "name": "TechBlog AI",
         "url": "https://aitechblogs.netlify.app"
       },
-      "contentUrl": "https://techblogai-backend.onrender.com/api/posts/${post.slug}/full",
+      "contentUrl": `https://techblogai-backend.onrender.com/api/posts/${post.slug}/full`,
       "encodingFormat": "application/json",
-      "temporalCoverage": "${publishDate}/${modifiedDate}",
-      "keywords": "${tagsString}"
-    }
+      "temporalCoverage": `${publishDate}/${modifiedDate}`,
+      "keywords": tagsString
+    })}
     </script>
-  ` : '';
+` : '';
 
   const breadcrumbHtml = `<nav aria-label="Breadcrumb" class="breadcrumb"><ol itemscope itemtype="https://schema.org/BreadcrumbList">
     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">

@@ -215,10 +215,6 @@ app.use(helmet(helmetConfig));
 // ========== Cookie Security Headers ==========
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  if (isProduction) {
-    res.setHeader('Set-Cookie', 'SameSite=None; Secure');
-  }
-  
   next();
 });
 
