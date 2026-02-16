@@ -1,6 +1,11 @@
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
+          //Skip ALL API routes
+    if (url.pathname.startsWith('/api/')) {
+      console.log(`[Edge] Bypassing API route: ${url.pathname}`);
+      return context.next();
+    }
     const userAgent = request.headers.get("user-agent") || "";
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
 
@@ -16,7 +21,7 @@ export default async (request, context) => {
 
         if (post) {
           const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-          const html = generateBotHtml(post, postUrl, isFullContentBot, isFullContentBot);
+          const html = generateBotHtml(post, postUrl, slug, isFullContentBot, isFullContentBot);
 
           return new Response(html, {
             status: 200,
@@ -156,7 +161,7 @@ function generateSchemas(post, postUrl) {
   };
 }
 
-function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler = false) {
+function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICrawler = false) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
   const desc = escapeHtml(post.excerpt || post.meta_description || "Tech insights on TechBlog AI");
   const img = post.featured_image || post.image || "https://aitechblogs.netlify.app/og-image.png";
@@ -186,7 +191,7 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
     contentHtml = `<p>${desc}</p>`;
   }
 
-    // ADD THIS SECTION for AI crawlers:
+    //SECTION for AI crawlers:
   const aiMetadata = isAICrawler ? `
     <!-- AI Training Metadata -->
     <link rel="alternate" type="application/json" href="https://techblogai-backend.onrender.com/api/posts/${slug}/full" title="Structured Content for AI" />
@@ -223,11 +228,8 @@ function generateBotHtml(post, postUrl, includeFullContent = false, isAICrawler 
       <a itemprop="item" href="https://aitechblogs.netlify.app"><span itemprop="name">Home</span></a>
       <meta itemprop="position" content="1" /></li>
     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-      <a itemprop="item" href="https://aitechblogs.netlify.app/blog"><span itemprop="name">Blog</span></a>
-      <meta itemprop="position" content="2" /></li>
-    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
       <a itemprop="item" href="https://aitechblogs.netlify.app/category/${encodeURIComponent(category.toLowerCase())}"><span itemprop="name">${category}</span></a>
-      <meta itemprop="position" content="3" /></li>
+      <meta itemprop="position" content="2" /></li>
     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
       <a itemprop="item" href="${postUrl}">
         <span itemprop="name">${title}</span>

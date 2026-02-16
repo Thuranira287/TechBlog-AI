@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { pool } from '../config/db.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { uploadJobLogoToCloudinary } from '../config/cloudinary.js';
 
 const router = express.Router();
@@ -129,7 +129,7 @@ router.post('/:id/click', async (req, res) => {
 // ====== ADMIN PROTECTED ROUTES ======
 
 // GET all jobs
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const [jobs] = await pool.execute(
       `SELECT * FROM job_listings ORDER BY posted_at DESC`
@@ -152,7 +152,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // GET single job by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   try {
     const [jobs] = await pool.execute(
       'SELECT * FROM job_listings WHERE id = ?',
@@ -181,7 +181,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // POST create new job
-router.post('/', authenticateToken, upload.single('company_logo'), async (req, res) => {
+router.post('/', authenticate, upload.single('company_logo'), async (req, res) => {
   try {
     if (process.env.NODE_ENV !== 'production') {
     console.log('Creating new job...');
@@ -276,7 +276,7 @@ router.post('/', authenticateToken, upload.single('company_logo'), async (req, r
 });
 
 // PUT update job
-router.put('/:id', authenticateToken, upload.single('company_logo'), async (req, res) => {
+router.put('/:id', authenticate, upload.single('company_logo'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -372,7 +372,7 @@ router.put('/:id', authenticateToken, upload.single('company_logo'), async (req,
 });
 
 // DELETE job
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -405,7 +405,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 // PATCH update job status
-router.patch('/:id/status', authenticateToken, async (req, res) => {
+router.patch('/:id/status', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { is_active } = req.body;

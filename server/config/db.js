@@ -2,8 +2,9 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
+const isDevelopment = process.env.NODE_ENV === 'development';
 
-if (process.env.NODE_ENV !== 'production') {
+if (isDevelopment) {
   console.log('🌍 DB environment variables loaded');
 }
 
@@ -97,13 +98,13 @@ if (process.env.NODE_ENV !== 'production') {
 export const connectDB = async () => {
   try {
     const connection = await pool.getConnection();
-    if (process.env.NODE_ENV !== 'production') {
+    if (isDevelopment) {
     console.log('MySQL Connected successfully');}
     connection.release();
 
     await initializeTables();
   } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
+    if (isDevelopment) {
     console.error('Database connection failed:', error.message);}
     process.exit(1);
   }

@@ -1,16 +1,40 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import pool from '../config/db.js';
+import { pool } from '../config/db.js';
 import { authenticateCookie } from '../middleware/auth.js';
 import rateLimit from 'express-rate-limit';
+import csrf from 'csurf';
 
 const router = express.Router();
+const isProduction = process.env.NODE_ENV === 'production';
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: 'Too many login attempts' }
+});
+
+//cookie options
+const getCookieOptions = () => {  
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000,
+    path: '/',
+    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN })
+  };
+};
+
+// CSRF Protection
+const csrfProtection = csrf({ 
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/'
+  }
 });
 
 // POST login
@@ -44,15 +68,8 @@ router.post('/login', loginLimiter, async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Set cookie - IMPORTANT: Use 'none' for cross-site in production
-    res.cookie('admin_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'Strict',
-      maxAge: 24 * 60 * 60 * 1000,
-      path: '/'
-    });
-
+    // Set cookie
+    res.cookie('admin_token', token, getCookieOptions());
     res.json({
       success: true,
       user: {
@@ -70,12 +87,11 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 // Logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('admin_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'Strict',
-    path: '/'
-  });
+  res.clearCookie('admin_token', getCookieOptions());
+  
+  //clear CSRF cookie
+  res.clearCookie('_csrf', getCookieOptions());
+  
   res.json({ success: true });
 });
 
@@ -93,6 +109,7 @@ router.get('/me', authenticateCookie, async (req, res) => {
 
     res.json({ user: users[0] });
   } catch (error) {
+    console.error('Me error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -103,6 +120,14 @@ router.get('/verify', authenticateCookie, (req, res) => {
     valid: true, 
     user: req.user,
     expiresIn: '24h'
+  });
+});
+
+// Get CSRF token
+router.get('/csrf-token', authenticateCookie, csrfProtection, (req, res) => {
+  res.json({ 
+    csrfToken: req.csrfToken(),
+    message: 'Use this token in X-CSRF-Token header for POST/PUT/DELETE requests'
   });
 });
 

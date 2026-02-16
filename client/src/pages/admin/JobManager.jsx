@@ -64,19 +64,19 @@ const JobManager = () => {
 
   const fileInputRef = useRef(null);
 
-  // Fetch all jobs
+  // Fetch all jobs - FIXED: changed from '/admin/jobs' to '/jobs'
   const fetchJobs = async () => {
-  try {
-    setLoading(true);
-    const response = await adminApi.get('/admin/jobs');
-    
-    if (response.data.success) {
-      setJobs(response.data.data);
-      calculateStats(response.data.data);
-    } else {
-      console.error('API Error:', response.data.error);
-      alert('Failed to load jobs: ' + response.data.error);
-    }
+    try {
+      setLoading(true);
+      const response = await adminApi.get('/jobs');
+      
+      if (response.data.success) {
+        setJobs(response.data.data);
+        calculateStats(response.data.data);
+      } else {
+        console.error('API Error:', response.data.error);
+        alert('Failed to load jobs: ' + response.data.error);
+      }
     } catch (error) {
       console.error('Error fetching jobs:', error);
       alert('Failed to load jobs. Please check your connection.');
@@ -171,13 +171,13 @@ const JobManager = () => {
 
       let response;
       if (editingJob) {
-        // Update existing job
-        response = await adminApi.put(`/admin/jobs/${editingJob.id}`, jobData, {
+        // Update existing job - FIXED: changed from '/admin/jobs' to '/jobs'
+        response = await adminApi.put(`/jobs/${editingJob.id}`, jobData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else {
-        // Create new job
-        response = await adminApi.post('/admin/jobs', jobData, {
+        // Create new job - FIXED: changed from '/admin/jobs' to '/jobs'
+        response = await adminApi.post('/jobs', jobData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       }
@@ -220,7 +220,8 @@ const JobManager = () => {
     }
 
     try {
-      await adminApi.delete(`/admin/jobs/${id}`);
+      // FIXED: changed from '/admin/jobs' to '/jobs'
+      await adminApi.delete(`/jobs/${id}`);
       alert('Job deleted successfully!');
       fetchJobs();
     } catch (error) {
@@ -231,7 +232,8 @@ const JobManager = () => {
 
   const toggleJobStatus = async (id, currentStatus) => {
     try {
-      await adminApi.patch(`/admin/jobs/${id}/status`, {
+      // FIXED: changed from '/admin/jobs' to '/jobs'
+      await adminApi.patch(`/jobs/${id}/status`, {
         is_active: !currentStatus
       });
       alert(`Job ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);

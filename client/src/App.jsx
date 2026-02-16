@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 
 // Layout
@@ -89,6 +89,7 @@ function AppContent() {
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
   const [adsenseLoaded, setAdsenseLoaded] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
+  const location = useLocation();
 
   // Check cookie consent on mount
   useEffect(() => {
@@ -242,7 +243,12 @@ function AppContent() {
         <Route path="/cookie" element={<Navigate to="/policy/cookie" replace />} />
         <Route path="/policy/:type" element={<PolicyPage />} />
         
+        {/* Admin routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
+        
+        {/*/admin to /admin/dashboard */}
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        
         <Route path="/about" element={<About />} />
         <Route path="/author" element={<AuthorBio compact={false} />} />
         <Route path="/advertise" element={<Advertise />} />

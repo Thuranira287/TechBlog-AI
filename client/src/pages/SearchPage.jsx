@@ -11,8 +11,11 @@ const SearchPage = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  // URL is the source
-  const query = searchParams.get('q')?.trim() || ''
+  // Get raw query from URL
+  const rawQuery = searchParams.get('q')?.trim() || ''
+  
+  // Clean the query
+  const query = rawQuery.replace(/^#/, '').trim()
 
   const [searchTerm, setSearchTerm] = useState(query)
   const [posts, setPosts] = useState([])
@@ -22,7 +25,7 @@ const SearchPage = () => {
   const [hasMore, setHasMore] = useState(false)
   const [totalResults, setTotalResults] = useState(0)
 
-//Core search logic
+  // Core search logic
   const fetchSearchResults = useCallback(
     async (searchQuery, page = 1) => {
       if (!searchQuery) return
@@ -30,6 +33,12 @@ const SearchPage = () => {
       try {
         setLoading(true)
         setError(null)
+        
+        // Log the search query for debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Searching for: "${searchQuery}" (page ${page})`)
+        }
+        
         const { data } = await blogAPI.searchPosts(searchQuery, page, PAGE_SIZE)
 
         const newPosts = data?.posts || []
@@ -46,8 +55,9 @@ const SearchPage = () => {
 
         setCurrentPage(page)
       } catch (err) {
-        process.env.NODE_ENV === 'development' &&
-         console.error('Search failed:', err)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Search failed:', err)
+        }
         setError('Failed to load search results.')
         setPosts([])
         setHasMore(false)
@@ -58,9 +68,9 @@ const SearchPage = () => {
     []
   )
 
-// Run search when URL query changes
+  // Run search when URL query changes
   useEffect(() => {
-    setSearchTerm(query)
+    setSearchTerm(rawQuery)
     setPosts([])
     setCurrentPage(1)
     setHasMore(false)
@@ -69,15 +79,16 @@ const SearchPage = () => {
     if (query) {
       fetchSearchResults(query, 1)
     }
-  }, [query, fetchSearchResults])
+  }, [rawQuery, query, fetchSearchResults])
 
-// Handle search submit
+  // Handle search submit
   const handleSearchSubmit = e => {
     e.preventDefault()
     const trimmed = searchTerm.trim()
 
     if (!trimmed) return
 
+    // Keep the original input
     navigate(`/search?q=${encodeURIComponent(trimmed)}`)
   }
 
@@ -87,29 +98,35 @@ const SearchPage = () => {
     }
   }
 
+  // Determine if this is a tag search
+  const isTagSearch = rawQuery.startsWith('#')
+
   return (
     <>
       <Helmet>
         <title>
           {query
-            ? `Search: ${query} | TechBlog AI`
+            ? `${isTagSearch ? 'Tag' : 'Search'}: ${query} | TechBlog AI`
             : 'Search | TechBlog AI'}
         </title>
         <meta
           name="description"
           content={
             query
-              ? `Search results for "${query}" on TechBlog AI`
+              ? `${isTagSearch ? 'Posts tagged with' : 'Search results for'} "${query}" on TechBlog AI`
               : 'Search articles on TechBlog AI'
           }
         />
+        {isTagSearch && (
+          <meta name="robots" content="noindex, follow" />
+        )}
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">
         {/* Search Box */}
         <section className="max-w-2xl mx-auto mb-12">
           <h1 className="text-3xl font-bold text-center mb-6">
-            Search Posts
+            {isTagSearch ? 'Browse by Tag' : 'Search Posts'}
           </h1>
 
           <form onSubmit={handleSearchSubmit} className="relative">
@@ -134,7 +151,11 @@ const SearchPage = () => {
         {query && (
           <div className="mb-6">
             <h2 className="text-2xl font-bold">
-              Results for “{query}”
+              {isTagSearch ? (
+                <>Posts tagged with <span className="text-blue-600">#{query}</span></>
+              ) : (
+                <>Results for “{query}”</>
+              )}
             </h2>
             <p className="text-gray-600 mt-1">
               {totalResults} result{totalResults !== 1 && 's'} found
@@ -152,7 +173,10 @@ const SearchPage = () => {
 
         {/* Results */}
         {loading && posts.length === 0 ? (
-          <p className="text-center py-12">Loading results…</p>
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+            <p className="mt-4 text-gray-600">Loading results…</p>
+          </div>
         ) : posts.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -166,7 +190,7 @@ const SearchPage = () => {
                 <button
                   onClick={handleLoadMore}
                   disabled={loading}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Loading…' : 'Load More'}
                 </button>
@@ -176,10 +200,12 @@ const SearchPage = () => {
         ) : query && !loading ? (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold mb-2">
-              No posts found
+              No {isTagSearch ? 'posts with this tag' : 'posts found'}
             </h3>
             <p className="text-gray-600">
-              Try different keywords or browse categories.
+              {isTagSearch 
+                ? 'Try browsing other tags or search for something else.'
+                : 'Try different keywords or browse categories.'}
             </p>
           </div>
         ) : (

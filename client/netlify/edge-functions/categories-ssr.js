@@ -1,6 +1,11 @@
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
+      //Skip ALL API routes
+    if (url.pathname.startsWith('/api/')) {
+      console.log(`[Edge] Bypassing API route: ${url.pathname}`);
+      return context.next();
+    }
     const userAgent = request.headers.get("user-agent") || "";
     const pathParts = url.pathname.split('/').filter(p => p);
     

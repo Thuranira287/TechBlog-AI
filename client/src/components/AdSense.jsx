@@ -1,89 +1,111 @@
 import React, { useState, useEffect, useRef } from "react";
 
+// Load AdSense script once
+let adsenseLoaded = false;
+let adsenseLoading = false;
+
 const AdSense = () => {
   useEffect(() => {
-    // Check if script already exists
-    const existingScript = document.querySelector(
-      'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
-    );
-
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.src =
-        "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922";
-      script.async = true;
-      script.crossOrigin = "anonymous";
-      document.head.appendChild(script);
-    }
+    if (adsenseLoaded || adsenseLoading) return;
+    
+    adsenseLoading = true;
+    const script = document.createElement("script");
+    script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922";
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      adsenseLoaded = true;
+      adsenseLoading = false;
+    };
+    document.head.appendChild(script);
   }, []);
 
-  return null; 
+  return null;
 };
 
-// Generic Ad Unit Component
-
-export const AdUnit = ({ slot, format = "auto", responsive = true }) => {
+// Ad Unit
+export const AdUnit = ({ slot, format = "auto", responsive = true, className = "", delay = 0 }) => {
   const adRef = useRef(null);
+  const [shouldRender, setShouldRender] = useState(delay === 0);
+  const [pushed, setPushed] = useState(false);
 
+  // Handle delayed rendering for slow content
   useEffect(() => {
-    if (adRef.current && !adRef.current.hasChildNodes()) {
+    if (delay > 0) {
+      const timer = setTimeout(() => {
+        setShouldRender(true);
+      }, delay);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [delay]);
+
+  // Initialize ad when ready
+  useEffect(() => {
+    if (!shouldRender || !adRef.current || pushed || !adsenseLoaded) return;
+    
+    //additional delay to ensure DOM is ready
+    const timer = setTimeout(() => {
       try {
+        adRef.current.innerHTML = '';
+        
+        const ins = document.createElement('ins');
+        ins.className = 'adsbygoogle';
+        ins.style.display = 'block';
+        ins.style.textAlign = 'center';
+        ins.setAttribute('data-ad-client', 'ca-pub-2881807085062922');
+        ins.setAttribute('data-ad-slot', slot);
+        ins.setAttribute('data-ad-format', format);
+        ins.setAttribute('data-full-width-responsive', responsive.toString());
+        
+        adRef.current.appendChild(ins);
+        
         (window.adsbygoogle = window.adsbygoogle || []).push({});
+        setPushed(true);
       } catch (e) {
         console.warn("AdSense push error:", e);
+        // Retry once after 2 seconds
+        setTimeout(() => {
+          try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+            setPushed(true);
+          } catch (retryError) {
+            console.warn("AdSense retry failed:", retryError);
+          }
+        }, 2000);
       }
-    }
-  }, []);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [shouldRender, slot, format, responsive, pushed]);
 
-  return (
-    <div className="my-4 text-center">
-      <ins
-        ref={adRef}
-        className="adsbygoogle"
-        style={{ display: "block", textAlign: "center" }}
-        data-ad-client="ca-pub-2881807085062922"
-        data-ad-slot={slot}
-        data-ad-format={format}
-        data-full-width-responsive={responsive.toString()}
-      ></ins>
-    </div>
-  );
+  // Don't render if not ready
+  if (!shouldRender) {
+    return <div className="ad-placeholder" style={{ minHeight: '100px', background: '#f9f9f9' }} />;
+  }
+
+  return <div ref={adRef} className={`ad-container ${className}`} />;
 };
 
-// Header Ad — top banner
- 
+// Header Ad
 export const HeaderAd = () => {
-  const [adReady, setAdReady] = useState(false);
-
+  const [pageLoaded, setPageLoaded] = useState(false);
+  
   useEffect(() => {
-    // Check ad status periodically
-    const checkAdStatus = () => {
-      const adElement = document.querySelector('[data-ad-slot="8847382989"]');
-      if (adElement) {
-        const status = adElement.getAttribute('data-ad-status') || 
-                      adElement.getAttribute('data-adsbygoogle-status');
-        
-        // If ad is loaded OR if it's been a while, show it
-        if (status === 'filled') {
-          setAdReady(true);
-        } else {
-          // After 3 seconds,
-          setTimeout(() => setAdReady(true), 4000);
-        }
-      }
-    };
-
-    // Start checking after component mounts
-    setTimeout(checkAdStatus, 1000);
-    
-    // Cleanup
-    return () => clearTimeout(checkAdStatus);
+    // Wait for page to be fully loaded
+    if (document.readyState === 'complete') {
+      setPageLoaded(true);
+    } else {
+      window.addEventListener('load', () => setPageLoaded(true));
+      return () => window.removeEventListener('load', () => setPageLoaded(true));
+    }
   }, []);
-
-  if (!adReady) return null;
-
+  
+  // Don't show header ad until page is loaded
+  if (!pageLoaded) return null;
+  
   return (
-    <div className="w-full">
+    <div className="w-full bg-gray-50 py-2">
       <div className="container mx-auto px-4 text-center">
         <AdUnit slot="8847382989" format="auto" />
       </div>
@@ -91,64 +113,46 @@ export const HeaderAd = () => {
   );
 };
 
-// Sidebar Ad — sticky on scroll
+// Sidebar Ad
 export const SidebarAd = () => (
   <div className="sticky top-4">
     <AdUnit slot="8847382989" format="auto" />
   </div>
 );
 
-//In-Content Ad  inserted after every 3rd paragraph
-
-export const InContentAd = ({ html }) => {
-  if (!html) return null;
-
-  // Split HTML content into paragraphs
-  const paragraphs = html.split(/<\/p>/i);
-  const enhancedContent = [];
-
-  paragraphs.forEach((para, index) => {
-    if (!para.trim()) return;
-    enhancedContent.push(`${para}</p>`);
-
-    // Insert ad after every 3rd paragraph
-    if ((index + 1) % 3 === 0) {
-      enhancedContent.push(
-        `<div id="ad-${index}" class="in-content-ad"></div>`
-      );
-    }
-  });
-
-  useEffect(() => {
-    // Render ads into inserted divs
-    paragraphs.forEach((_, index) => {
-      if ((index + 1) % 3 === 0) {
-        const adDiv = document.getElementById(`ad-${index}`);
-        if (adDiv && !adDiv.hasChildNodes()) {
-          const ins = document.createElement("ins");
-          ins.className = "adsbygoogle";
-          ins.style.display = "block";
-          ins.setAttribute("data-ad-client", "ca-pub-2881807085062922");
-          ins.setAttribute("data-ad-slot", "8847382989");
-          ins.setAttribute("data-ad-format", "fluid");
-          ins.setAttribute("data-full-width-responsive", "true");
-          adDiv.appendChild(ins);
-
-          try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (e) {
-            console.warn("AdSense load error:", e);
-          }
-        }
-      }
-    });
-  }, [html]);
-
+// In-Content Ad with progressive loading
+export const InContentAd = ({ priority = 'normal' }) => {
+  // Higher priority ads load faster
+  const delay = priority === 'high' ? 0 : priority === 'medium' ? 500 : 1000;
+  
   return (
-    <div
-      className="prose max-w-none"
-      dangerouslySetInnerHTML={{ __html: enhancedContent.join("") }}
-    ></div>
+    <div className="my-8 text-center">
+      <AdUnit slot="8847382989" format="auto" delay={delay} />
+    </div>
+  );
+};
+
+// Progressive ad loader for multiple ads
+export const ProgressiveAdLoader = ({ count = 3, className = "" }) => {
+  const [loadedCount, setLoadedCount] = useState(1);
+  
+  useEffect(() => {
+    // Load ads one by one with delay
+    if (loadedCount < count) {
+      const timer = setTimeout(() => {
+        setLoadedCount(prev => prev + 1);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loadedCount, count]);
+  
+  return (
+    <div className={className}>
+      {Array.from({ length: loadedCount }).map((_, i) => (
+        <InContentAd key={i} priority={i === 0 ? 'high' : 'low'} />
+      ))}
+    </div>
   );
 };
 

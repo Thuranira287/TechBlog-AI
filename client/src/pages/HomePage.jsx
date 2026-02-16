@@ -102,7 +102,7 @@ const HomePage = () => {
                     {/* Insert ad after every 3rd post */}
                     {(index + 1) % 3 === 0 && (
                       <div className="md:col-span-2 lg:col-span-3">
-                        <InContentAd />
+                        <InContentAd priority='medium' />
                       </div>
                     )}
                   </React.Fragment>

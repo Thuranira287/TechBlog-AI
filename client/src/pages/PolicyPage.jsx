@@ -573,9 +573,9 @@ const PolicyPage = () => {
                 <Link
                   key={slug}
                   to={`/policy/${slug}`}
-                  className="block bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition"
+                  className="block bg-white border border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:shadow-sm transition"
                 >
-                  <p className="text-sm font-semibold text-blue-600">{policies[slug].title}</p>
+                  <p className="text-sm font-semibold text-primary-600">{policies[slug].title}</p>
                   <p className="text-xs text-gray-500 mt-1">{policies[slug].description.slice(0, 70)}…</p>
                 </Link>
               ))}

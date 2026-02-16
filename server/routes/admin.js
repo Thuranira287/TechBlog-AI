@@ -1,6 +1,6 @@
 import express from 'express';
-import pool from '../config/db.js';
-import { authenticateToken } from '../middleware/auth.js';
+import {pool} from '../config/db.js';
+import { authenticate } from '../middleware/auth.js';
 import { parser, uploadBufferToCloudinary } from "../config/cloudinary.js";
 import { submitSitemapToSearchEngines, submitUrlToIndexNow } from "../utils/sitemapSubmitter.js";
 import sanitizeHtml from 'sanitize-html';
@@ -8,7 +8,7 @@ import sanitizeHtml from 'sanitize-html';
 const router = express.Router();
 
 // Protect all admin routes
-router.use(authenticateToken);
+router.use(authenticate);
 
 // -------------------- DASHBOARD --------------------
 router.get('/dashboard', async (req, res) => {

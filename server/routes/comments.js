@@ -1,6 +1,6 @@
 import express from 'express';
-import pool from '../config/db.js';
-import { authenticateToken } from '../middleware/auth.js';
+import {pool} from '../config/db.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -299,7 +299,7 @@ router.get('/:id/reactions/:user_email', async (req, res) => {
 /* -----------------------------
    ADMIN ROUTES (Protected)
 ----------------------------- */
-router.use('/admin', authenticateToken);
+router.use('/admin', authenticate);
 
 router.get('/admin', async (req, res) => {
   try {
@@ -412,7 +412,7 @@ router.delete('/admin/:id', async (req, res) => {
 });
 
 // GET comment statistics
-router.get('/admin/stats', authenticateToken, async (req, res) => {
+router.get('/admin/stats', authenticate, async (req, res) => {
   try {
     const [stats] = await pool.execute(
       `SELECT 
