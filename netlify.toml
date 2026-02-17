@@ -11,6 +11,10 @@
 
 # ================= EDGE FUNCTIONS =================
 [[edge_functions]]
+  path = "/"
+  function = "home-ssr"
+
+[[edge_functions]]
   path = "/category/*"
   function = "category-ssr"
 
@@ -30,6 +34,13 @@
 
 # ================= CACHE HEADERS =================
 # Cache for Edge Function responses (bot-rendered HTML)
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, s-maxage=7200"
+    Vary = "User-Agent"
+    X-Robots-Tag = "index, follow, max-image-preview:large"
+
 [[headers]]
   for = "/category/*"
   [headers.values]

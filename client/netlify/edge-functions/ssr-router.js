@@ -154,7 +154,7 @@ function generateSchemas(post, postUrl) {
       ]
     },
     website: {
-      "@context": "https://schema.org", "@type": "website", "@id": "https://aitechblogs.netlify.app/#website",
+      "@context": "https://schema.org", "@type": "Website", "@id": "https://aitechblogs.netlify.app/#website",
       "name": "TechBlog AI", "description": "AI and technology insights", "url": "https://aitechblogs.netlify.app",
       "publisher": { "@type": "Organization", "@id": "https://aitechblogs.netlify.app/#organization", "name": "TechBlog AI" }, "inLanguage": "en-US"
     }
@@ -234,7 +234,7 @@ function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICr
       <a itemprop="item" href="${postUrl}">
         <span itemprop="name">${title}</span>
       </a>
-      <meta itemprop="position" content="4" />
+      <meta itemprop="position" content="3" />
     </li>
   </ol></nav>`;
 
