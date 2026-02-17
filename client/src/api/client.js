@@ -97,7 +97,7 @@ adminApi.interceptors.request.use((config) => {
 });
 
 // ========== CSRF Token Interceptor ==========
-// Add CSRF token to state-changing requests
+//CSRF token to state-changing requests
 
 // For main api
 api.interceptors.request.use(async (config) => {
@@ -113,7 +113,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// For adminApi
+// adminApi
 adminApi.interceptors.request.use(async (config) => {
   // Only add CSRF token for state-changing methods
   if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())) {
@@ -184,7 +184,7 @@ const responseErrorHandler = (error) => {
   if (response.status === 401) {
     const url = config?.url || '';
     
-    // For auth verify endpoint
+    // auth verify endpoint
     if (url.includes('/auth/verify') || url.includes('/auth/me')) {
       const authError = new Error('Not authenticated');
       authError.isAuthError = true;
@@ -192,7 +192,7 @@ const responseErrorHandler = (error) => {
       return Promise.reject(authError);
     }
 
-    // For admin routes
+    // admin routes
     if (url.includes('/admin') && typeof window !== 'undefined') {
       if (!window.location.pathname.includes('/admin/login')) {
         window.location.href = '/admin/login';

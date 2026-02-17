@@ -94,26 +94,28 @@ ins[data-ad-status="unfilled"]:has(div[id^="aswift_"]:empty),
 ins[data-adsbygoogle-status="unfilled"]:not(:has(iframe)) {
   height: 0 !important;
   min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: none !important;
+}
+/* Hide empty ad containers */
+.ad-container.ad-empty {
   display: none !important;
 }
 
 /* Force LTR for all comment-related elements */
-.comment-section * {
+textarea[dir="ltr"] {
   direction: ltr !important;
   text-align: left !important;
+  unicode-bidi: isolate !important;
+  writing-mode: horizontal-tb !important;
 }
 
-/* Fix for textarea RTL bug */
-textarea {
+/* Belt-and-suspenders */
+textarea[placeholder="Write your reply..."] {
   direction: ltr !important;
   text-align: left !important;
-  unicode-bidi: plaintext !important;
-}
-
-/* Prevent any RTL inheritance */
-[class*="comment"], 
-[class*="reply"] {
-  direction: ltr !important;
+  unicode-bidi: isolate !important;
 }
 
 /* Enhanced Code Block Styling - W3Schools Style */

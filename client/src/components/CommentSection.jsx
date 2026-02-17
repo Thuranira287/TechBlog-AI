@@ -37,7 +37,101 @@ const isAdmin = (email) => {
 };
 
 /* -----------------------------
-   Component: Organize flat array into hierarchy
+   LTR Textarea — immune to RTL inheritance from any ancestor.
+
+   Why the bug only hits the REPLY textarea (not the main one):
+   ─────────────────────────────────────────────────────────────
+   The reply textarea mounts DYNAMICALLY after a button click.
+   At that exact moment the browser walks up the DOM tree to
+   resolve the initial caret direction. If ANY ancestor
+   (html, body, a layout wrapper) has dir="rtl" — even set
+   by a third-party script or CSS — the dynamically-mounted
+   textarea inherits RTL and types backwards.
+
+   The main textarea is immune because it is server/build-time
+   rendered before those scripts run, so the browser never
+   re-evaluates its inherited direction.
+
+   Fix strategy (three layers):
+   1. setAttribute('dir','ltr') — the HTML *attribute* (not just
+      the style property) breaks CSS cascade inheritance.
+   2. All relevant style properties set directly on the DOM node
+      so they cannot be overridden by any stylesheet.
+   3. A MutationObserver watches for any external script that tries
+      to flip the attribute back, and immediately reverts it.
+----------------------------- */
+const LTRTextarea = React.forwardRef(
+  ({ value, onChange, onKeyDown, placeholder, rows = 4, className = '', autoFocus = false, ...rest }, ref) => {
+    const internalRef = useRef(null);
+    const resolvedRef = ref || internalRef;
+
+    useEffect(() => {
+      const el = resolvedRef.current;
+      if (!el) return;
+
+      // Set the HTML dir attribute directly on the DOM node.
+      // This is what actually breaks RTL inheritance from ancestors
+      // (html[dir="rtl"] or body[dir="rtl"]).
+      // We must NOT also watch 'style' in the MutationObserver — doing so
+      // causes an infinite loop: setProperty triggers the observer which
+      // calls setProperty again, freezing the textarea.
+      el.setAttribute('dir', 'ltr');
+
+      // Only guard against external scripts flipping the dir attribute
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((m) => {
+          if (m.attributeName === 'dir' && el.getAttribute('dir') !== 'ltr') {
+            el.setAttribute('dir', 'ltr');
+          }
+        });
+      });
+      observer.observe(el, { attributes: true, attributeFilter: ['dir'] });
+
+      if (autoFocus) {
+        const t = setTimeout(() => {
+          el.focus();
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
+        }, 0);
+        return () => {
+          clearTimeout(t);
+          observer.disconnect();
+        };
+      }
+
+      return () => observer.disconnect();
+    }, [autoFocus, resolvedRef]);
+
+    return (
+      <textarea
+        ref={resolvedRef}
+        rows={rows}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        dir="ltr"
+        lang="en"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck="false"
+        className={className}
+        style={{
+          direction:   'ltr',
+          textAlign:   'left',
+          unicodeBidi: 'isolate',
+          writingMode: 'horizontal-tb',
+        }}
+        {...rest}
+      />
+    );
+  }
+);
+LTRTextarea.displayName = 'LTRTextarea';
+
+/* -----------------------------
+   Component
 ----------------------------- */
 
 const CommentSection = ({ postId }) => {
@@ -56,7 +150,6 @@ const CommentSection = ({ postId }) => {
     content: '',
   });
 
-  // Check if user has entered name and email
   const hasIdentity =
     formData.author_name.trim() && formData.author_email.trim();
 
@@ -69,40 +162,34 @@ const CommentSection = ({ postId }) => {
   ----------------------------- */
 
   const fetchComments = async () => {
-  try {
-    setLoading(true);
-
-    const res = await blogAPI.getComments(postId);
-
-    if (Array.isArray(res.data)) {
-      setComments(organizeComments(res.data));
-    } else {
-      setComments([]);
+    try {
+      setLoading(true);
+      const res = await blogAPI.getComments(postId);
+      if (Array.isArray(res.data)) {
+        setComments(organizeComments(res.data));
+      } else {
+        setComments([]);
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching comments:', err);
+        console.error('Response:', err?.response?.data);
+        console.error('Status:', err?.response?.status);
+      }
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error fetching comments:', err);
-      console.error('Response:', err?.response?.data);
-      console.error('Status:', err?.response?.status);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-
-  // Function to organize flat comments array into hierarchy
   const organizeComments = (flatComments) => {
     const commentMap = new Map();
     const rootComments = [];
 
-    // First pass: Create map and add replies array
     flatComments.forEach((comment) => {
       comment.replies = [];
       commentMap.set(comment.id, comment);
     });
 
-    // Second pass: Build hierarchy
     flatComments.forEach((comment) => {
       if (comment.parent_id) {
         const parent = commentMap.get(comment.parent_id);
@@ -115,27 +202,26 @@ const CommentSection = ({ postId }) => {
         rootComments.push(comment);
       }
     });
-    rootComments.sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    );
+
+    rootComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     rootComments.forEach((comment) => {
       if (comment.replies.length > 0) {
-        comment.replies.sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        );
+        comment.replies.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       }
     });
 
     return rootComments;
   };
 
-// Reactions
+  /* -----------------------------
+     Reactions
+  ----------------------------- */
+
   const handleReaction = async (commentId, type) => {
     if (reacting === commentId) return;
     setReacting(commentId);
 
     try {
-      // Get user email
       const userEmail =
         formData.author_email || localStorage.getItem('comment_email');
       if (!userEmail) {
@@ -144,15 +230,11 @@ const CommentSection = ({ postId }) => {
         return;
       }
 
-      // Save email for future use
       if (formData.author_email && !localStorage.getItem('comment_email')) {
         localStorage.setItem('comment_email', formData.author_email);
       }
 
-      // Optimistic update
       updateCommentReaction(commentId, type);
-
-      // Send to backend
       await blogAPI.reactToComment(commentId, type);
     } catch (err) {
       console.error('Error reacting to comment:', err);
@@ -175,7 +257,6 @@ const CommentSection = ({ postId }) => {
           let newDislikes = currentDislikes;
           let newUserReaction = type;
 
-          // Toggle logic
           if (userReaction === 'like' && type === 'like') {
             newLikes = Math.max(0, currentLikes - 1);
             newUserReaction = null;
@@ -189,11 +270,8 @@ const CommentSection = ({ postId }) => {
             newDislikes = Math.max(0, currentDislikes - 1);
             newLikes = currentLikes + 1;
           } else {
-            if (type === 'like') {
-              newLikes = currentLikes + 1;
-            } else {
-              newDislikes = currentDislikes + 1;
-            }
+            if (type === 'like') newLikes = currentLikes + 1;
+            else newDislikes = currentDislikes + 1;
           }
 
           return {
@@ -204,12 +282,8 @@ const CommentSection = ({ postId }) => {
           };
         }
 
-        // Check replies recursively
         if (comment.replies && comment.replies.length > 0) {
-          return {
-            ...comment,
-            replies: updateCommentTree(comment.replies),
-          };
+          return { ...comment, replies: updateCommentTree(comment.replies) };
         }
 
         return comment;
@@ -219,7 +293,10 @@ const CommentSection = ({ postId }) => {
     setComments((prevComments) => updateCommentTree(prevComments));
   };
 
-//Submit Comment / Reply
+  /* -----------------------------
+     Submit
+  ----------------------------- */
+
   const submitComment = async (payload) => {
     if (!payload.content.trim()) {
       alert('Please enter your comment');
@@ -274,23 +351,27 @@ const CommentSection = ({ postId }) => {
     setSubmitting(false);
   };
 
-// Delete Comment (Admin only)
+  /* -----------------------------
+     Delete
+  ----------------------------- */
+
   const deleteComment = async (commentId) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
 
     try {
       await blogAPI.deleteComment(commentId);
       fetchComments();
       alert('Comment deleted successfully');
     } catch (err) {
-      console.error(' Error deleting comment:', err);
+      console.error('Error deleting comment:', err);
       alert('Failed to delete comment');
     }
   };
 
-//Format Date
+  /* -----------------------------
+     Helpers
+  ----------------------------- */
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
       year: 'numeric',
@@ -301,37 +382,20 @@ const CommentSection = ({ postId }) => {
     });
   };
 
-//Render Comment with Replies
+  /* -----------------------------
+     CommentItem
+  ----------------------------- */
+
   const CommentItem = ({ comment, depth = 0, isReply = false }) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
     const userReaction = comment.userReaction;
     const isReplying = replyingTo?.id === comment.id;
-    const textareaRef = useRef(null);
-
-    // RTL textarea
-    useEffect(() => {
-      if (isReplying && textareaRef.current) {
-        const textarea = textareaRef.current;
-        textarea.setAttribute('dir', 'ltr');
-        textarea.style.direction = 'ltr';
-        textarea.style.textAlign = 'left';
-        textarea.style.unicodeBidi = 'plaintext';
-        textarea.style.removeProperty('rtl');
-        textarea.style.removeProperty('right');
-        textarea.style.transform = 'translateZ(0)';
-        textarea.style.backfaceVisibility = 'hidden';
-        setTimeout(() => {
-          textarea.focus();
-          textarea.setSelectionRange(0, 0);
-        }, 10);
-        textarea.offsetHeight;
-      }
-    }, [isReplying]);
 
     return (
       <div
         className={`${depth > 0 ? 'ml-8 pl-4 border-l-2 border-gray-200' : ''}`}
-        style={{ direction: 'ltr' }} 
+        dir="ltr"
+        style={{ direction: 'ltr' }}
       >
         {/* Comment Card */}
         <div
@@ -353,9 +417,7 @@ const CommentSection = ({ postId }) => {
               <div>
                 <div className="flex items-center gap-1">
                   <span className="font-semibold text-gray-900">
-                    {comment.author_name.replace(/\b\w/g, (c) =>
-                      c.toUpperCase()
-                    )}
+                    {comment.author_name.replace(/\b\w/g, (c) => c.toUpperCase())}
                   </span>
 
                   {isAdmin(comment.author_email) && (
@@ -398,7 +460,6 @@ const CommentSection = ({ postId }) => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3 text-sm text-gray-600">
-            {/* Like Button */}
             <button
               onClick={() => handleReaction(comment.id, 'like')}
               className={`flex items-center gap-1 transition-colors ${
@@ -409,12 +470,9 @@ const CommentSection = ({ postId }) => {
               disabled={reacting === comment.id}
             >
               <ThumbsUp className="w-4 h-4" />
-              <span className="min-w-[20px] text-center">
-                {comment.likes || 0}
-              </span>
+              <span className="min-w-[20px] text-center">{comment.likes || 0}</span>
             </button>
 
-            {/* Dislike Button */}
             <button
               onClick={() => handleReaction(comment.id, 'dislike')}
               className={`flex items-center gap-1 transition-colors ${
@@ -425,12 +483,9 @@ const CommentSection = ({ postId }) => {
               disabled={reacting === comment.id}
             >
               <ThumbsDown className="w-4 h-4" />
-              <span className="min-w-[20px] text-center">
-                {comment.dislikes || 0}
-              </span>
+              <span className="min-w-[20px] text-center">{comment.dislikes || 0}</span>
             </button>
 
-            {/* Reply Button */}
             <button
               onClick={() => {
                 if (!hasIdentity) {
@@ -438,6 +493,7 @@ const CommentSection = ({ postId }) => {
                   return;
                 }
                 setReplyingTo({ id: comment.id, name: comment.author_name });
+                setReplyContent('');
               }}
               className="flex items-center gap-1 hover:text-blue-600 transition-colors"
               disabled={reacting === comment.id}
@@ -446,7 +502,6 @@ const CommentSection = ({ postId }) => {
               Reply
             </button>
 
-            {/* Show/Hide Replies Toggle */}
             {hasReplies && (
               <button
                 onClick={() =>
@@ -475,32 +530,27 @@ const CommentSection = ({ postId }) => {
             )}
           </div>
 
-          {/* Reply Form */}
+          {/* ── Reply Form ─────────────────────────────────────────────
+              Key fix: We use the LTRTextarea component and key it to
+              `comment.id` so React always mounts a fresh element when
+              a different comment is being replied to. A fresh mount
+              means the browser has zero chance to inherit a stale RTL
+              direction from a previous instance.
+          ──────────────────────────────────────────────────────────── */}
           {isReplying && (
-            <div className="mt-3" style={{ direction: 'ltr' }}>
+            <div className="mt-3" dir="ltr" style={{ direction: 'ltr' }}>
               <p className="text-xs text-gray-500 mb-1">
                 Replying to{' '}
                 <span className="font-semibold">@{replyingTo.name}</span>
               </p>
-              <textarea
-                ref={textareaRef}
-                rows="2"
+              <LTRTextarea
+                key={`reply-textarea-${comment.id}`}
+                rows={2}
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 placeholder="Write your reply..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                style={{
-                  direction: 'ltr',
-                  textAlign: 'left',
-                  unicodeBidi: 'plaintext',
-                  transform: 'translateZ(0)',
-                }}
                 autoFocus
-                dir="ltr"
-                lang="en"
-                translate="no"
-                spellCheck="false"
-                data-ltr="true"
               />
               <div className="flex gap-2 mt-2">
                 <button
@@ -524,7 +574,6 @@ const CommentSection = ({ postId }) => {
             </div>
           )}
 
-          {/* Admin Notice for Deleted Comments */}
           {comment.deleted && (
             <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
@@ -535,7 +584,7 @@ const CommentSection = ({ postId }) => {
 
         {/* Render Replies */}
         {hasReplies && !collapsed[comment.id] && (
-          <div className="mt-2" style={{ direction: 'ltr' }}>
+          <div className="mt-2" dir="ltr" style={{ direction: 'ltr' }}>
             {comment.replies.map((reply) => (
               <CommentItem
                 key={reply.id}
@@ -550,14 +599,17 @@ const CommentSection = ({ postId }) => {
     );
   };
 
-// Main Render
+  /* -----------------------------
+     Main Render
+  ----------------------------- */
+
   const totalCommentCount = comments.reduce(
     (acc, comment) => acc + 1 + (comment.replies ? comment.replies.length : 0),
     0
   );
 
   return (
-    <section className="mt-12" style={{ direction: 'ltr' }}>
+    <section className="mt-12" dir="ltr" style={{ direction: 'ltr' }}>
       <h2 className="text-2xl font-bold text-gray-900 mb-6">
         Comments ({totalCommentCount})
       </h2>
@@ -566,6 +618,7 @@ const CommentSection = ({ postId }) => {
       <form
         onSubmit={handleSubmit}
         className="bg-gray-50 p-6 rounded-lg mb-8"
+        dir="ltr"
         style={{ direction: 'ltr' }}
       >
         <h3 className="text-lg font-semibold mb-4">Leave a Comment</h3>
@@ -575,37 +628,31 @@ const CommentSection = ({ postId }) => {
             type="text"
             placeholder="Your Name *"
             value={formData.author_name}
-            onChange={(e) =>
-              setFormData({ ...formData, author_name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, author_name: e.target.value })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
             dir="ltr"
+            style={{ direction: 'ltr', textAlign: 'left' }}
           />
           <input
             type="email"
             placeholder="Your Email *"
             value={formData.author_email}
-            onChange={(e) =>
-              setFormData({ ...formData, author_email: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, author_email: e.target.value })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
             dir="ltr"
+            style={{ direction: 'ltr', textAlign: 'left' }}
           />
         </div>
 
-        <textarea
-          placeholder="Your Comment *"
-          rows="4"
+        {/* Main comment textarea also uses LTRTextarea for consistency */}
+        <LTRTextarea
+          rows={4}
           value={formData.content}
-          onChange={(e) =>
-            setFormData({ ...formData, content: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+          placeholder="Your Comment *"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
-          required
-          dir="ltr"
-          style={{ direction: 'ltr', textAlign: 'left' }}
         />
 
         <button

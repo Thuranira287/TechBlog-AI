@@ -161,80 +161,79 @@ const PostPage = () => {
   }, [])
 
   // Memoize share URLs
-  const shareUrls = useMemo(() => {
-    if (!post) return {};
-    
-    const shareUrl = `${SITE_URL}/post/${post.slug}`;
-    const twitterTitle = post.twitter_title || post.og_title || post.meta_title || post.title;
-    const twitterDesc = post.twitter_description || post.og_description || post.meta_description || post.excerpt;
-    const ogTitle = post.og_title || post.meta_title || post.title;
-    const ogDesc = post.og_description || post.meta_description || post.excerpt;
-    
-    return {
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-        `${twitterTitle}${twitterDesc ? `\n\n${twitterDesc}` : ''}\n\n${shareUrl}`
-      )}${post.tags?.length ? `&hashtags=${encodeURIComponent(post.tags.slice(0, 3).join(','))}` : ''}`,
-      
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-      
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
-      
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(`${ogTitle} - ${shareUrl}`)}`,
-      
-      reddit: `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(ogTitle)}`,
-      
-      email: `mailto:?subject=${encodeURIComponent(ogTitle)}&body=${encodeURIComponent(`${ogDesc}\n\n${shareUrl}`)}`,
-      
-      copy: shareUrl
-    };
-  }, [post]);
-
-  const sharePost = useCallback((platform) => {
-    if (!post || !shareUrls[platform]) return;
-    
-    if (platform === 'copy') {
-      navigator.clipboard.writeText(shareUrls.copy).then(() => {
-        setShowCopyToast(true);
+    const shareUrls = useMemo(() => {
+      if (!post) return {};
+      const shareUrl = `${SITE_URL}/post/${post.slug}`;
+  
+      const twitterTitle = post.twitter_title || post.og_title || post.meta_title || post.title;
+      const ogTitle     = post.og_title || post.meta_title || post.title;
+      const ogDesc      = post.og_description || post.meta_description || post.excerpt || '';
+  
+      // Build hashtag string
+      const hashtagString = post.tags?.length
+        ? post.tags.slice(0, 3).map(t => t.replace(/\s+/g, '')).join(',')
+        : '';
+      const twitterText = hashtagString
+        ? `${twitterTitle}${post.twitter_description ? `\n\n${post.twitter_description}` : ''} #${hashtagString.split(',').join(' #')}\n\n${shareUrl}`
+        : `${twitterTitle}${post.twitter_description ? `\n\n${post.twitter_description}` : ''}\n\n${shareUrl}`;
+      const whatsappText = `${ogTitle}\n${shareUrl}`;
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  
+      return {
+        twitter:  `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}`,
+        facebook: facebookUrl,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+        whatsapp: `https://wa.me/?text=${encodeURIComponent(whatsappText)}`,
+        reddit:   `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(ogTitle)}`,
+        email:    `mailto:?subject=${encodeURIComponent(ogTitle)}&body=${encodeURIComponent(`${ogDesc}\n\n${shareUrl}`)}`,
+        copy:     shareUrl,
+      };
+    }, [post]);
+  
+    const sharePost = useCallback((platform) => {
+      if (!post || !shareUrls[platform]) return;
+  
+      if (platform === 'copy') {
+        navigator.clipboard.writeText(shareUrls.copy).then(() => {
+          setShowCopyToast(true);
+          setShowShareMenu(false);
+          setTimeout(() => setShowCopyToast(false), 2000);
+        }).catch(() => {
+          const textarea = document.createElement('textarea');
+          textarea.value = shareUrls.copy;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          setShowCopyToast(true);
+          setTimeout(() => setShowCopyToast(false), 2000);
+        });
+        return;
+      }
+  
+      if (platform === 'native' && navigator.share) {
+        navigator.share({
+          title: post.og_title || post.meta_title || post.title,
+          text:  post.og_description || post.meta_description || post.excerpt,
+          url:   shareUrls.copy,
+        }).catch(() => {});
         setShowShareMenu(false);
-        setTimeout(() => setShowCopyToast(false), 2000);
-      }).catch(() => {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = shareUrls.copy;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        setShowCopyToast(true);
-        setTimeout(() => setShowCopyToast(false), 2000);
-      });
-      return;
-    }
-    
-    if (platform === 'native' && navigator.share) {
-      navigator.share({
-        title: post.og_title || post.meta_title || post.title,
-        text: post.og_description || post.meta_description || post.excerpt,
-        url: shareUrls.copy,
-      }).catch(() => {});
-      setShowShareMenu(false);
-      return;
-    }
-    
-    const url = shareUrls[platform];
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer,width=600,height=400');
-      setShowShareMenu(false);
-    }
-  }, [post, shareUrls]);
-
-  // Memoize image URL
-  const imageUrl = useMemo(() => {
-    if (!post?.featured_image) return `${SITE_URL}/og-image.png`;
-    return post.featured_image.startsWith('http') 
-      ? post.featured_image 
-      : `${SITE_URL}${post.featured_image}`;
-  }, [post?.featured_image]);
+        return;
+      }
+  
+      const url = shareUrls[platform];
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer,width=600,height=400');
+        setShowShareMenu(false);
+      }
+    }, [post, shareUrls]);
+  
+    const imageUrl = useMemo(() => {
+      if (!post?.featured_image) return `${SITE_URL}/og-image.png`;
+      return post.featured_image.startsWith('http')
+        ? post.featured_image
+        : `${SITE_URL}${post.featured_image}`;
+    }, [post?.featured_image]);
 
   // Loading skeleton
   if (loading) {

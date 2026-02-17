@@ -9,7 +9,7 @@ const getCookieOptions = () => {
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     path: '/',
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN })
+    //...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN })
   };
 };
 
