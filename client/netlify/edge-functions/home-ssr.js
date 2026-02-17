@@ -1,47 +1,61 @@
+// netlify/edge-functions/home-ssr.js
 export default async (request, context) => {
-  const url = new URL(request.url);
-  const accept = request.headers.get("accept") || "";
-  const userAgent = request.headers.get("user-agent") || "";
-  
-  // Skip API routes
-  if (url.pathname.startsWith('/api/')) {
-    return context.next();
-  }
+  try {
+    const url = new URL(request.url);
+    
+    // Skip API routes
+    if (url.pathname.startsWith('/api/')) {
+      return context.next();
+    }
 
-  // Only handle root path
-  if (url.pathname !== '/') {
-    return context.rewrite('/index.html');
-  }
+    // Only handle root path
+    if (url.pathname !== '/') {
+      return context.rewrite('/index.html');
+    }
 
-  const isAICrawler = [
-    'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 
-    'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot',
-    'google-extended', 'facebookexternalhit', 'twitterbot'
-  ].some(bot => userAgent.toLowerCase().includes(bot));
+    const userAgent = request.headers.get("user-agent") || "";
+    const isAICrawler = [
+      'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 
+      'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot',
+      'google-extended', 'facebookexternalhit', 'twitterbot'
+    ].some(bot => userAgent.toLowerCase().includes(bot));
 
-  // For AI crawlers, serve full SSR content
-  if (isAICrawler) {
-    try {
+    console.log(`[Edge-Home] AI Crawler: ${isAICrawler}, UA: ${userAgent.substring(0, 50)}`);
+
+    if (isAICrawler) {
       // Check cache first
       const cacheKey = 'homepage-ai-full';
       const cache = await caches.open('homepage-cache');
       const cached = await cache.match(cacheKey);
       
       if (cached) {
-        console.log(`[Edge-Home] Cache HIT for AI crawler`);
+        console.log(`[Edge-Home] Cache HIT`);
         return cached;
       }
 
-      // Fetch all data in parallel
-      const [postsResponse, categoriesResponse] = await Promise.all([
+      // Fetch data with proper error handling
+      const [postsResponse, categoriesResponse] = await Promise.allSettled([
         fetch('https://techblogai-backend.onrender.com/api/posts?limit=50'),
         fetch('https://techblogai-backend.onrender.com/api/categories')
       ]);
 
-      const posts = await postsResponse.json();
-      const categories = await categoriesResponse.json();
+      let posts = { data: [] };
+      let categories = { data: [] };
 
-      // Generate full HTML with all content
+      if (postsResponse.status === 'fulfilled' && postsResponse.value.ok) {
+        posts = await postsResponse.value.json();
+        console.log(`[Edge-Home] Fetched ${posts.data?.length || 0} posts`);
+      } else {
+        console.error('[Edge-Home] Failed to fetch posts');
+      }
+
+      if (categoriesResponse.status === 'fulfilled' && categoriesResponse.value.ok) {
+        categories = await categoriesResponse.value.json();
+        console.log(`[Edge-Home] Fetched ${categories.data?.length || 0} categories`);
+      } else {
+        console.error('[Edge-Home] Failed to fetch categories');
+      }
+
       const html = generateAIHomepageHTML(posts, categories);
       
       const response = new Response(html, {
@@ -61,15 +75,14 @@ export default async (request, context) => {
       );
 
       return response;
-
-    } catch (error) {
-      console.error("[Edge-Home] SSR Error:", error);
-      return context.rewrite("/index.html");
     }
-  }
 
-  // For regular browsers, serve normal SPA
-  return context.rewrite("/index.html");
+    return context.rewrite("/index.html");
+
+  } catch (error) {
+    console.error("[Edge-Home] Critical error:", error);
+    return context.rewrite("/index.html");
+  }
 };
 
 function generateAIHomepageHTML(posts, categories) {
@@ -203,7 +216,7 @@ function generateAIHomepageHTML(posts, categories) {
                   year: 'numeric', month: 'short', day: 'numeric' 
                 })}</span>
               </div>
-              <p class="post-excerpt">${escapeHtml(post.excerpt || post.content.substring(0, 200))}...</p>
+              <p class="post-excerpt">${escapeHtml(post.excerpt || post.content?.substring(0, 200) || '')}...</p>
               <a href="/post/${post.slug}" class="post-read-more">Read more →</a>
             </div>
           </article>
@@ -211,18 +224,20 @@ function generateAIHomepageHTML(posts, categories) {
       </div>
     </section>
 
-    <!-- AI Training Section - Full content for AI crawlers -->
+    <!-- AI Training Section -->
     <section class="ai-full-content">
       <h2>Complete Content for AI Training</h2>
       <p>This page contains ${postsData.length} articles with full text content available for AI training under CC BY 4.0 license.</p>
+      ${postsData.length > 0 ? `
       <ul>
         ${postsData.slice(0, 5).map(post => `
           <li>
             <strong>${escapeHtml(post.title)}</strong> (${escapeHtml(post.category_name || 'Uncategorized')})
-            <br>${escapeHtml(post.excerpt || post.content.substring(0, 300))}
+            <br>${escapeHtml(post.excerpt || post.content?.substring(0, 300) || '')}
           </li>
         `).join('')}
       </ul>
+      ` : ''}
       <p>For complete dataset access, visit <a href="/public-dataset">/public-dataset</a> or use our <a href="https://techblogai-backend.onrender.com/api/ai/feed">JSON API feed</a>.</p>
     </section>
   </main>
@@ -244,9 +259,11 @@ function generateAIHomepageHTML(posts, categories) {
 }
 
 function escapeHtml(text = "") {
-  return text.replace(/&/g, "&amp;")
-             .replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;")
-             .replace(/"/g, "&quot;")
-             .replace(/'/g, "&#039;");
+  if (!text) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
