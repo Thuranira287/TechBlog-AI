@@ -20,7 +20,7 @@ export default async (request, context) => {
       'google-extended', 'facebookexternalhit', 'twitterbot'
     ].some(bot => userAgent.toLowerCase().includes(bot));
 
-    console.log(`[Edge-Home] AI Crawler: ${isAICrawler}, UA: ${userAgent.substring(0, 50)}`);
+    console.log(`[Edge-Home] AI Crawler: ${isAICrawler}`);
 
     if (isAICrawler) {
       // Check cache first
@@ -33,48 +33,63 @@ export default async (request, context) => {
         return cached;
       }
 
-      // Fetch data with proper error handling
-      const [postsResponse, categoriesResponse] = await Promise.allSettled([
-        fetch('https://techblogai-backend.onrender.com/api/posts?limit=50'),
-        fetch('https://techblogai-backend.onrender.com/api/categories')
-      ]);
+      // Fetch data with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      let posts = { data: [] };
-      let categories = { data: [] };
+      try {
+        const [postsResponse, categoriesResponse] = await Promise.all([
+          fetch('https://techblogai-backend.onrender.com/api/posts?limit=50', {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'TechBlogAI-Edge/1.0' }
+          }),
+          fetch('https://techblogai-backend.onrender.com/api/categories', {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'TechBlogAI-Edge/1.0' }
+          })
+        ]);
 
-      if (postsResponse.status === 'fulfilled' && postsResponse.value.ok) {
-        posts = await postsResponse.value.json();
-        console.log(`[Edge-Home] Fetched ${posts.data?.length || 0} posts`);
-      } else {
-        console.error('[Edge-Home] Failed to fetch posts');
-      }
+        clearTimeout(timeoutId);
 
-      if (categoriesResponse.status === 'fulfilled' && categoriesResponse.value.ok) {
-        categories = await categoriesResponse.value.json();
-        console.log(`[Edge-Home] Fetched ${categories.data?.length || 0} categories`);
-      } else {
-        console.error('[Edge-Home] Failed to fetch categories');
-      }
-
-      const html = generateAIHomepageHTML(posts, categories);
-      
-      const response = new Response(html, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "public, max-age=3600, s-maxage=7200",
-          "X-Robots-Tag": "index, follow, max-image-preview:large",
-          "X-Rendered-By": "Edge-SSR-Home-AI",
-          "X-Cache": "MISS"
+        // Parse posts response - API returns { posts: [...] }
+        let posts = [];
+        if (postsResponse.ok) {
+          const postsJson = await postsResponse.json();
+          posts = postsJson.posts || [];
+          console.log(`[Edge-Home] Fetched ${posts.length} posts`);
         }
-      });
 
-      // Cache for 1 hour
-      context.waitUntil(
-        cache.put(cacheKey, response.clone())
-      );
+        // Parse categories response - API returns array directly
+        let categories = [];
+        if (categoriesResponse.ok) {
+          categories = await categoriesResponse.json();
+          console.log(`[Edge-Home] Fetched ${categories.length} categories`);
+        }
 
-      return response;
+        const html = generateAIHomepageHTML(posts, categories);
+        
+        const response = new Response(html, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, max-age=3600, s-maxage=7200",
+            "X-Robots-Tag": "index, follow, max-image-preview:large",
+            "X-Rendered-By": "Edge-SSR-Home-AI"
+          }
+        });
+
+        // Cache for 1 hour
+        context.waitUntil(
+          cache.put(cacheKey, response.clone())
+        );
+
+        return response;
+
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('[Edge-Home] Fetch error:', fetchError.message);
+        return context.rewrite("/index.html");
+      }
     }
 
     return context.rewrite("/index.html");
@@ -86,9 +101,6 @@ export default async (request, context) => {
 };
 
 function generateAIHomepageHTML(posts, categories) {
-  const postsData = posts.data || [];
-  const categoriesData = categories.data || [];
-  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -185,7 +197,7 @@ function generateAIHomepageHTML(posts, categories) {
     <section>
       <h2 class="section-title">Browse by Category</h2>
       <div class="categories-grid">
-        ${categoriesData.map(cat => `
+        ${categories.map(cat => `
           <div class="category-card">
             <div class="category-name">${escapeHtml(cat.name)}</div>
             <div class="category-count">${cat.post_count || 0} posts</div>
@@ -198,7 +210,7 @@ function generateAIHomepageHTML(posts, categories) {
     <section>
       <h2 class="section-title">Latest Articles</h2>
       <div class="posts-grid">
-        ${postsData.slice(0, 12).map(post => `
+        ${posts.slice(0, 12).map(post => `
           <article class="post-card">
             ${post.featured_image ? `
               <div class="post-image">
@@ -216,7 +228,7 @@ function generateAIHomepageHTML(posts, categories) {
                   year: 'numeric', month: 'short', day: 'numeric' 
                 })}</span>
               </div>
-              <p class="post-excerpt">${escapeHtml(post.excerpt || post.content?.substring(0, 200) || '')}...</p>
+              <p class="post-excerpt">${escapeHtml(post.excerpt || '')}</p>
               <a href="/post/${post.slug}" class="post-read-more">Read more →</a>
             </div>
           </article>
@@ -227,13 +239,13 @@ function generateAIHomepageHTML(posts, categories) {
     <!-- AI Training Section -->
     <section class="ai-full-content">
       <h2>Complete Content for AI Training</h2>
-      <p>This page contains ${postsData.length} articles with full text content available for AI training under CC BY 4.0 license.</p>
-      ${postsData.length > 0 ? `
+      <p>This page contains ${posts.length} articles with full text content available for AI training under CC BY 4.0 license.</p>
+      ${posts.length > 0 ? `
       <ul>
-        ${postsData.slice(0, 5).map(post => `
+        ${posts.slice(0, 5).map(post => `
           <li>
             <strong>${escapeHtml(post.title)}</strong> (${escapeHtml(post.category_name || 'Uncategorized')})
-            <br>${escapeHtml(post.excerpt || post.content?.substring(0, 300) || '')}
+            <br>${escapeHtml(post.excerpt || '')}
           </li>
         `).join('')}
       </ul>
