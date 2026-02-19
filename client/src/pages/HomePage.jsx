@@ -5,14 +5,24 @@ import PostCard from '../components/PostCard'
 import { HeaderAd, InContentAd } from '../components/AdSense'
 import { useBlog } from '../context/BlogContext'
 
-const HomePage = () => {
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
+const HomePage = ({ initialPosts = [], initialCategories = [] }) => {
+  const [posts, setPosts] = useState(initialPosts)
+  const [loading, setLoading] = useState(!initialPosts.length)
   const [pagination, setPagination] = useState({})
-  const { categories } = useBlog()
+  const { categories, setCategories } = useBlog()
 
   useEffect(() => {
-    fetchPosts()
+    if (!initialPosts.length) {
+      fetchPosts()
+    }
+
+    if (initialCategories.length && !categories.length) {
+      setCategories(initialCategories)
+    } 
+    
+    if (typeof window !== "undefined") {
+      delete window.__INITIAL_DATA__
+    }
   }, [])
 
   const fetchPosts = async (page = 1) => {
@@ -44,7 +54,11 @@ const HomePage = () => {
         />
         <meta property="og:title" content="TechBlog AI - Latest Technology News & Insights" />
         <meta property="og:description" content="Stay updated with the latest technology news, AI advancements, and web development tutorials." />
-        <meta property="og:url" content={window.location.href} />
+        <meta property="og:url" content={
+          typeof window !== "undefined"
+            ? window.location.href
+            : "https://aitechblogs.netlify.app/"
+        } />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">

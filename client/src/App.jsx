@@ -97,6 +97,17 @@ function AppContent() {
     checkConsent();
   }, []);
 
+  const getInitialData = () => {
+  // Check if we're in browser and data exists
+    if (typeof window !== 'undefined' && window.__INITIAL_DATA__) {
+      const data = window.__INITIAL_DATA__;
+      // Clear it immediately to prevent accidental reuse
+      window.__INITIAL_DATA__ = null;
+      return data;
+    }
+    return { posts: [], categories: [] };
+  };
+
   const checkConsent = () => {
     // Check if user has already made a choice
     const consentStatus = getCookie('techblog_consent_status');
@@ -233,7 +244,9 @@ function AppContent() {
       
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomePage 
+        initialPosts={getInitialData().posts}
+        initialCategories={getInitialData().categories}/>} />
         <Route path="/post/:slug" element={<PostPage />} />
         <Route path="/category/:category" element={<CategoryPage />} />
         <Route path="/search" element={<SearchPage />} />

@@ -1,3 +1,4 @@
+// netlify/edge-functions/category-ssr.js
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
@@ -8,62 +9,81 @@ export default async (request, context) => {
       return context.next();
     }
 
-    const userAgent = request.headers.get("user-agent") || "";
     const pathParts = url.pathname.split('/').filter(p => p);
     
-    // Detect if this is a category page
+    // Only handle category pages
     if (pathParts[0] === 'category' && pathParts[1]) {
       const categorySlug = pathParts[1];
       const page = url.searchParams.get('page') || 1;
-      
-      const isFullContent = true;
 
-      console.log(`[Edge-Category] ${categorySlug}, Page:${page}, Serving FULL SSR to all`);
+      console.log(`[Edge-Category] ${categorySlug}, Page:${page}, Serving SSR`);
 
       try {
-        // Use Edge Cache FIRST
-        const cacheKey = `category-${categorySlug}-page-${page}-full`;
+        // Check cache first
+        const cacheKey = `category-${categorySlug}-page-${page}`;
         const cache = await caches.open('category-cache');
         const cached = await cache.match(cacheKey);
         
         if (cached) {
-          console.log(`[Edge-Category] Cache HIT for ${categorySlug} page ${page}`);
+          console.log(`[Edge-Category] Cache HIT`);
           return cached;
         }
 
-        // Fetch from backend
-        const categoryData = await fetchCategoryMeta(categorySlug, page, true, context);
+        // Fetch category data
+        const categoryData = await fetchCategoryData(categorySlug, page);
         
-        if (categoryData) {
-          // Generate universal HTML (pass isFullContent = true)
-          const html = generateCategoryUniversalHtml(categoryData, categorySlug, page);
-          
-          const response = new Response(html, {
-            status: 200,
-            headers: {
-              "Content-Type": "text/html; charset=utf-8",
-              "Cache-Control": "public, max-age=1800, s-maxage=3600",
-              "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob: data:; object-src 'none'; connect-src 'self' https://www.google-analytics.com https://analytics.ahrefs.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
-              "X-Robots-Tag": "index, follow, max-image-preview:large",
-              "Vary": "User-Agent",
-              "X-Rendered-By": "Edge-SSR-Category-Universal",
-              "X-Cache": "MISS"
+        // Get the SPA template
+        const spaResponse = await fetch(new URL('/index.html', request.url));
+        let html = await spaResponse.text();
+
+        // Generate all SEO metadata
+        const categoryUrl = `https://aitechblogs.netlify.app/category/${categorySlug}`;
+        const seoMetadata = generateSEOMetadata(categoryData, categorySlug, page, categoryUrl);
+
+        // Inject metadata into head
+        html = html.replace(
+          '</head>',
+          `${seoMetadata}</head>`
+        );
+
+        // Generate SSR content
+        const ssrContent = generateCategorySSR(categoryData, categorySlug, page);
+
+        // Inject SSR content into root div
+        html = html.replace(
+          '<div id="root"></div>',
+          `<div id="root">${ssrContent}</div>`
+        );
+
+        // Inject initial data for hydration
+        html = html.replace(
+          '</body>',
+          `<script>
+            window.__INITIAL_CATEGORY_DATA__ = {
+              posts: ${JSON.stringify(categoryData.posts || []).replace(/</g, '\\u003c')},
+              category: ${JSON.stringify(categoryData.category || {}).replace(/</g, '\\u003c')},
+              pagination: {
+                total: ${categoryData.total || 0},
+                currentPage: ${categoryData.currentPage || Number(page)},
+                totalPages: ${categoryData.totalPages || 1}
+              }
             }
-          });
-          
-          context.waitUntil(cache.put(cacheKey, response.clone()));
-          return response;
-        }
-        
-        // Fallback
-        return new Response(generateCategoryFallback(categorySlug), {
-          status: 404,
+          </script></body>`
+        );
+
+        const response = new Response(html, {
+          status: 200,
           headers: {
             "Content-Type": "text/html; charset=utf-8",
-            "X-Robots-Tag": "noindex, follow",
-            "X-Rendered-By": "Edge-SSR-Category-404"
+            "Cache-Control": "public, max-age=1800, s-maxage=3600",
+            "X-Robots-Tag": "index, follow, max-image-preview:large",
+            "Vary": "User-Agent",
+            "X-Rendered-By": "Edge-SSR-Category"
           }
         });
+        
+        context.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
         
       } catch (error) {
         console.error("[Edge-Category] Error:", error);
@@ -71,7 +91,6 @@ export default async (request, context) => {
       }
     }
     
-    // Not a category page → let the SPA handle it
     return context.rewrite("/index.html");
 
   } catch (error) {
@@ -81,472 +100,399 @@ export default async (request, context) => {
 };
 
 // Fetch category data
-async function fetchCategoryMeta(categorySlug, page = 1, fullContent = false, context) {
-  const cacheKey = `backend-category-${categorySlug}-page-${page}-${fullContent ? 'full' : 'lite'}`;
-  const cache = await caches.open('backend-cache');
-  const cached = await cache.match(cacheKey);
-  
-  if (cached) return cached.json();
-  
+async function fetchCategoryData(categorySlug, page = 1) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   
   try {
-    const limit = fullContent ? 20 : 10;
-    const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=${page}&limit=${limit}`;
+    const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=${page}&limit=20`;
     
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": "TechBlogAI-EdgeSSR/1.0", "Accept": "application/json" }
+      headers: { 
+        "User-Agent": "TechBlogAI-Edge/1.0", 
+        "Accept": "application/json" 
+      }
     });
     
     clearTimeout(timeout);
-    if (!response.ok) throw new Error(`Backend status: ${response.status}`);
+    
+    if (!response.ok) {
+      throw new Error(`Backend status: ${response.status}`);
+    }
     
     const data = await response.json();
     
-    const cacheResponse = new Response(JSON.stringify(data), {
-      headers: { 'Cache-Control': 'public, max-age=300' }
-    });
-    context.waitUntil(cache.put(cacheKey, cacheResponse));
-    
-    return data;
+    return {
+      posts: data.posts || [],
+      category: data.category || {
+        name: categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        description: `Latest ${categorySlug.replace(/-/g, ' ')} articles`
+      },
+      total: data.total || 0,
+      currentPage: data.currentPage || Number(page),
+      totalPages: data.totalPages || 1
+    };
     
   } catch (error) {
     clearTimeout(timeout);
-    console.error(`[Edge-Category] Backend fetch error: ${error.message}`);
+    console.error(`[Edge-Category] Fetch error: ${error.message}`);
+    
+    // Return fallback data
     return {
+      posts: [],
       category: {
         name: categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        description: `Latest ${categorySlug.replace(/-/g, ' ')} articles and technology insights`,
-        slug: categorySlug
+        description: `Latest ${categorySlug.replace(/-/g, ' ')} articles`
       },
-      posts: [],
       total: 0,
-      currentPage: Number(page) || 1,
+      currentPage: Number(page),
       totalPages: 1
     };
   }
 }
 
-// Universal HTML generator
-function generateCategoryUniversalHtml(categoryData, categorySlug, page = 1) {
-  const category = categoryData.category || {};
-  const posts = categoryData.posts || [];
-  const totalPosts = categoryData.total || posts.length;
-  const currentPage = categoryData.currentPage || Number(page) || 1;
-  const totalPages = categoryData.totalPages || 1;
-  
-  const categoryName = escapeHtml(category.name || categorySlug.replace(/-/g, ' '));
-  const categoryDesc = escapeHtml(
-    category.description || 
-    `Browse the latest ${categoryName} articles, news, and technology insights on TechBlog AI`
-  );
-  
-  const categoryUrl = `https://aitechblogs.netlify.app/category/${categorySlug}`;
-  
+// Generate SEO metadata (breadcrumb schema, meta tags, etc.)
+function generateSEOMetadata(data, categorySlug, page, categoryUrl) {
+  const category = data.category || {};
+  const categoryName = category.name || categorySlug.replace(/-/g, ' ');
+  const totalPosts = data.total || 0;
+  const currentPage = data.currentPage || Number(page);
+  const totalPages = data.totalPages || 1;
+
   // Breadcrumb schema
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aitechblogs.netlify.app" },
-      { "@type": "ListItem", "position": 2, "name": categoryName, "item": categoryUrl }
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://aitechblogs.netlify.app"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Categories",
+        "item": "https://aitechblogs.netlify.app/category"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": categoryName,
+        "item": categoryUrl
+      }
     ]
   };
 
-  const breadcrumbHtml = `
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="https://aitechblogs.netlify.app">Home</a> › 
-      <a href="https://aitechblogs.netlify.app/category">Categories</a> › 
-      <span>${categoryName}</span>
-    </nav>
+  // Website schema
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "@id": "https://aitechblogs.netlify.app/#website",
+    "name": "TechBlog AI",
+    "description": "AI and technology insights",
+    "url": "https://aitechblogs.netlify.app",
+    "publisher": {
+      "@type": "Organization",
+      "@id": "https://aitechblogs.netlify.app/#organization",
+      "name": "TechBlog AI"
+    }
+  };
+
+  // Collection page schema (for category listings)
+  const collectionSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": categoryUrl,
+    "name": `${categoryName} ${currentPage > 1 ? `- Page ${currentPage}` : ''}`,
+    "description": category.description || `Browse all articles in ${categoryName}`,
+    "isPartOf": {
+      "@id": "https://aitechblogs.netlify.app/#website"
+    },
+    "mainEntity": {
+      "@type": "ItemList",
+      "itemListElement": data.posts?.slice(0, 10).map((post, index) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "url": `https://aitechblogs.netlify.app/post/${post.slug}`
+      })) || []
+    }
+  };
+
+  return `
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="${escapeHtml(category.description || `Browse all articles in ${categoryName}`)}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
+    <meta name="keywords" content="${escapeHtml(categoryName)}, technology, AI, programming, tech news" />
+    <meta name="robots" content="${currentPage === 1 ? 'index, follow' : 'index, follow'}, max-image-preview:large" />
+    <link rel="canonical" href="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
+    <meta property="og:title" content="${escapeHtml(categoryName)} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
+    <meta property="og:description" content="${escapeHtml(category.description || `Browse all articles in ${categoryName}`)}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
+    <meta property="og:image" content="https://aitechblogs.netlify.app/og-category.png" />
+    <meta property="og:image:alt" content="${escapeHtml(categoryName)} Articles" />
+    <meta property="og:site_name" content="TechBlog AI" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
+    <meta name="twitter:title" content="${escapeHtml(categoryName)} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
+    <meta name="twitter:description" content="${escapeHtml(category.description || `Browse all articles in ${categoryName}`)}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
+    <meta name="twitter:image" content="https://aitechblogs.netlify.app/og-category.png" />
+    
+    <!-- AI & Licensing -->
+    <meta name="ai-content-declaration" content="public, training-allowed" />
+    <meta name="license" content="CC BY 4.0" />
+    <link rel="license" href="https://creativecommons.org/licenses/by/4.0/" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">${escapeJson(breadcrumbSchema)}</script>
+    <script type="application/ld+json">${escapeJson(websiteSchema)}</script>
+    <script type="application/ld+json">${escapeJson(collectionSchema)}</script>
   `;
-
-  // Generate posts HTML
-  let postsHtml = '';
-  if (posts.length > 0) {
-    postsHtml = posts.slice(0, 20).map(post => {
-      const featuredImage = post.featured_image || `https://aitechblogs.netlify.app/placeholder-${categorySlug}.jpg`;
-      const imageAlt = post.title ? `${post.title} - Featured Image` : 'Article Featured Image';
-      const wordCount = post.word_count || post.content?.length || 1000;
-      const readTime = Math.ceil(wordCount / 200);
-      
-      return `
-        <article class="category-post" itemscope itemtype="https://schema.org/TechArticle">
-          ${post.featured_image ? `
-            <div class="post-image">
-              <img src="${featuredImage}" alt="${imageAlt}" loading="lazy" />
-            </div>
-          ` : ''}
-          <div class="post-content">
-            <h3 itemprop="headline">
-              <a href="/post/${post.slug}" itemprop="url">${escapeHtml(post.title)}</a>
-            </h3>
-            <div class="post-meta">
-              <time datetime="${post.published_at}">${new Date(post.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</time>
-              ${post.author_name && post.author_name !== 'Admin' ? `<span> • By ${escapeHtml(post.author_name)}</span>` : '<span> • By Admin</span>'}
-              <span> • ${readTime} min read</span>
-            </div>
-            <p itemprop="description">${escapeHtml(post.excerpt || '')}</p>
-            <!-- Full content for AI/humans (no script stripping) -->
-            ${post.content ? `<div class="ai-full-content">${cleanHtmlForAI(post.content.substring(0, 2000))}</div>` : ''}
-          </div>
-        </article>
-      `;
-    }).join('');
-  } else {
-    postsHtml = `<p class="no-posts">No articles found in this category yet. Check back soon!</p>`;
-  }
-  
-  // Pagination HTML
-  let paginationHtml = '';
-  if (totalPages > 1) {
-    paginationHtml = `
-      <div class="pagination" role="navigation" aria-label="Pagination">
-        ${currentPage > 1 ? `<a href="${categoryUrl}?page=${currentPage - 1}" class="prev" rel="prev">← Previous</a>` : '<span class="prev disabled">← Previous</span>'}
-        <div class="page-numbers">
-          ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-            const pageNum = i + 1;
-            return pageNum === currentPage ? 
-              `<span class="current" aria-current="page">${pageNum}</span>` :
-              `<a href="${categoryUrl}?page=${pageNum}">${pageNum}</a>`;
-          }).join('')}
-          ${totalPages > 5 ? `<span class="ellipsis">...</span>` : ''}
-        </div>
-        ${currentPage < totalPages ? `<a href="${categoryUrl}?page=${currentPage + 1}" class="next" rel="next">Next →</a>` : '<span class="next disabled">Next →</span>'}
-      </div>
-    `;
-  }
-  
-  return `<!DOCTYPE html>
-<html lang="en" prefix="og: https://ogp.me/ns# website: https://ogp.me/ns/website#">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI</title>
-  <meta name="description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
-  <meta name="keywords" content="${escapeHtml(categoryName)}, technology, AI, programming, tech news" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
-  <link rel="canonical" href="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
-  
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
-  <meta property="og:title" content="${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
-  <meta property="og:description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
-  <meta property="og:image" content="https://aitechblogs.netlify.app/og-category.png" />
-  <meta property="og:image:alt" content="${categoryName} Articles" />
-  
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
-  <meta name="twitter:description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
-  
-  <!-- AI & Licensing -->
-  <meta name="ai-content-declaration" content="public, training-allowed">
-  <meta name="license" content="CC BY 4.0">
-  
-  <!-- Structured Data -->
-  <script type="application/ld+json">${escapeJson(breadcrumbSchema)}</script>
-  
-  <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      line-height: 1.6;
-      color: #333;
-      background: #fff;
-    }
-    
-    /* Category Header */
-    .category-header {
-      padding: 40px 0;
-      border-bottom: 2px solid #e5e7eb;
-      margin-bottom: 40px;
-    }
-    .category-header h1 {
-      font-size: 2.5rem;
-      color: #1a1a1a;
-      margin-bottom: 10px;
-    }
-    .category-header p {
-      font-size: 1.1rem;
-      color: #666;
-      max-width: 800px;
-      margin-bottom: 10px;
-    }
-    .post-count {
-      font-size: 0.9rem;
-      color: #6b7280;
-      background: #f3f4f6;
-      padding: 4px 12px;
-      border-radius: 12px;
-      display: inline-block;
-    }
-    
-    /* Posts Grid */
-    .posts-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 30px;
-      margin-bottom: 60px;
-    }
-    .category-post {
-      background: #f9fafb;
-      border-radius: 12px;
-      border: 1px solid #e5e7eb;
-      overflow: hidden;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .category-post:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-    .post-image {
-      height: 200px;
-      overflow: hidden;
-    }
-    .post-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.3s;
-    }
-    .category-post:hover .post-image img {
-      transform: scale(1.05);
-    }
-    .post-content {
-      padding: 25px;
-    }
-    .category-post h3 {
-      font-size: 1.3rem;
-      margin-bottom: 12px;
-      line-height: 1.4;
-    }
-    .category-post h3 a {
-      color: #1a1a1a;
-      text-decoration: none;
-    }
-    .category-post h3 a:hover {
-      color: #2563eb;
-    }
-    .post-meta {
-      font-size: 0.85rem;
-      color: #6b7280;
-      margin-bottom: 15px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .post-meta span {
-      display: inline-block;
-    }
-    .category-post p {
-      color: #4b5563;
-      line-height: 1.7;
-      font-size: 0.95rem;
-    }
-    .no-posts {
-      text-align: center;
-      padding: 60px;
-      color: #6b7280;
-      font-size: 1.1rem;
-      grid-column: 1 / -1;
-    }
-    
-    /* Pagination */
-    .pagination {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 30px 0;
-      border-top: 1px solid #e5e7eb;
-      margin-top: 40px;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-    .pagination a {
-      color: #3b82f6;
-      text-decoration: none;
-      padding: 8px 16px;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      transition: all 0.2s;
-    }
-    .pagination a:hover {
-      background: #3b82f6;
-      color: white;
-      border-color: #3b82f6;
-    }
-    .pagination .disabled {
-      color: #9ca3af;
-      padding: 8px 16px;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      opacity: 0.5;
-    }
-    .page-numbers {
-      display: flex;
-      gap: 8px;
-    }
-    .page-numbers span.current {
-      padding: 8px 16px;
-      background: #3b82f6;
-      color: white;
-      border-radius: 6px;
-    }
-    .page-numbers .ellipsis {
-      padding: 8px;
-      color: #6b7280;
-    }
-    
-    /* Footer */
-    footer {
-      text-align: center;
-      padding: 40px 0;
-      color: #6b7280;
-      border-top: 1px solid #e5e7eb;
-      margin-top: 40px;
-    }
-    footer a {
-      color: #3b82f6;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    footer a:hover {
-      text-decoration: underline;
-    }
-    
-    /* AI Content */
-    .ai-full-content {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px dashed #d1d5db;
-      font-size: 0.95rem;
-      color: #374151;
-    }
-      /* Breadcrumb Styles */
-    .breadcrumb {
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 0.9rem;
-    }
-    .breadcrumb a {
-      color: #3b82f6;
-      text-decoration: none;
-    }
-    .breadcrumb a:hover {
-      text-decoration: underline;
-    }
-    .breadcrumb span {
-      color: #6b7280;
-      font-weight: 500;
-    }
-    .breadcrumb a:not(:last-child)::after {
-      content: '›';
-      margin: 0 8px;
-      color: #9ca3af;
-    }
-    
-    /* Responsive */
-    @media (max-width: 1024px) {
-      .posts-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    @media (max-width: 768px) {
-      .posts-grid {
-        grid-template-columns: 1fr;
-      }
-      .category-header h1 {
-        font-size: 2rem;
-      }
-      .pagination {
-        flex-direction: column;
-        text-align: center;
-      }
-      .page-numbers {
-        justify-content: center;
-      }
-    }
-  </style>
-</head>
-<body>
-  ${breadcrumbHtml}
-  <header class="category-header">
-    <h1>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''}</h1>
-    <p>${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}</p>
-    ${posts.length > 0 ? `<div class="post-count">${totalPosts} articles • Page ${currentPage} of ${totalPages}</div>` : ''}
-  </header>
-  
-  <main class="posts-grid">
-    ${postsHtml}
-  </main>
-  
-  ${paginationHtml}
-  
-  <footer>
-    <p>Category page generated by Edge SSR • 
-      <a href="https://aitechblogs.netlify.app">View Full Site</a>
-    </p>
-  </footer>
-
-  <!-- ✅ No redirect script — humans stay here -->
-  <script>
-    // Optional: small enhancement for interactivity (doesn't affect SEO)
-    console.log('TechBlog AI – Universal Category Page Loaded');
-  </script>
-</body>
-</html>`;
 }
 
-// Helper functions (unchanged)
+// Generate SSR content
+function generateCategorySSR(data, categorySlug, page) {
+  const posts = data.posts || [];
+  const category = data.category || {};
+  const currentPage = data.currentPage || Number(page);
+  const totalPages = data.totalPages || 1;
+  const totalPosts = data.total || posts.length;
+
+  const categoryName = escapeHtml(category.name || categorySlug.replace(/-/g, ' '));
+  const categoryDesc = escapeHtml(category.description || `Browse all articles in ${categoryName}`);
+
+  // Generate posts HTML
+  const postsHtml = posts.map(post => `
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow" itemscope itemtype="https://schema.org/TechArticle">
+      ${post.featured_image ? `
+        <a href="/post/${post.slug}" class="block" itemprop="url">
+          <img 
+            src="${escapeHtml(post.featured_image)}" 
+            alt="${escapeHtml(post.title)}" 
+            class="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" 
+            loading="lazy" 
+            itemprop="image"
+          />
+        </a>
+      ` : ''}
+      <div class="p-6">
+        <a 
+          href="/category/${categorySlug}" 
+          class="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full mb-3 hover:bg-blue-200 transition-colors"
+          itemprop="articleSection"
+        >
+          ${escapeHtml(categoryName)}
+        </a>
+        <h2 class="text-xl font-bold text-gray-900 mb-3 line-clamp-2" itemprop="headline">
+          <a href="/post/${post.slug}" class="hover:text-blue-600 transition-colors" itemprop="url">
+            ${escapeHtml(post.title)}
+          </a>
+        </h2>
+        <p class="text-gray-600 mb-4 line-clamp-3" itemprop="description">${escapeHtml(post.excerpt || '')}</p>
+        <div class="flex items-center justify-between text-sm text-gray-500">
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span itemprop="author" itemscope itemtype="https://schema.org/Person">
+                <span itemprop="name">${escapeHtml(post.author_name || 'Admin')}</span>
+              </span>
+            </div>
+            <div class="flex items-center space-x-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <time datetime="${post.published_at}" itemprop="datePublished">
+                ${new Date(post.published_at).toLocaleDateString('en-US', { 
+                  year: 'numeric', month: 'short', day: 'numeric' 
+                })}
+              </time>
+            </div>
+          </div>
+        </div>
+        <meta itemprop="dateModified" content="${post.updated_at || post.published_at}" />
+      </div>
+    </div>
+  `).join('');
+
+  // Generate pagination HTML
+  const paginationHtml = totalPages > 1 ? `
+    <div class="pagination" role="navigation" aria-label="Pagination">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4 mt-12 pt-8 border-t border-gray-200">
+        <div class="flex items-center gap-4">
+          ${currentPage > 1 ? `
+            <a 
+              href="/category/${categorySlug}?page=${currentPage - 1}"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+              rel="prev"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Previous
+            </a>
+          ` : ''}
+        </div>
+        
+        <div class="page-numbers flex items-center gap-2">
+          ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            const pageNum = i + 1;
+            return pageNum === currentPage ? `
+              <span class="current px-4 py-2 bg-blue-600 text-white rounded-lg font-medium" aria-current="page">${pageNum}</span>
+            ` : `
+              <a 
+                href="/category/${categorySlug}?page=${pageNum}"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >${pageNum}</a>
+            `;
+          }).join('')}
+          
+          ${totalPages > 5 ? '<span class="ellipsis px-2 text-gray-500">...</span>' : ''}
+        </div>
+        
+        <div class="flex items-center gap-4">
+          ${currentPage < totalPages ? `
+            <a 
+              href="/category/${categorySlug}?page=${currentPage + 1}"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+              rel="next"
+            >
+              Next
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          ` : ''}
+          
+          <div class="text-sm text-gray-500 hidden md:block">
+            Page ${currentPage} of ${totalPages}
+          </div>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
+  // Empty state HTML
+  const emptyStateHtml = posts.length === 0 ? `
+    <div class="text-center py-12">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">
+        ${currentPage > totalPages ? `Page ${currentPage} Not Found` : 'No Posts Found in This Category'}
+      </h2>
+      <p class="text-gray-600 mb-6">
+        ${currentPage > totalPages 
+          ? `There are only ${totalPages} page${totalPages !== 1 ? 's' : ''} in this category.`
+          : 'There are no published posts in this category yet. Browse All Categories'
+        }
+      </p>
+      <div class="flex gap-4 justify-center">
+        <a 
+          href="/category/${categorySlug}" 
+          class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          ← Return to Page 1
+        </a>
+        <a 
+          href="/" 
+          class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-green-100 transition-colors"
+        >
+          Browse All Categories
+        </a>
+      </div>
+    </div>
+  ` : '';
+
+  // Assemble the complete SSR content
+  return `
+    <div class="container mx-auto px-4 py-8">
+      <!-- Header Ad -->
+      <div class="w-full bg-gray-50 py-2">
+        <div class="container mx-auto px-4 text-center">
+          <div class="ad-container"></div>
+        </div>
+      </div>
+
+      <!-- Breadcrumb (visible) -->
+      <nav class="breadcrumb text-sm text-gray-500 mb-6" aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-2">
+          <li>
+            <a href="/" class="hover:text-primary-600 hover:underline underline-offset-4 transition-all">Home</a>
+          </li>
+          <li class="text-gray-400">/</li>
+          <li>
+            <a href="/category" class="hover:text-primary-600 hover:underline underline-offset-4 transition-all">Categories</a>
+          </li>
+          <li class="text-gray-400">/</li>
+          <li class="text-gray-700 font-medium">
+            ${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''}
+          </li>
+        </ol>
+      </nav>
+
+      <!-- Category Header -->
+      <header class="category-header text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4 capitalize">
+          ${categoryName}
+          ${currentPage > 1 ? `<span class="text-blue-600 ml-2">(Page ${currentPage})</span>` : ''}
+        </h1>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+          ${categoryDesc}
+          ${currentPage > 1 ? `<span class="text-gray-500 ml-2">- Page ${currentPage}</span>` : ''}
+        </p>
+        
+        ${totalPosts > 0 ? `
+          <div class="post-count mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-600">
+            <span class="font-medium">${totalPosts}</span> articles
+            <span class="mx-1">•</span>
+            Page <span class="font-medium mx-1">${currentPage}</span> of 
+            <span class="font-medium">${totalPages}</span>
+          </div>
+        ` : ''}
+      </header>
+
+      <!-- Posts Grid or Empty State -->
+      <section>
+        ${posts.length > 0 ? `
+          <div class="posts-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${postsHtml}
+          </div>
+          ${paginationHtml}
+        ` : emptyStateHtml}
+      </section>
+
+      <!-- AI Training Note (optional) -->
+      ${posts.length > 0 ? `
+        <section class="ai-full-content mt-12 p-6 bg-blue-50 rounded-lg border border-blue-100">
+          <h2 class="text-xl font-bold text-gray-900 mb-2">📚 Content for AI Training</h2>
+          <p class="text-gray-700">This category page contains ${totalPosts} articles available for AI training under <a href="https://creativecommons.org/licenses/by/4.0/" class="text-blue-600 hover:underline">CC BY 4.0</a>.</p>
+        </section>
+      ` : ''}
+    </div>
+  `;
+}
+
 function escapeHtml(text = "") {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  if (!text) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function escapeJson(obj) {
   return JSON.stringify(obj).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-}
-
-function cleanHtmlForAI(html = "") {
-  if (!html) return "";
-  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-             .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-             .replace(/on\w+="[^"]*"/gi, '');
-}
-
-function generateCategoryFallback(categorySlug) {
-  const url = `https://aitechblogs.netlify.app/category/${categorySlug}`;
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Category Not Found - TechBlog AI</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-           display: flex; justify-content: center; align-items: center; 
-           min-height: 100vh; margin: 0; background: #f3f4f6; }
-    .container { text-align: center; padding: 40px; }
-    h1 { color: #1f2937; margin-bottom: 16px; }
-    a { color: #3b82f6; text-decoration: none; font-weight: 500; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Category Not Found</h1>
-    <p>Return to <a href="https://aitechblogs.netlify.app">homepage</a></p>
-  </div>
-</body>
-</html>`;
 }
 
 export const config = {
