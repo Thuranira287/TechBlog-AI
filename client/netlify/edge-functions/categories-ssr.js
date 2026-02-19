@@ -1,11 +1,13 @@
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
-      //Skip ALL API routes
+    
+    // Skip ALL API routes
     if (url.pathname.startsWith('/api/')) {
       console.log(`[Edge] Bypassing API route: ${url.pathname}`);
       return context.next();
     }
+
     const userAgent = request.headers.get("user-agent") || "";
     const pathParts = url.pathname.split('/').filter(p => p);
     
@@ -13,85 +15,78 @@ export default async (request, context) => {
     if (pathParts[0] === 'category' && pathParts[1]) {
       const categorySlug = pathParts[1];
       const page = url.searchParams.get('page') || 1;
-      const isBot = detectBot(userAgent);
-      const isAICrawler = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot', 'googlebot', 'google-inspectiontool', 'bingbot', 'duckduckbot', 'slurp', 'baiduspider']
-        .some(bot => userAgent.toLowerCase().includes(bot));
+      
+      const isFullContent = true;
 
-      console.log(`[Edge-Category] ${categorySlug}, Page:${page}, Bot:${isBot}, AI:${isAICrawler}`);
+      console.log(`[Edge-Category] ${categorySlug}, Page:${page}, Serving FULL SSR to all`);
 
-      if (isBot) {
-        try {
-          // Use Edge Cache FIRST before hitting backend
-          const cacheKey = `category-${categorySlug}-page-${page}-${isAICrawler ? 'full' : 'meta'}`;
-          const cache = await caches.open('category-cache');
-          const cached = await cache.match(cacheKey);
-          
-          if (cached) {
-            console.log(`[Edge-Category] Cache HIT for ${categorySlug} page ${page}`);
-            return cached;
-          }
+      try {
+        // Use Edge Cache FIRST
+        const cacheKey = `category-${categorySlug}-page-${page}-full`;
+        const cache = await caches.open('category-cache');
+        const cached = await cache.match(cacheKey);
+        
+        if (cached) {
+          console.log(`[Edge-Category] Cache HIT for ${categorySlug} page ${page}`);
+          return cached;
+        }
 
-          // If not cached, fetch from backend
-          const categoryData = await fetchCategoryMeta(categorySlug, page, isAICrawler, context);
+        // Fetch from backend
+        const categoryData = await fetchCategoryMeta(categorySlug, page, true, context);
+        
+        if (categoryData) {
+          // Generate universal HTML (pass isFullContent = true)
+          const html = generateCategoryUniversalHtml(categoryData, categorySlug, page);
           
-          if (categoryData) {
-            const html = generateCategoryBotHtml(categoryData, categorySlug, page, isAICrawler);
-            
-            // Create response with Edge caching
-            const response = new Response(html, {
-              status: 200,
-              headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, max-age=1800, s-maxage=3600",
-                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob: data:; object-src 'none'; connect-src 'self' https://www.google-analytics.com https://analytics.ahrefs.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
-                "X-Robots-Tag": "index, follow, max-image-preview:large",
-                "Vary": "User-Agent",
-                "X-Rendered-By": "Edge-SSR-Category",
-                "X-Cache": "MISS"
-              }
-            });
-            
-            // Store in Edge cache (non-blocking)
-            context.waitUntil(
-              cache.put(cacheKey, response.clone())
-            );
-            
-            return response;
-          }
-          
-          // Fallback
-          return new Response(generateCategoryFallback(categorySlug), {
-            status: 404,
+          const response = new Response(html, {
+            status: 200,
             headers: {
               "Content-Type": "text/html; charset=utf-8",
-              "X-Robots-Tag": "noindex, follow",
-              "X-Rendered-By": "Edge-SSR-Category-404"
+              "Cache-Control": "public, max-age=1800, s-maxage=3600",
+              "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob: data:; object-src 'none'; connect-src 'self' https://www.google-analytics.com https://analytics.ahrefs.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
+              "X-Robots-Tag": "index, follow, max-image-preview:large",
+              "Vary": "User-Agent",
+              "X-Rendered-By": "Edge-SSR-Category-Universal",
+              "X-Cache": "MISS"
             }
           });
           
-        } catch (error) {
-          console.error("[Edge-Category] Error:", error);
-          return context.rewrite("/index.html");
+          context.waitUntil(cache.put(cacheKey, response.clone()));
+          return response;
         }
+        
+        // Fallback
+        return new Response(generateCategoryFallback(categorySlug), {
+          status: 404,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "X-Robots-Tag": "noindex, follow",
+            "X-Rendered-By": "Edge-SSR-Category-404"
+          }
+        });
+        
+      } catch (error) {
+        console.error("[Edge-Category] Error:", error);
+        return context.rewrite("/index.html");
       }
     }
     
+    // Not a category page → let the SPA handle it
     return context.rewrite("/index.html");
+
   } catch (error) {
     console.error("[Edge-Category] Critical error:", error);
     return context.rewrite("/index.html");
   }
 };
 
-// OPTIMIZED Category Data Fetching
+// Fetch category data
 async function fetchCategoryMeta(categorySlug, page = 1, fullContent = false, context) {
   const cacheKey = `backend-category-${categorySlug}-page-${page}-${fullContent ? 'full' : 'lite'}`;
   const cache = await caches.open('backend-cache');
   const cached = await cache.match(cacheKey);
   
-  if (cached) {
-    return cached.json();
-  }
+  if (cached) return cached.json();
   
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
@@ -102,36 +97,24 @@ async function fetchCategoryMeta(categorySlug, page = 1, fullContent = false, co
     
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        "User-Agent": "TechBlogAI-EdgeSSR/1.0",
-        "Accept": "application/json"
-      }
+      headers: { "User-Agent": "TechBlogAI-EdgeSSR/1.0", "Accept": "application/json" }
     });
     
     clearTimeout(timeout);
-    
-    if (!response.ok) {
-      throw new Error(`Backend status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Backend status: ${response.status}`);
     
     const data = await response.json();
     
-    // Cache backend response for 5 minutes
     const cacheResponse = new Response(JSON.stringify(data), {
       headers: { 'Cache-Control': 'public, max-age=300' }
     });
-    
-    context.waitUntil(
-      cache.put(cacheKey, cacheResponse)
-    );
+    context.waitUntil(cache.put(cacheKey, cacheResponse));
     
     return data;
     
   } catch (error) {
     clearTimeout(timeout);
     console.error(`[Edge-Category] Backend fetch error: ${error.message}`);
-    
-    // Return minimal fallback data
     return {
       category: {
         name: categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -146,7 +129,8 @@ async function fetchCategoryMeta(categorySlug, page = 1, fullContent = false, co
   }
 }
 
-function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawler = false) {
+// Universal HTML generator
+function generateCategoryUniversalHtml(categoryData, categorySlug, page = 1) {
   const category = categoryData.category || {};
   const posts = categoryData.posts || [];
   const totalPosts = categoryData.total || posts.length;
@@ -161,26 +145,17 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   
   const categoryUrl = `https://aitechblogs.netlify.app/category/${categorySlug}`;
   
-  // Generate breadcrumb schema
+  // Breadcrumb schema
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": "https://aitechblogs.netlify.app"
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": categoryName,
-        "item": categoryUrl
-      }
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aitechblogs.netlify.app" },
+      { "@type": "ListItem", "position": 2, "name": categoryName, "item": categoryUrl }
     ]
   };
-    const breadcrumbHtml = `
+
+  const breadcrumbHtml = `
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a href="https://aitechblogs.netlify.app">Home</a> › 
       <a href="https://aitechblogs.netlify.app/category">Categories</a> › 
@@ -188,16 +163,13 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
     </nav>
   `;
 
-  // Generate posts HTML with featured images
+  // Generate posts HTML
   let postsHtml = '';
   if (posts.length > 0) {
-    const displayPosts = isAICrawler ? posts.slice(0, 20) : posts.slice(0, 9);
-    
-    postsHtml = displayPosts.map(post => {
-      const featuredImage = post.featured_image || 
-                           `https://aitechblogs.netlify.app/placeholder-${categorySlug}.jpg`;
+    postsHtml = posts.slice(0, 20).map(post => {
+      const featuredImage = post.featured_image || `https://aitechblogs.netlify.app/placeholder-${categorySlug}.jpg`;
       const imageAlt = post.title ? `${post.title} - Featured Image` : 'Article Featured Image';
-      const wordCount = post.word_count || post.content?.length || 500;
+      const wordCount = post.word_count || post.content?.length || 1000;
       const readTime = Math.ceil(wordCount / 200);
       
       return `
@@ -207,28 +179,18 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
               <img src="${featuredImage}" alt="${imageAlt}" loading="lazy" />
             </div>
           ` : ''}
-          
           <div class="post-content">
             <h3 itemprop="headline">
               <a href="/post/${post.slug}" itemprop="url">${escapeHtml(post.title)}</a>
             </h3>
             <div class="post-meta">
-              <time datetime="${post.published_at}">${
-                new Date(post.published_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', month: 'short', day: 'numeric' 
-                })
-              }</time>
-              ${post.author_name && post.author_name !== 'Admin' ? 
-                `<span> • By ${escapeHtml(post.author_name)}</span>` : 
-                '<span> • By Admin</span>'
-              }
+              <time datetime="${post.published_at}">${new Date(post.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</time>
+              ${post.author_name && post.author_name !== 'Admin' ? `<span> • By ${escapeHtml(post.author_name)}</span>` : '<span> • By Admin</span>'}
               <span> • ${readTime} min read</span>
             </div>
             <p itemprop="description">${escapeHtml(post.excerpt || '')}</p>
-            ${isAICrawler && post.content ? 
-              `<div class="ai-full-content">${cleanHtmlForAI(post.content.substring(0, 2000))}</div>` : 
-              ''
-            }
+            <!-- Full content for AI/humans (no script stripping) -->
+            ${post.content ? `<div class="ai-full-content">${cleanHtmlForAI(post.content.substring(0, 2000))}</div>` : ''}
           </div>
         </article>
       `;
@@ -237,16 +199,12 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
     postsHtml = `<p class="no-posts">No articles found in this category yet. Check back soon!</p>`;
   }
   
-  // Generate pagination HTML
+  // Pagination HTML
   let paginationHtml = '';
   if (totalPages > 1) {
     paginationHtml = `
       <div class="pagination" role="navigation" aria-label="Pagination">
-        ${currentPage > 1 ? 
-          `<a href="${categoryUrl}?page=${currentPage - 1}" class="prev" rel="prev">← Previous</a>` : 
-          '<span class="prev disabled">← Previous</span>'
-        }
-        
+        ${currentPage > 1 ? `<a href="${categoryUrl}?page=${currentPage - 1}" class="prev" rel="prev">← Previous</a>` : '<span class="prev disabled">← Previous</span>'}
         <div class="page-numbers">
           ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
             const pageNum = i + 1;
@@ -254,14 +212,9 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
               `<span class="current" aria-current="page">${pageNum}</span>` :
               `<a href="${categoryUrl}?page=${pageNum}">${pageNum}</a>`;
           }).join('')}
-          
           ${totalPages > 5 ? `<span class="ellipsis">...</span>` : ''}
         </div>
-        
-        ${currentPage < totalPages ? 
-          `<a href="${categoryUrl}?page=${currentPage + 1}" class="next" rel="next">Next →</a>` : 
-          '<span class="next disabled">Next →</span>'
-        }
+        ${currentPage < totalPages ? `<a href="${categoryUrl}?page=${currentPage + 1}" class="next" rel="next">Next →</a>` : '<span class="next disabled">Next →</span>'}
       </div>
     `;
   }
@@ -274,7 +227,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   <title>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI</title>
   <meta name="description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
   <meta name="keywords" content="${escapeHtml(categoryName)}, technology, AI, programming, tech news" />
-  <meta name="robots" content="${currentPage === 1 ? 'index, follow' : 'index, follow'}, max-image-preview:large" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <link rel="canonical" href="${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}" />
   
   <!-- Open Graph -->
@@ -290,11 +243,15 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   <meta name="twitter:title" content="${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''} | TechBlog AI" />
   <meta name="twitter:description" content="${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}" />
   
+  <!-- AI & Licensing -->
+  <meta name="ai-content-declaration" content="public, training-allowed">
+  <meta name="license" content="CC BY 4.0">
+  
   <!-- Structured Data -->
   <script type="application/ld+json">${escapeJson(breadcrumbSchema)}</script>
   
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       max-width: 1200px;
@@ -524,10 +481,7 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
   <header class="category-header">
     <h1>${categoryName} ${currentPage > 1 ? `(Page ${currentPage})` : ''}</h1>
     <p>${categoryDesc}${currentPage > 1 ? ` - Page ${currentPage}` : ''}</p>
-    ${posts.length > 0 ? 
-      `<div class="post-count">${totalPosts} articles • Page ${currentPage} of ${totalPages}</div>` : 
-      ''
-    }
+    ${posts.length > 0 ? `<div class="post-count">${totalPosts} articles • Page ${currentPage} of ${totalPages}</div>` : ''}
   </header>
   
   <main class="posts-grid">
@@ -541,28 +495,17 @@ function generateCategoryBotHtml(categoryData, categorySlug, page = 1, isAICrawl
       <a href="https://aitechblogs.netlify.app">View Full Site</a>
     </p>
   </footer>
-  
+
+  <!-- ✅ No redirect script — humans stay here -->
   <script>
-    // Redirect human visitors to the SPA
-    const ua = navigator.userAgent.toLowerCase();
-    const isBot = /bot|crawler|spider|googlebot|bingbot|duckduckbot|slurp/.test(ua);
-    if (!isBot) {
-      window.location.href = '${categoryUrl}${currentPage > 1 ? `?page=${currentPage}` : ''}';
-    }
+    // Optional: small enhancement for interactivity (doesn't affect SEO)
+    console.log('TechBlog AI – Universal Category Page Loaded');
   </script>
 </body>
 </html>`;
 }
 
-// Helper functions
-function detectBot(userAgent = "") {
-  const bots = ['googlebot', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
-    'facebot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp',
-    'gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user',
-    'bot/', 'crawler', 'spider', 'scraper', 'fetch'];
-  return bots.some(bot => userAgent.toLowerCase().includes(bot));
-}
-
+// Helper functions (unchanged)
 function escapeHtml(text = "") {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");

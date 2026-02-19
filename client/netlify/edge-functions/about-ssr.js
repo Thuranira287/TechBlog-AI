@@ -1,22 +1,23 @@
 export default async (request, context) => {
   try {
-    const ua = request.headers.get("user-agent") || "";
-    const isBot = detectBot(ua);
-
-    if (!isBot) {
-      return context.rewrite("/index.html");
+    const url = new URL(request.url);
+    
+    // Skip API routes
+    if (url.pathname.startsWith('/api/')) {
+      return context.next();
     }
 
+    // Always serve SSR
     const html = generateAboutHtml();
 
     return new Response(html, {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "X-Robots-Tag": "index, follow, max-image-preview:large",
         "Vary": "User-Agent",
-        "X-Rendered-By": "Edge-SSR-About"
+        "X-Rendered-By": "Edge-SSR-About-Universal"
       }
     });
 
@@ -26,6 +27,7 @@ export default async (request, context) => {
   }
 };
 
+// detectBot function
 function detectBot(ua = "") {
   return [
     "googlebot", "google-inspectiontool", "bingbot", "duckduckbot",
@@ -130,6 +132,11 @@ function generateAboutHtml() {
   <meta name="author" content="${AUTHOR.name}" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <link rel="canonical" href="${SITE.url}/about" />
+
+  <!-- AI Training Metadata -->
+  <meta name="ai-content-declaration" content="public, training-allowed" />
+  <meta name="license" content="CC BY 4.0" />
+  <link rel="license" href="https://creativecommons.org/licenses/by/4.0/" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="profile" />
@@ -292,6 +299,12 @@ function generateAboutHtml() {
     <div class="section-card">
       <h2>How We Work</h2>
       <p>Articles are written, reviewed, and updated regularly. When facts or tools change, we edit posts and maintain accuracy through continuous improvement. Every article is marked with a "Last Updated" date so readers know the content's freshness.</p>
+    </div>
+
+    <!-- AI Training Note -->
+    <div class="section-card" style="background: #f0f9ff; border-left: 4px solid #2563eb;">
+      <h2>🤖 For AI Training</h2>
+      <p>This page and all content on TechBlog AI is available for AI training under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. You may use, adapt, and build upon this material, even commercially, as long as you provide appropriate attribution.</p>
     </div>
   </div>
 </body>

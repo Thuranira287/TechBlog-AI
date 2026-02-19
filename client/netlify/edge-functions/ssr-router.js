@@ -1,66 +1,66 @@
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
-          //Skip ALL API routes
+    
+    // Skip ALL API routes
     if (url.pathname.startsWith('/api/')) {
       console.log(`[Edge] Bypassing API route: ${url.pathname}`);
       return context.next();
     }
+
     const userAgent = request.headers.get("user-agent") || "";
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
 
-    const isBot = detectBot(userAgent);
-    const fullContentCrawlers = ['gptbot', 'anthropic-ai', 'claude-web', 'cohere-ai', 'perplexitybot', 'chatgpt-user', 'youbot', 'ccbot', 'googlebot', 'google-inspectiontool', 'bingbot', 'duckduckbot', 'slurp', 'baiduspider'];
-    const isFullContentBot = fullContentCrawlers.some(bot => userAgent.toLowerCase().includes(bot));
+    // Always serve SSR
+    const includeFullContent = true;
+    const isAICrawler = true;
 
-    console.log(`[Edge] ${url.pathname}, Bot:${isBot}, Full:${isFullContentBot}`);
+    console.log(`[Edge] ${url.pathname} - Serving UNIVERSAL SSR`);
 
-    if (isBot) {
-      try {
-        const post = await fetchPostMeta(slug, isFullContentBot);
+    try {
+      const post = await fetchPostMeta(slug, includeFullContent);
 
-        if (post) {
-          const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-          const html = generateBotHtml(post, postUrl, slug, isFullContentBot, isFullContentBot);
+      if (post) {
+        const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
+        const html = generateBotHtml(post, postUrl, slug, includeFullContent, isAICrawler);
 
-          return new Response(html, {
-            status: 200,
-            headers: {
-              "Content-Type": "text/html; charset=utf-8",
-              "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
-              "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob: data:; object-src 'none'; connect-src 'self' https://www.google-analytics.com https://analytics.ahrefs.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
-              "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
-              "Vary": "User-Agent",
-              "X-Rendered-By": isFullContentBot ? "Edge-SSR-Full" : "Edge-SSR",
-              "Link": `<${postUrl}>; rel="canonical"`,
-              "X-Content-Type-Options": "nosniff",
-              "X-Frame-Options": "SAMEORIGIN",
-              "Referrer-Policy": "strict-origin-when-cross-origin",
-            }
-          });
-        }
-
-        return new Response(generateFallbackHtml(slug), {
-          status: 404,
+        return new Response(html, {
+          status: 200,
           headers: {
             "Content-Type": "text/html; charset=utf-8",
-            "X-Robots-Tag": "noindex, follow",
-            "Vary": "User-Agent"
+            "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/ https://www.googletagmanager.com https://ep2.adtrafficquality.google https://pagead2.googlesyndication.com https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob: data:; object-src 'none'; connect-src 'self' https://www.google-analytics.com https://analytics.ahrefs.com https://techblogai-backend.onrender.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://www.google.com https://ep2.adtrafficquality.google https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
+            "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+            "Vary": "User-Agent",
+            "X-Rendered-By": "Edge-SSR-Universal",
+            "Link": `<${postUrl}>; rel="canonical"`,
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "SAMEORIGIN",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
           }
         });
-      } catch (error) {
-        console.error("[Edge] Error:", error);
-        return context.rewrite("/index.html");
       }
+
+      return new Response(generateFallbackHtml(slug), {
+        status: 404,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Robots-Tag": "noindex, follow",
+          "Vary": "User-Agent"
+        }
+      });
+    } catch (error) {
+      console.error("[Edge] Error:", error);
+      return context.rewrite("/index.html");
     }
 
-    return context.rewrite("/index.html");
   } catch (error) {
     console.error("[Edge] Critical error:", error);
     return context.rewrite("/index.html");
   }
 };
 
+// detectBot function 
 function detectBot(userAgent = "") {
   const bots = ['googlebot', 'google-inspectiontool', 'bingbot', 'slurp', 'duckduckbot', 'yandexbot', 'baiduspider',
     'facebot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp', 'telegram', 'slackbot', 'discordbot',
@@ -149,7 +149,7 @@ function generateSchemas(post, postUrl) {
       "@context": "https://schema.org", "@type": "BreadcrumbList",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aitechblogs.netlify.app" },
-        { "@type": "ListItem", "position": 2, "name": cat, "item": `https://aitechblogs.netlify.app/category/${cat .toLowerCase().replace(/\s+/g, "-")}`},
+        { "@type": "ListItem", "position": 2, "name": cat, "item": `https://aitechblogs.netlify.app/category/${cat.toLowerCase().replace(/\s+/g, "-")}`},
         { "@type": "ListItem", "position": 3, "name": t, "item": postUrl }
       ]
     },
@@ -191,8 +191,8 @@ function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICr
     contentHtml = `<p>${desc}</p>`;
   }
 
-    //SECTION for AI crawlers:
-  const aiMetadata = isAICrawler ? `
+  // SECTION for AI crawlers
+  const aiMetadata = `
     <!-- AI Training Metadata -->
     <link rel="alternate" type="application/json" href="https://techblogai-backend.onrender.com/api/posts/${slug}/full" title="Full Structured Article Data" />
     <meta name="ai-content-declaration" content="public, training-allowed, commercial-allowed" />
@@ -221,7 +221,7 @@ function generateBotHtml(post, postUrl, slug, includeFullContent = false, isAICr
       "keywords": tagsString
     })}
     </script>
-` : '';
+`;
 
   const breadcrumbHtml = `<nav aria-label="Breadcrumb" class="breadcrumb"><ol itemscope itemtype="https://schema.org/BreadcrumbList">
     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
@@ -368,13 +368,6 @@ function generateFallbackHtml(slug) {
     <p>Article not found.</p>
     <a href="https://aitechblogs.netlify.app">Return Home</a>
   </div>
-<script>
-  const ua = navigator.userAgent.toLowerCase();
-  const isBot = /bot|crawler|spider|googlebot|bingbot|duckduckbot|slurp/.test(ua);
-  if (!isBot) {
-    window.location.href = '${postUrl}';
-  }
-</script>
 </body>
 </html>`;
 }
