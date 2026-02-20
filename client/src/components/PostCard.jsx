@@ -19,7 +19,11 @@ const PostCard = ({ post }) => {
             src={post.featured_image}
             alt={post.title}
             className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
+            width="800" 
+            height="450"
             loading="lazy"
+            decoding='async'
+            style={{ aspectRatio: '16/9' }}
           />
         </Link>
       )}

@@ -132,7 +132,7 @@ function generateSSRContent(posts, categories) {
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
               ${post.featured_image ? `
                 <a href="/post/${post.slug}" class="block">
-                  <img src="${escapeHtml(post.featured_image)}" alt="${escapeHtml(post.title)}" class="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
+                  <img src="${escapeHtml(post.featured_image)}" alt="${escapeHtml(post.title)}" class="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" width="800" height="450" loading="lazy" style="aspect-ratio: 16/9; object-fit: cover;"/>
                 </a>
               ` : ''}
               <div class="p-6">

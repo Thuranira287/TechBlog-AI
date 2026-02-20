@@ -104,6 +104,9 @@ const Header = () => {
                 src={TechBlogAI} 
                 alt="TechBlog AI Logo" 
                 className="w-full h-full rounded-full object-cover p-0.5"
+                width="36"
+                height="36"
+                loading='lazy'
               />
             </div>
             <div className="hidden sm:block">
@@ -200,7 +203,7 @@ const Header = () => {
                     >
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                         {user?.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
+                          <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" width="32" height="32" loading="lazy" />
                         ) : (
                           <User className="w-4 h-4 text-blue-600" />
                         )}

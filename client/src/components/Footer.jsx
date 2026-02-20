@@ -58,6 +58,9 @@ const Footer = () => {
                       src={partner.logo} 
                       alt={partner.name}
                       className="h-4 object-contain group-hover:grayscale-0 transition-all duration-300"
+                      width="80"
+                      height="16"
+                      loading='lazy'
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.parentElement.innerHTML = `
@@ -89,6 +92,9 @@ const Footer = () => {
                     src={TechBlogAI} 
                     alt="TechBlog AI Logo" 
                     className="w-full h-full rounded-full object-cover p-1"
+                    width="64"
+                    height="64"
+                    loading="eager"
                   />
                 </div>
               </div>

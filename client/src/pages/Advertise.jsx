@@ -506,6 +506,9 @@ const fetchLogos = async () => {
                       src={brand.logo} 
                       alt={brand.name}
                       className="max-h-16 max-w-full object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
+                      width="200" 
+                      height="64"
+                      loading="lazy"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.parentElement.innerHTML = `

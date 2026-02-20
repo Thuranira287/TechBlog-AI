@@ -605,8 +605,11 @@ const PostPage = () => {
                   src={post.featured_image}
                   alt={post.title}
                   className="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
+                  width="1200"
+                  height="630"
                   loading="eager"
                   fetchpriority="high"
+                  style={{ aspectRatio: '16/9' }}
                 />
                 {/* Ad just below image */}
                 <div className="mt-6">

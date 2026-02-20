@@ -365,6 +365,10 @@ function generateAuthorBio() {
                 src="https://aitechblogs.netlify.app/author-avatar.jpg"
                 alt="Alexander Zachary"
                 class="w-full h-full rounded-full object-cover p-1"
+                width="176"
+                height="176"
+                loading="eager"
+                fetchpriority="high"
               />
             </div>
           </div>

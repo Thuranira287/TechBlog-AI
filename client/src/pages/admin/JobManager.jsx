@@ -520,6 +520,9 @@ const JobManager = () => {
                             src={previewUrl}
                             alt="Logo preview"
                             className="h-20 mx-auto object-contain"
+                            width="80"
+                            height="80"
+                            loading='lazy'
                           />
                           <p className="text-sm text-gray-500">Click to change logo</p>
                         </div>
@@ -682,6 +685,9 @@ const JobManager = () => {
                               src={job.company_logo} 
                               alt={job.company_name}
                               className="w-8 h-8 object-contain"
+                              width="32"
+                              height="32"
+                              loading='lazy'
                             />
                           ) : (
                             <Briefcase className="w-5 h-5 text-gray-400" />

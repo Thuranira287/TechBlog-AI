@@ -277,7 +277,11 @@ function generateCategorySSR(data, categorySlug, page) {
             src="${escapeHtml(post.featured_image)}" 
             alt="${escapeHtml(post.title)}" 
             class="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" 
-            loading="lazy" 
+            width="800"
+            height="450"
+            loading="lazy"
+            itemprop="image"
+            style="aspect-ratio: 16/9; object-fit: cover;"
             itemprop="image"
           />
         </a>

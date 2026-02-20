@@ -453,7 +453,12 @@ const PostEditor = () => {
                 />
                 {imagePreview && (
                   <div className="mt-2">
-                    <img src={imagePreview} alt="Preview" className="h-32 object-cover rounded" />
+                    <img src={imagePreview} alt="Preview"
+                    className="h-32 object-cover rounded"
+                    width="auto"
+                    height="128"
+                    style={{ maxWidth: '100%', height: '128px', objectFit: 'cover' }}
+                    />
                   </div>
                 )}
               </div>

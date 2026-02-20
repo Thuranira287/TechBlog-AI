@@ -74,6 +74,9 @@ export default function AuthorBio({
                 src={author.avatar}
                 alt={`${author.name} - ${author.title}`}
                 className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                width="128"
+                height="128"
+                loading="lazy"
                 onError={(e) => {
                   e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(author.name)}&background=3B82F6&color=fff&size=256`;
                 }}

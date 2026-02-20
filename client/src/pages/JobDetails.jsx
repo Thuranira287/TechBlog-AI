@@ -227,6 +227,10 @@ const JobDetails = () => {
                           src={job.company_logo} 
                           alt={job.company_name}
                           className="w-12 h-12 object-contain"
+                          width="48"
+                          height="48"
+                          loading='eager'
+                          fetchPriority='high'
                         />
                       ) : (
                         <Building className="w-8 h-8 text-gray-400" />

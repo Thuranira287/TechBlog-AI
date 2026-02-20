@@ -103,6 +103,22 @@ ins[data-adsbygoogle-status="unfilled"]:not(:has(iframe)) {
   display: none !important;
 }
 
+/* Reserve space for images */
+img, video, iframe {
+  aspect-ratio: attr(width) / attr(height);
+  background-color: #f3f4f6; /* gray-100 */
+}
+
+/* Lazy load fade-in effect */
+img.loading {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+img.loaded {
+  opacity: 1;
+}
+
 /* Force LTR for all comment-related elements */
 textarea[dir="ltr"] {
   direction: ltr !important;

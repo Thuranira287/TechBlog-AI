@@ -471,8 +471,11 @@ function generatePostSSR(post, slug) {
               src="${imageUrl}"
               alt="${escapeHtml(post.title)}"
               class="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
+              width="1200"
+              height="630"
               loading="eager"
               fetchpriority="high"
+              style="aspect-ratio: 16/9; object-fit: cover;"
             />
             <!-- Ad placeholder (actual ad will load via React) -->
             <div class="mt-6 ad-container"></div>
