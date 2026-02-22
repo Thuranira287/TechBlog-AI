@@ -1,4 +1,3 @@
-// netlify/edge-functions/ssr-router.js
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
@@ -56,12 +55,13 @@ export default async (request, context) => {
       );
 
       // Generate all the rich metadata
+      const imageUrl = post.featured_image || 'https://aitechblogs.netlify.app/og-image.png';
       const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
       const schemas = generateSchemas(post, postUrl);
       const aiMetadata = generateAIMetadata(post, slug, postUrl);
       const metaTags = generateMetaTags(post, postUrl);
 
-      // Inject metadata into head (right before closing head tag)
+      // Inject metadata into head
       html = html.replace(
         '</head>',
         `${aiMetadata}${metaTags}
