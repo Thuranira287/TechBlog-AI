@@ -45,6 +45,14 @@ export default async (request, context) => {
       const spaResponse = await fetch(new URL('/index.html', request.url));
       let html = await spaResponse.text();
 
+      // Replace existing <title>
+        const pageTitle = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
+
+        html = html.replace(
+          /<title>.*?<\/title>/i,
+          `<title>${pageTitle} | TechBlog AI</title>`
+        );
+
       // Generate SSR content matching PostPage.jsx structure
       const ssrContent = generatePostSSR(post, slug);
 
