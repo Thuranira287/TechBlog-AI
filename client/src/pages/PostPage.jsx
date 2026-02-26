@@ -438,7 +438,7 @@ const PostPage = () => {
                 </Link>
               </li>
 
-              <li className="text-gray-400">/</li>
+              <li className="text-blue-500">/</li>
 
               {post.category_name && (
                 <>
@@ -450,7 +450,7 @@ const PostPage = () => {
                       {post.category_name}
                     </Link>
                   </li>
-                  <li className="text-gray-400">/</li>
+                  <li className="text-blue-500">/</li>
                 </>
               )}
 

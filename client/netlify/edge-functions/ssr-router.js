@@ -15,6 +15,17 @@ export default async (request, context) => {
 
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
 
+    if (request.headers.has('range') || request.headers.has('Range')) {
+      const cleanHeaders = new Headers(request.headers);
+      cleanHeaders.delete('range');
+      cleanHeaders.delete('Range');
+      request = new Request(request.url, {
+        method: request.method,
+        headers: cleanHeaders,
+      });
+      console.log(`[Edge-Post] Stripped Range header (Facebook scraper) for: ${slug}`);
+    }
+
     console.log(`[Edge-Post] ${slug} - Serving SSR`);
 
     try {
@@ -102,6 +113,7 @@ export default async (request, context) => {
           "X-Content-Type-Options": "nosniff",
           "X-Frame-Options": "SAMEORIGIN",
           "Referrer-Policy": "strict-origin-when-cross-origin",
+          "Accept-Ranges": "none",
         }
       });
 
@@ -152,7 +164,7 @@ async function fetchPostData(slug) {
   }
 }
 
-// Generate all schemas (copied from original)
+// Generate all schemas
 function generateSchemas(post, postUrl) {
   const t = post.title || post.meta_title || "TechBlog AI Article";
   const d = post.excerpt || post.meta_description || "Tech insights on TechBlog AI";
@@ -249,7 +261,7 @@ function generateSchemas(post, postUrl) {
   };
 }
 
-// Generate AI metadata (copied from original)
+// Generate AI metadata
 function generateAIMetadata(post, slug, postUrl) {
   const tags = Array.isArray(post.tags) ? post.tags : [];
   const tagsString = tags.map(t => escapeHtml(t)).join(", ");
@@ -288,7 +300,7 @@ function generateAIMetadata(post, slug, postUrl) {
   `;
 }
 
-// Generate meta tags (copied from original)
+// Generate meta tags
 function generateMetaTags(post, postUrl) {
   const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
   const desc = escapeHtml(post.excerpt || post.meta_description || "Tech insights on TechBlog AI");
@@ -373,7 +385,7 @@ function generatePostSSR(post, slug) {
     </div>
   ` : '';
 
-  // Generate share button HTML (simplified version for SSR)
+  // Generate share button HTML
   const shareButtonHtml = `
     <div class="relative ml-auto">
       <button class="flex items-center space-x-2 text-primary-600 hover:text-primary-700 transition-colors px-3 py-2 rounded-lg hover:bg-primary-50">

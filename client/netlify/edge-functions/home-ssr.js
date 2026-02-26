@@ -46,7 +46,27 @@ export default async (request, context) => {
       const spaResponse = await fetch(new URL('/index.html', request.url));
       let html = await spaResponse.text();
 
-      // Generate SSR content using your EXISTING React component structure
+      // Remove any existing meta
+      html = html.replace(/<link rel="canonical"[^>]*>/gi, '');
+      html = html.replace(/<meta property="og:[^>]*>/gi, '');
+      html = html.replace(/<meta name="twitter:[^>]*>/gi, '');
+
+      // Inject homepage SEO
+      const homeMeta = `
+      <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
+      <link rel="canonical" href="https://aitechblogs.netlify.app/" />
+
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects" />
+      <meta property="og:url" content="https://aitechblogs.netlify.app/" />
+
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects" />
+      `;
+
+      html = html.replace('</head>', `${homeMeta}</head>`);
+
+      // Generate SSR content 
       const ssrContent = generateSSRContent(posts, categories);
 
       // Inject SSR content into the root div
@@ -91,7 +111,7 @@ function generateSSRContent(posts, categories) {
   // HomePage.jsx structure
   return `
     <div class="container mx-auto px-4 py-8">
-      <!-- Header Ad - matches your React component -->
+      <!-- Header Ad -->
       <div class="w-full bg-gray-50 py-2">
         <div class="container mx-auto px-4 text-center">
           <div class="ad-container"></div>
