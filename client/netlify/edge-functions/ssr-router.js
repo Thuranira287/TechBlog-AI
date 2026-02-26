@@ -172,7 +172,6 @@ export default async (request, context) => {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",
-          "Content-Length": Buffer.byteLength(html, 'utf8').toString(),
           "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
           "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
           "Vary": "User-Agent",

@@ -86,7 +86,6 @@ export default async (request, context) => {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=3600, s-maxage=7200",
-          "Content-Length": Buffer.byteLength(html, 'utf8').toString(),
           "X-Robots-Tag": "index, follow, max-image-preview:large",
           "X-Rendered-By": "Edge-SSR-Universal"
         }
