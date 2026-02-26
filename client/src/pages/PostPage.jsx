@@ -427,7 +427,7 @@ const PostPage = () => {
             Back
           </button>
           {/* Breadcrumb */}
-          <nav className="text-sm text-gray-500 mb-6 animate-fadeIn">
+          <nav className="text-sm text-blue-500 mb-6 animate-fadeIn">
             <ol className="flex flex-wrap items-center gap-2">
               <li>
                 <Link 

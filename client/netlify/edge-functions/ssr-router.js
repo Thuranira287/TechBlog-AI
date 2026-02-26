@@ -15,15 +15,20 @@ export default async (request, context) => {
 
     const slug = url.pathname.replace(/^\/post\//, "").replace(/\/$/, "");
 
-    if (request.headers.has('range') || request.headers.has('Range')) {
+    // Handle Range headers for Facebook crawler
+    const isFacebookBot = request.headers.get('user-agent')?.toLowerCase().includes('facebook') ||
+                          request.headers.get('user-agent')?.toLowerCase().includes('facebot');
+    
+    if (request.headers.has('range') || request.headers.has('Range') || isFacebookBot) {
       const cleanHeaders = new Headers(request.headers);
       cleanHeaders.delete('range');
       cleanHeaders.delete('Range');
+      cleanHeaders.set('Accept-Encoding', 'identity');
       request = new Request(request.url, {
         method: request.method,
         headers: cleanHeaders,
       });
-      console.log(`[Edge-Post] Stripped Range header (Facebook scraper) for: ${slug}`);
+      console.log(`[Edge-Post] Stripped Range headers for: ${slug} (Facebook: ${isFacebookBot})`);
     }
 
     console.log(`[Edge-Post] ${slug} - Serving SSR`);
@@ -56,38 +61,100 @@ export default async (request, context) => {
       const spaResponse = await fetch(new URL('/index.html', request.url));
       let html = await spaResponse.text();
 
-      // Replace existing <title>
-        const pageTitle = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
+      // Generate post metadata
+      const imageUrl = post.featured_image || 'https://aitechblogs.netlify.app/og-image.png';
+      const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
+      const title = escapeHtml(post.og_title || post.meta_title || post.title);
+      const description = escapeHtml(post.og_description || post.meta_description || post.excerpt || '');
+      const author = escapeHtml(post.author_name || 'Admin');
+      const publishDate = post.published_at || new Date().toISOString();
+      const modifiedDate = post.updated_at || publishDate;
+      const category = escapeHtml(post.category_name || 'Technology');
+      const tags = Array.isArray(post.tags) ? post.tags : [];
+      const readingTime = Math.ceil((post.word_count || 1000) / 200);
 
-        html = html.replace(
-          /<title>.*?<\/title>/i,
-          `<title>${pageTitle} | TechBlog AI</title>`
-        );
+      // CRITICAL FIX: Remove ALL existing meta tags that might conflict
+      // Remove title
+      html = html.replace(/<title>.*?<\/title>/gis, '');
+      
+      // Remove all meta tags that could conflict
+      html = html.replace(/<meta\s+(?:name|property)=["'](?:description|keywords|author|robots|googlebot|og:[^"']*|twitter:[^"']*|article:[^"']*)["'][^>]*>/gis, '');
+      
+      // Remove link canonical
+      html = html.replace(/<link\s+rel=["']canonical["'][^>]*>/gis, '');
+      
+      // Remove Open Graph and Twitter meta tags specifically
+      html = html.replace(/<meta\s+property="fb:app_id"[^>]*>/gis, '');
+      
+      // Build complete meta tags block
+      const metaTagsBlock = `
+  <!-- Primary Meta Tags -->
+  <title>${title} | TechBlog AI</title>
+  <meta name="description" content="${description}" />
+  <meta name="author" content="${author}" />
+  <meta name="keywords" content="${escapeHtml(post.keywords || tags.join(', '))}" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <link rel="canonical" href="${postUrl}" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="fb:app_id" content="1829393364607774" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="${postUrl}" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${description}" />
+  <meta property="og:image" content="${imageUrl}" />
+  <meta property="og:image:secure_url" content="${imageUrl}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${title}" />
+  <meta property="og:site_name" content="TechBlog AI" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="article:published_time" content="${publishDate}" />
+  <meta property="article:modified_time" content="${modifiedDate}" />
+  <meta property="article:author" content="${author}" />
+  <meta property="article:section" content="${category}" />
+  ${tags.map(tag => `<meta property="article:tag" content="${escapeHtml(tag)}" />`).join('\n  ')}
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="${postUrl}" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${description}" />
+  <meta name="twitter:image" content="${imageUrl}" />
+  <meta name="twitter:image:alt" content="${title}" />
+  <meta name="twitter:site" content="@AiTechBlogs" />
+  <meta name="twitter:creator" content="@AiTechBlogs" />
+  <meta name="twitter:label1" content="Reading time" />
+  <meta name="twitter:data1" content="${readingTime} min read" />
+  `;
 
-      // Generate SSR content matching PostPage.jsx structure
+      // Inject meta tags right after <head> opening tag
+      html = html.replace('<head>', '<head>\n' + metaTagsBlock);
+
+      // Generate schemas
+      const schemas = generateSchemas(post, postUrl);
+      
+      // Generate AI metadata
+      const aiMetadata = generateAIMetadata(post, slug, postUrl);
+
+      // Inject schema and AI metadata before </head>
+      html = html.replace(
+        '</head>',
+        `${aiMetadata}
+  <script type="application/ld+json">${escapeJson(schemas.article)}</script>
+  <script type="application/ld+json">${escapeJson(schemas.breadcrumb)}</script>
+  <script type="application/ld+json">${escapeJson(schemas.website)}</script>
+  </head>`
+      );
+
+      // Generate SSR content
       const ssrContent = generatePostSSR(post, slug);
 
       // Inject SSR content into root div
       html = html.replace(
         '<div id="root"></div>',
         `<div id="root">${ssrContent}</div>`
-      );
-
-      // Generate all the rich metadata
-      const imageUrl = post.featured_image || 'https://aitechblogs.netlify.app/og-image.png';
-      const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
-      const schemas = generateSchemas(post, postUrl);
-      const aiMetadata = generateAIMetadata(post, slug, postUrl);
-      const metaTags = generateMetaTags(post, postUrl);
-
-      // Inject metadata into head
-      html = html.replace(
-        '</head>',
-        `${aiMetadata}${metaTags}
-  <script type="application/ld+json">${escapeJson(schemas.article)}</script>
-  <script type="application/ld+json">${escapeJson(schemas.breadcrumb)}</script>
-  <script type="application/ld+json">${escapeJson(schemas.website)}</script>
-  </head>`
       );
 
       // Inject initial data for hydration
@@ -105,11 +172,11 @@ export default async (request, context) => {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",
+          "Content-Length": Buffer.byteLength(html, 'utf8').toString(),
           "Cache-Control": "public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400",
           "X-Robots-Tag": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
           "Vary": "User-Agent",
           "X-Rendered-By": "Edge-SSR-Post",
-          "Link": `<${postUrl}>; rel="canonical"`,
           "X-Content-Type-Options": "nosniff",
           "X-Frame-Options": "SAMEORIGIN",
           "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -297,57 +364,6 @@ function generateAIMetadata(post, slug, postUrl) {
       "keywords": tagsString
     })}
     </script>
-  `;
-}
-
-// Generate meta tags
-function generateMetaTags(post, postUrl) {
-  const title = escapeHtml(post.title || post.meta_title || "TechBlog AI Article");
-  const desc = escapeHtml(post.excerpt || post.meta_description || "Tech insights on TechBlog AI");
-  const img = post.featured_image || "https://aitechblogs.netlify.app/og-image.png";
-  const author = escapeHtml(post.author_name || "Admin");
-  const publishDate = post.published_at || new Date().toISOString();
-  const modifiedDate = post.updated_at || publishDate;
-  const category = escapeHtml(post.category_name || "Technology");
-  const tags = Array.isArray(post.tags) ? post.tags : [];
-  const readingTime = Math.ceil((post.word_count || 1000) / 200);
-  const tagsString = tags.map(t => escapeHtml(t)).join(", ");
-
-  return `
-    <meta name="title" content="${title}" />
-    <meta name="description" content="${desc}" />
-    <meta name="author" content="${author}" />
-    <meta name="keywords" content="${escapeHtml(post.keywords || tagsString)}" />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-    <link rel="canonical" href="${postUrl}" />
-    <meta property="fb:app_id" content="1829393364607774" />
-    <meta property="og:type" content="article" />
-    <meta property="og:url" content="${postUrl}" />
-    <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="${desc}" />
-    <meta property="og:image" content="${img}" />
-    <meta property="og:image:secure_url" content="${img}" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="${title}" />
-    <meta property="og:site_name" content="TechBlog AI" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="article:published_time" content="${publishDate}" />
-    <meta property="article:modified_time" content="${modifiedDate}" />
-    <meta property="article:author" content="${author}" />
-    <meta property="article:section" content="${category}" />
-    ${tags.map(tag => `<meta property="article:tag" content="${escapeHtml(tag)}" />`).join('\n  ')}
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="${postUrl}" />
-    <meta name="twitter:title" content="${title}" />
-    <meta name="twitter:description" content="${desc}" />
-    <meta name="twitter:image" content="${img}" />
-    <meta name="twitter:image:alt" content="${title}" />
-    <meta name="twitter:site" content="@AiTechBlogs" />
-    <meta name="twitter:creator" content="@AiTechBlogs" />
-    <meta name="twitter:label1" content="Reading time" />
-    <meta name="twitter:data1" content="${readingTime} min read" />
   `;
 }
 

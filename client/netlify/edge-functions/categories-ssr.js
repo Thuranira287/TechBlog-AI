@@ -1,4 +1,3 @@
-// netlify/edge-functions/category-ssr.js
 export default async (request, context) => {
   try {
     const url = new URL(request.url);
