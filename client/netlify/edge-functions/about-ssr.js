@@ -44,6 +44,17 @@ export default async (request, context) => {
         '<div id="root"></div>',
         `<div id="root">${ssrContent}</div>`
       );
+      const headTags = `
+        <title>About TechBlog AI | AI Guides & Web Development Tutorials</title>
+        <meta name="description" content="Learn about TechBlog AI, our mission to deliver practical AI guides, web dev tutorials, and emerging tech insights." />
+        <meta property="og:title" content="About TechBlog AI | AI Guides & Web Development Tutorials" />
+        <meta property="og:description" content="Learn about TechBlog AI, our mission to deliver practical AI guides, web dev tutorials, and emerging tech insights." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://aitechblogs.netlify.app/about" />
+        <link rel="canonical" href="https://aitechblogs.netlify.app/about" />
+      `;
+
+      html = html.replace('</head>', `${headTags}</head>`);
 
       // Inject initial data for hydration
       html = html.replace(
