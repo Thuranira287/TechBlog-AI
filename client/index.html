@@ -103,25 +103,6 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922"
      crossorigin="anonymous">
     </script>
-    
-    <!-- CSS loading screen -->
-    <style>
-      .loading { 
-        position: fixed; top: 0; left: 0; 
-        width: 100%; height: 100%; 
-        background: #ffffff;
-        display: flex; align-items: center; 
-        justify-content: center; z-index: 9999; 
-      }
-      .loading-spinner {
-        width: 60px; height: 60px;
-        border: 4px solid rgba(59,130,246,0.1);
-        border-top-color: #3b82f6;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
 
     <!-- Main CSS -->
     <link rel="stylesheet" href="/src/index.css">
@@ -130,38 +111,10 @@
     <title>TechBlog AI | AI Tutorials & Web Development Guides | Build Real Projects</title>
   </head>
   <body>
-    <!-- Loading screen  -->
-    <div class="loading" id="loading-screen">
-      <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <p class="loading-text">Loading TechBlog AI...</p>
-      </div>
-    </div>
-    
     <div id="root"></div>
     
     <!-- Preload main script -->
     <script type="module" src="/src/main.jsx" defer></script>
-    
-    <!-- Script to hide loading screen after timeout -->
-    <script>
-      setTimeout(function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-          loadingScreen.classList.add('loading-hidden');
-          setTimeout(() => loadingScreen.remove(), 300);
-        }
-      }, 3000);
-      
-      // Hide loading screen when page is fully loaded
-      window.addEventListener('load', function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-          loadingScreen.classList.add('loading-hidden');
-          setTimeout(() => loadingScreen.remove(), 300);
-        }
-      });
-    </script>
     
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-L2JCRCT3F3"></script>

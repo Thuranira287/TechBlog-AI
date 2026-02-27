@@ -162,7 +162,7 @@ textarea[placeholder="Write your reply..."] {
 .code-block code span.keyword { color: #0000ff; font-weight: bold; }
 
       
-/* Critical CSS for initial load */
+/* CSS for initial load */
 html { scroll-behavior: smooth; }
 body { 
   margin: 0; 
