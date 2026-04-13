@@ -630,8 +630,10 @@ const PostPage = () => {
             <div 
               dangerouslySetInnerHTML={{ 
                 __html: DOMPurify.sanitize(post.content, {
-                  ADD_TAGS: ['iframe'],
-                  ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling']
+                  ADD_TAGS: ['iframe', 'pre', 'code', 'style'],
+                  ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'class', 'style'],
+                  ALLOWED_ATTR: ['class', 'style', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height'],
+                  KEEP_CONTENT: true,
                 })
               }} 
             />
