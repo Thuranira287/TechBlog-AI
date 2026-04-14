@@ -135,31 +135,67 @@ textarea[placeholder="Write your reply..."] {
 }
 
 /* Enhanced Code Block Styling - W3Schools Style */
-.code-block {
-    background: #f8f9fa;
-    border-left: 4px solid #4CAF50;
-    border-radius: 4px;
-    padding: 20px;
-    margin: 20px 0;
-    overflow-x: auto;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 15px;
-    line-height: 1.6;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.code-block,
+.prose .code-block,
+article .code-block,
+div .code-block {
+    background: #f8f9fa !important;
+    border-left: 4px solid #4CAF50 !important;
+    border-radius: 4px !important;
+    padding: 20px !important;
+    margin: 20px 0 !important;
+    overflow-x: auto !important;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
     counter-reset: line;
 }
 
-.code-block code {
-    color: hwb(54 11% 1%);
-    background: transparent;
-    display: block;
+.code-block code,
+.prose .code-block code,
+article .code-block code,
+div .code-block code {
+    color: #1e1e1e !important;  /* Dark text - replaced hwb with hex for better compatibility */
+    background: transparent !important;
+    display: block !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
 }
 
-/* This will color strings and comments if they're properly wrapped */
-.code-block code span.string { color: #a31515; }
-.code-block code span.comment { color: #008000; font-style: italic; }
-.code-block code span.number { color: #098658; font-weight: bold; }
-.code-block code span.keyword { color: #0000ff; font-weight: bold; }
+/* Override Tailwind */
+.prose code,
+.prose code::before,
+.prose code::after {
+    background-color: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    content: none !important;
+}
+
+/* Syntax highlighting colors */
+.code-block code span.string,
+.prose .code-block code span.string {
+    color: #a31515 !important;
+}
+
+.code-block code span.comment,
+.prose .code-block code span.comment {
+    color: #008000 !important;
+    font-style: italic !important;
+}
+
+.code-block code span.number,
+.prose .code-block code span.number {
+    color: #098658 !important;
+    font-weight: bold !important;
+}
+
+.code-block code span.keyword,
+.prose .code-block code span.keyword {
+    color: #0000ff !important;
+    font-weight: bold !important;
+}
 
       
 /* CSS for initial load */
