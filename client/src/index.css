@@ -156,7 +156,7 @@ div .code-block {
 .prose .code-block code,
 article .code-block code,
 div .code-block code {
-    color: #d7d016 !important;  /* Dark text - replaced hwb with hex for better compatibility */
+    color: hwb(54 11% 1%) !important;
     background: transparent !important;
     display: block !important;
     font-family: inherit !important;

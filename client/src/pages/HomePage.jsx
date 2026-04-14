@@ -63,7 +63,7 @@ const HomePage = ({ initialPosts = [], initialCategories = [] }) => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Header Ad */}
-        <HeaderAd />
+        {/**<HeaderAd />**/}
 
         {/* Hero Section */}
         <section className="text-center mb-12">
