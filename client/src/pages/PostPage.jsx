@@ -8,6 +8,11 @@ import PostCard from '../components/PostCard'
 import { InContentAd } from '../components/AdSense'
 import CommentSection from '../components/CommentSection'
 import DOMPurify from 'dompurify';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism.css'; // or 'prismjs/themes/prism-tomorrow.css'
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-jsx';
 
 // Constants
 const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://aitechblogs.netlify.app';
@@ -151,6 +156,11 @@ const PostPage = () => {
       prefetchRelated();
     }
   }, [fetchPost, post?.category_slug])
+
+  // Highlight code blocks
+  useEffect(() => {
+      Prism.highlightAll();
+  }, [post?.content]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
