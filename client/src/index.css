@@ -139,7 +139,7 @@ textarea[placeholder="Write your reply..."] {
 .prose .code-block,
 article .code-block,
 div .code-block {
-    background: #f8f9fa !important;
+    background: #0f0f0f !important;
     border-left: 4px solid #4CAF50 !important;
     border-radius: 4px !important;
     padding: 20px !important;
@@ -156,7 +156,7 @@ div .code-block {
 .prose .code-block code,
 article .code-block code,
 div .code-block code {
-    color: #1e1e1e !important;  /* Dark text - replaced hwb with hex for better compatibility */
+    color: #d7d016 !important;  /* Dark text - replaced hwb with hex for better compatibility */
     background: transparent !important;
     display: block !important;
     font-family: inherit !important;
