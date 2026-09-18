@@ -101,7 +101,7 @@ export default async (request, context) => {
 // Fetch category data
 async function fetchCategoryData(categorySlug, page = 1) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 20000);
   
   try {
     const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=${page}&limit=20`;
