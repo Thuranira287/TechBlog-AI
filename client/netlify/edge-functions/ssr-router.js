@@ -73,7 +73,6 @@ export default async (request, context) => {
       const tags = Array.isArray(post.tags) ? post.tags : [];
       const readingTime = Math.ceil((post.word_count || 1000) / 200);
 
-      // CRITICAL FIX: Remove ALL existing meta tags that might conflict
       // Remove title
       html = html.replace(/<title>.*?<\/title>/gis, '');
       
@@ -202,7 +201,7 @@ async function fetchPostData(slug) {
   if (!slug) return null;
   
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
     const url = `https://techblogai-backend.onrender.com/api/posts/${slug}`;
