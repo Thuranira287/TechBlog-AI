@@ -3,52 +3,43 @@ import https from "https";
 let lastPing = 0;
 const PING_INTERVAL = 60 * 1000;
 
-// Submit sitemap to Google & Bing //regular AND AI 
 export async function submitSitemapToSearchEngines() {
   const now = Date.now();
 
   if (now - lastPing < PING_INTERVAL) {
-    console.log("⏳ Sitemap ping skipped (rate-limited)");
+    console.log("Sitemap ping skipped (rate-limited)");
     return [{ skipped: true }];
   }
 
   lastPing = now;
   const baseUrl = process.env.FRONTEND_URL || "https://aitechblogs.netlify.app";
-  
-  // Submit sitemaps
+
   const sitemaps = [
     `${baseUrl}/sitemap.xml`,
     `${baseUrl}/sitemap-ai.xml`
-  ];
-
-  const searchEngines = [
-    { name: "Google", url: "https://www.google.com/ping?sitemap=" },
-    { name: "Bing", url: "https://www.bing.com/ping?sitemap=" },
   ];
 
   const results = [];
 
   for (const sitemap of sitemaps) {
     const encodedSitemap = encodeURIComponent(sitemap);
-    
-    for (const engine of searchEngines) {
-      await new Promise((resolve) => {
-        https
-          .get(engine.url + encodedSitemap, (res) => {
-            results.push({
-              sitemap: sitemap.includes('ai') ? 'AI Sitemap' : 'Main Sitemap',
-              engine: engine.name,
-              success: res.statusCode === 200,
-              status: res.statusCode,
-            });
-            resolve();
-          })
-          .on("error", (err) => {
-            console.error(`Error pinging ${engine.name}:`, err.message);
-            resolve();
+
+    await new Promise((resolve) => {
+      https
+        .get(`https://www.bing.com/ping?sitemap=${encodedSitemap}`, (res) => {
+          results.push({
+            sitemap: sitemap.includes('ai') ? 'AI Sitemap' : 'Main Sitemap',
+            engine: 'Bing',
+            success: res.statusCode === 200,
+            status: res.statusCode,
           });
-      });
-    }
+          resolve();
+        })
+        .on("error", (err) => {
+          console.error('Error pinging Bing:', err.message);
+          resolve();
+        });
+    });
   }
 
   console.log(' Sitemap submission results:', results);
