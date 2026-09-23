@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 
 // POLICY CONTENT
-const LAST_UPDATED = "February 4, 2026";
+const LAST_UPDATED = "September 23, 2026";
 
 const policies = {
   privacy: {
@@ -116,6 +116,36 @@ const policies = {
           {
             type: "text",
             body: "Each of these services has its own privacy policy. We encourage you to review them."
+          }
+        ]
+      },
+      {
+        heading: "AI Training Data",
+        type: "h3",
+        content: [
+          {
+            type: "text",
+            body: "TechBlog AI publishes a public data feed (our AI-oriented sitemap and content feed) that makes our published articles available for indexing and AI training purposes under a Creative Commons Attribution 4.0 license. This feed includes the published content of our articles - it does not include personal information such as commenter names, email addresses, or other account data. If you submit a comment, that comment is not included in this feed."
+          }
+        ]
+      },
+      {
+        heading: "Children's Privacy",
+        type: "h3",
+        content: [
+          {
+            type: "text",
+            body: "TechBlog AI is not directed at children under the age of 13, and we do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal information, please contact us and we will take steps to remove it."
+          }
+        ]
+      },
+      {
+        heading: "Do Not Track Signals",
+        type: "h3",
+        content: [
+          {
+            type: "text",
+            body: "Some browsers support a \"Do Not Track\" (DNT) signal. There is currently no industry-standard way to respond to DNT signals, so our site does not currently respond to them differently from any other visit. You can still manage tracking through your cookie preferences and Google's Ads Settings as described above."
           }
         ]
       },
@@ -235,6 +265,26 @@ const policies = {
         ]
       },
       {
+        heading: "AI-Generated Content",
+        type: "h3",
+        content: [
+          {
+            type: "text",
+            body: "Some articles on TechBlog AI are researched and drafted with the assistance of AI tools, then reviewed before publication. While we aim for accuracy, AI-assisted content can contain errors, so we encourage readers to verify important facts - especially pricing, technical specifications, and anything you plan to rely on - against primary sources before acting on them."
+          }
+        ]
+      },
+      {
+        heading: "Comments and User-Submitted Content",
+        type: "h3",
+        content: [
+          {
+            type: "text",
+            body: "When you submit a comment, you retain ownership of it but grant TechBlog AI a non-exclusive, royalty-free license to display, reproduce, and distribute it on our site in connection with the article it was posted to. You are solely responsible for the content of your comments. We reserve the right, but not the obligation, to review, edit, or remove any comment at our discretion, including comments we consider spam, abusive, or off-topic."
+          }
+        ]
+      },
+      {
         heading: "Advertising",
         type: "h3",
         content: [
@@ -265,6 +315,16 @@ const policies = {
           {
             type: "text",
             body: "TechBlog AI is provided on an \"as is\" and \"as available\" basis. We make no warranties, express or implied regarding the site's accuracy, reliability, or fitness for a particular purpose."
+          }
+        ]
+      },
+      {
+        heading: "Governing Law",
+        type: "h3",
+        content: [
+          {
+            type: "text",
+            body: "These Terms are governed by and construed in accordance with applicable law, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the site will be resolved in the courts of competent jurisdiction where TechBlog AI operates."
           }
         ]
       },
