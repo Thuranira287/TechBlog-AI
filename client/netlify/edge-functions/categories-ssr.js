@@ -101,7 +101,7 @@ export default async (request, context) => {
 // Fetch category data
 async function fetchCategoryData(categorySlug, page = 1) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), 5000);
   
   try {
     const url = `https://techblogai-backend.onrender.com/api/posts/category/${categorySlug}?page=${page}&limit=20`;
@@ -273,7 +273,7 @@ function generateCategorySSR(data, categorySlug, page) {
       ${post.featured_image ? `
         <a href="/post/${post.slug}" class="block" itemprop="url">
           <img 
-            src="${escapeHtml(post.featured_image)}" 
+            src="${escapeHtml(optimizeImage(post.featured_image, 800))}" 
             alt="${escapeHtml(post.title)}" 
             class="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" 
             width="800"
@@ -491,6 +491,13 @@ function escapeHtml(text = "") {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function optimizeImage(url, width) {
+  if (!url || !url.includes('res.cloudinary.com') || !url.includes('/upload/')) {
+    return url;
+  }
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
 }
 
 function escapeJson(obj) {
