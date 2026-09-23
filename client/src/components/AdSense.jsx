@@ -1,13 +1,29 @@
 import React, { useState, useEffect, useRef } from "react";
-
-// Load AdSense script once
 let adsenseLoaded = false;
 let adsenseLoading = false;
 
 const AdSense = () => {
   useEffect(() => {
     if (adsenseLoaded || adsenseLoading) return;
-    
+
+    const existing = document.querySelector(
+      'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
+    );
+
+    if (existing) {
+      if (window.adsbygoogle) {
+        adsenseLoaded = true;
+        return;
+      }
+      adsenseLoading = true;
+      existing.addEventListener('load', () => {
+        adsenseLoaded = true;
+        adsenseLoading = false;
+      });
+      return;
+    }
+
+    // Fallback
     adsenseLoading = true;
     const script = document.createElement("script");
     script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2881807085062922";
@@ -23,7 +39,7 @@ const AdSense = () => {
   return null;
 };
 
-// Ad Unit with better empty state handling
+// Ad Unit
 export const AdUnit = ({ slot, format = "auto", responsive = true, className = "", delay = 0 }) => {
   const adRef = useRef(null);
   const [shouldRender, setShouldRender] = useState(delay === 0);
@@ -59,7 +75,7 @@ export const AdUnit = ({ slot, format = "auto", responsive = true, className = "
       
       if (iframeWidth > 0 && iframeHeight > 0) {
         setHasAd(true);
-        // Add data attribute to help CSS
+        
         if (ins) {
           ins.setAttribute('data-ad-status', 'filled');
         }
@@ -74,7 +90,6 @@ export const AdUnit = ({ slot, format = "auto", responsive = true, className = "
   useEffect(() => {
     if (!shouldRender || !adRef.current || pushed || !adsenseLoaded) return;
     
-    // Clear any existing intervals/timeouts
     if (checkIntervalRef.current) {
       clearInterval(checkIntervalRef.current);
       checkIntervalRef.current = null;
@@ -90,7 +105,7 @@ export const AdUnit = ({ slot, format = "auto", responsive = true, className = "
         // Clear container but keep the ad-container styling
         adRef.current.innerHTML = '';
         
-        // Add a small ad label (optional)
+        // Add label
         const label = document.createElement('div');
         label.className = 'ad-label';
         label.textContent = 'Advertisement';
@@ -134,11 +149,10 @@ export const AdUnit = ({ slot, format = "auto", responsive = true, className = "
             checkIntervalRef.current = null;
           }
           
-          // If no ad loaded, hide the entire container
+          // If no ad loaded, mark it empty but DON'T collapse the reserved
+         
           if (!hasAd && adRef.current) {
             adRef.current.classList.add('ad-empty');
-            // Hide the container
-            adRef.current.style.display = 'none';
           }
         }, 8000);
         
@@ -151,9 +165,9 @@ export const AdUnit = ({ slot, format = "auto", responsive = true, className = "
             setPushed(true);
           } catch (retryError) {
             console.warn("AdSense retry failed:", retryError);
-            // Hide container on failure
+           
             if (adRef.current) {
-              adRef.current.style.display = 'none';
+              adRef.current.classList.add('ad-empty');
             }
           }
         }, 2000);
@@ -183,29 +197,15 @@ export const AdUnit = ({ slot, format = "auto", responsive = true, className = "
 
 // Header Ad
 export const HeaderAd = () => {
-  const [pageLoaded, setPageLoaded] = useState(false);
   const [shouldShow, setShouldShow] = useState(true);
   const adRef = useRef(null);
   
-  useEffect(() => {
-    // Wait for page to be fully loaded
-    if (document.readyState === 'complete') {
-      setPageLoaded(true);
-    } else {
-      window.addEventListener('load', () => setPageLoaded(true));
-      return () => window.removeEventListener('load', () => setPageLoaded(true));
-    }
-  }, []);
-  
   // Check if ad container has content after loading
   useEffect(() => {
-    if (!pageLoaded) return;
-    
     const checkInterval = setInterval(() => {
       if (adRef.current) {
         const hasIframe = adRef.current.querySelector('iframe');
-        if (!hasIframe) {
-          // No iframe after 5 seconds, hide the header
+        if (!hasIframe) {    
           setShouldShow(false);
           clearInterval(checkInterval);
         } else {
@@ -219,13 +219,9 @@ export const HeaderAd = () => {
     setTimeout(() => clearInterval(checkInterval), 8000);
     
     return () => clearInterval(checkInterval);
-  }, [pageLoaded]);
-  
-  // Don't show header ad if it should be hidden
-  if (!pageLoaded || !shouldShow) return null;
-  
+  }, []);
   return (
-    <div className="w-full bg-gray-50 py-2" ref={adRef}>
+    <div className={`w-full bg-gray-50 py-2 ${!shouldShow ? 'ad-empty' : ''}`} ref={adRef}>
       <div className="container mx-auto px-4 text-center">
         <AdUnit slot="8847382989" format="auto" />
       </div>
@@ -244,7 +240,7 @@ export const SidebarAd = () => {
       if (adRef.current) {
         const hasIframe = adRef.current.querySelector('iframe');
         if (!hasIframe) {
-          // No iframe after 5 seconds, hide
+          // No iframe after 5 seconds, mark empty without collapsing space
           setShouldShow(false);
           clearInterval(checkInterval);
         } else {
@@ -260,11 +256,11 @@ export const SidebarAd = () => {
     return () => clearInterval(checkInterval);
   }, []);
   
-  return shouldShow ? (
-    <div className="sticky top-4" ref={adRef}>
+  return (
+    <div className={`sticky top-4 ${!shouldShow ? 'ad-empty' : ''}`} ref={adRef}>
       <AdUnit slot="8847382989" format="auto" />
     </div>
-  ) : null;
+  );
 };
 
 // In-Content Ad
@@ -296,11 +292,11 @@ export const InContentAd = ({ priority = 'normal' }) => {
     return () => clearInterval(checkInterval);
   }, []);
   
-  return shouldShow ? (
-    <div className="my-8 text-center" ref={adRef}>
+  return (
+    <div className={`my-8 text-center ${!shouldShow ? 'ad-empty' : ''}`} ref={adRef}>
       <AdUnit slot="8847382989" format="auto" delay={delay} />
     </div>
-  ) : null;
+  );
 };
 
 // Progressive ad loader
