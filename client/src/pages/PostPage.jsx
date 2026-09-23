@@ -13,6 +13,7 @@ import 'prismjs/themes/prism.css'; // or 'prismjs/themes/prism-tomorrow.css'
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-jsx';
+import { optimizeImage } from '../utils/imageOptimize';
 
 // Constants
 const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://aitechblogs.netlify.app';
@@ -240,9 +241,10 @@ const PostPage = () => {
   
     const imageUrl = useMemo(() => {
       if (!post?.featured_image) return `${SITE_URL}/og-image.png`;
-      return post.featured_image.startsWith('http')
+      const resolved = post.featured_image.startsWith('http')
         ? post.featured_image
         : `${SITE_URL}${post.featured_image}`;
+      return optimizeImage(resolved, 1200);
     }, [post?.featured_image]);
 
   // Loading skeleton
@@ -618,7 +620,7 @@ const PostPage = () => {
             {post.featured_image && (
               <>
                 <img
-                  src={post.featured_image}
+                  src={optimizeImage(post.featured_image, 1200)}
                   alt={post.title}
                   className="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
                   width="1200"
