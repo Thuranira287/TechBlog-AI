@@ -286,6 +286,12 @@ const PostPage = () => {
   if (error || !post) {
     return (
       <div className="container mx-auto px-4 py-8">
+        {/* Client-side navigation to a missing/removed post also returns HTTP
+            200 (SPA can't set a real status code) - noindex here stops it
+            counting as a soft 404, same reasoning as NotFoundPage. */}
+        <Helmet>
+          <meta name="robots" content="noindex, follow" />
+        </Helmet>
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {error === 'Post not found' ? 'Post Not Found' : 'Something went wrong'}
