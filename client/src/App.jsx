@@ -10,14 +10,8 @@ import HomePage from "./pages/HomePage";
 import PostPage from "./pages/PostPage";
 import CategoryPage from "./pages/CategoryPage";
 import SearchPage from "./pages/SearchPage";
-import PolicyPage from "./pages/PolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AdminLogin from './pages/admin/AdminLogin';
-import About from "./pages/About";
-import Advertise from "./pages/Advertise";
-import JobsPage from "./pages/JobsPage";
-import JobDetails from "./pages/JobDetails";
-import PublicDataset from "./pages/PublicDataset";
 
 // Lazy load admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -25,11 +19,19 @@ const PostEditor = lazy(() => import('./pages/admin/PostEditor'));
 const CommentsPage = lazy(() => import('./pages/admin/CommentsPage'));
 const JobManager = lazy(() => import('./pages/admin/JobManager'));
 
+// Lazy load secondary public pages.
+const PolicyPage = lazy(() => import('./pages/PolicyPage'));
+const About = lazy(() => import('./pages/About'));
+const Advertise = lazy(() => import('./pages/Advertise'));
+const JobsPage = lazy(() => import('./pages/JobsPage'));
+const JobDetails = lazy(() => import('./pages/JobDetails'));
+const PublicDataset = lazy(() => import('./pages/PublicDataset'));
+const AuthorBio = lazy(() => import('./components/AuthorBio'));
+
 // Context and Components
 import { BlogProvider } from "./context/BlogContext";
 import { useAuth, AuthProvider } from "./context/ContextAuth";
 import CookieConsent from "./components/CookieConsent";
-import AuthorBio from "./components/AuthorBio";
 
 // ProtectedRoute using AuthContext
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -64,6 +66,14 @@ const AdminLoadingFallback = () => (
       <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mb-4"></div>
       <div className="text-gray-600">Loading Admin Panel...</div>
     </div>
+  </div>
+);
+
+// Lightweight fallback for the newly lazy-loaded secondary public pages
+
+const PageLoadingFallback = () => (
+  <div className="min-h-[40vh] flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
   </div>
 );
 
@@ -255,7 +265,7 @@ function AppContent() {
         <Route path="/privacy" element={<Navigate to="/policy/privacy" replace />} />
         <Route path="/terms" element={<Navigate to="/policy/terms" replace />} />
         <Route path="/cookie" element={<Navigate to="/policy/cookie" replace />} />
-        <Route path="/policy/:type" element={<PolicyPage />} />
+        <Route path="/policy/:type" element={<Suspense fallback={<PageLoadingFallback />}><PolicyPage /></Suspense>} />
         
         {/* Admin routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -263,12 +273,12 @@ function AppContent() {
         {/*/admin to /admin/dashboard */}
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         
-        <Route path="/about" element={<About />} />
-        <Route path="/author" element={<AuthorBio compact={false} />} />
-        <Route path="/advertise" element={<Advertise />} />
-        <Route path="/jobs" element={<JobsPage />} />
-        <Route path="/jobs/:id" element={<JobDetails />} />
-        <Route path="/public-dataset" element={<PublicDataset />} />
+        <Route path="/about" element={<Suspense fallback={<PageLoadingFallback />}><About /></Suspense>} />
+        <Route path="/author" element={<Suspense fallback={<PageLoadingFallback />}><AuthorBio compact={false} /></Suspense>} />
+        <Route path="/advertise" element={<Suspense fallback={<PageLoadingFallback />}><Advertise /></Suspense>} />
+        <Route path="/jobs" element={<Suspense fallback={<PageLoadingFallback />}><JobsPage /></Suspense>} />
+        <Route path="/jobs/:id" element={<Suspense fallback={<PageLoadingFallback />}><JobDetails /></Suspense>} />
+        <Route path="/public-dataset" element={<Suspense fallback={<PageLoadingFallback />}><PublicDataset /></Suspense>} />
         
         {/* Protected Routes */}
         <Route 
