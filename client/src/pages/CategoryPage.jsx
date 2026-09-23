@@ -5,6 +5,8 @@ import { blogAPI } from '../api/client'
 import PostCard from '../components/PostCard'
 import { HeaderAd } from '../components/AdSense'
 
+const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://aitechblogs.netlify.app'
+
 const CategoryPage = () => {
   const { category } = useParams()
   const [searchParams] = useSearchParams()
@@ -152,6 +154,13 @@ const CategoryPage = () => {
           content={`${categoryInfo?.description || ''}${
             pagination.currentPage > 1 ? ` - Page ${pagination.currentPage}` : ''
           }`} 
+        />
+        {/* Self-referencing canonical, missing before - without it, client-side
+            navigation and paginated (?page=2, 3...) category views had no
+            canonical at all, leaving Google to guess how to consolidate them. */}
+        <link
+          rel="canonical"
+          href={`${SITE_URL}/category/${category}${currentPage > 1 ? `?page=${currentPage}` : ''}`}
         />
       </Helmet>
 
