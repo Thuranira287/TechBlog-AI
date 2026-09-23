@@ -48,6 +48,7 @@ export default async (request, context) => {
       const result = await fetchPostData(slug);
 
       if (result.status === "notfound") {
+        // Backend explicitly confirmed this slug doesn't exist -> real 404
         return new Response(generateFallbackHtml(slug), {
           status: 404,
           headers: {
@@ -64,7 +65,7 @@ export default async (request, context) => {
           console.log(`[Edge-Post] Backend error, serving STALE cache for ${slug}`);
           return stale;
         }
-      
+        
         console.log(`[Edge-Post] Backend error, no stale cache, rewriting to SPA for ${slug}`);
         return context.rewrite("/index.html");
       }
@@ -76,7 +77,7 @@ export default async (request, context) => {
       let html = await spaResponse.text();
 
       // Generate post metadata
-      const imageUrl = post.featured_image || 'https://aitechblogs.netlify.app/og-image.png';
+      const imageUrl = optimizeImage(post.featured_image || 'https://aitechblogs.netlify.app/og-image.png', 1200);
       const postUrl = `https://aitechblogs.netlify.app/post/${slug}`;
       const title = escapeHtml(post.og_title || post.meta_title || post.title);
       const description = escapeHtml(post.og_description || post.meta_description || post.excerpt || '');
@@ -246,8 +247,7 @@ async function fetchPostData(slug, attempt = 1) {
     clearTimeout(timeout);
     console.error(`[Edge-Post] Fetch error (attempt ${attempt}):`, error.message);
 
-    // One retry - covers the case where the first request woke the backend
-    // up but timed out waiting for it, and the second request hits it warm.
+    // One retry
     if (attempt === 1) {
       return fetchPostData(slug, 2);
     }
@@ -260,7 +260,7 @@ async function fetchPostData(slug, attempt = 1) {
 function generateSchemas(post, postUrl) {
   const t = post.title || post.meta_title || "TechBlog AI Article";
   const d = post.excerpt || post.meta_description || "Tech insights on TechBlog AI";
-  const img = post.featured_image || "https://aitechblogs.netlify.app/og-image.png";
+  const img = optimizeImage(post.featured_image || "https://aitechblogs.netlify.app/og-image.png", 1200);
   const a = post.author_name || "Admin";
   const pub = post.published_at || new Date().toISOString();
   const mod = post.updated_at || pub;
@@ -392,7 +392,7 @@ function generateAIMetadata(post, slug, postUrl) {
   `;
 }
 
-// Generate SSR content matching PostPage.jsx structure
+// Generate SSR content
 function generatePostSSR(post, slug) {
   const SITE_URL = 'https://aitechblogs.netlify.app';
   const readingTime = Math.ceil((post.word_count || 1000) / 200);
@@ -405,9 +405,12 @@ function generatePostSSR(post, slug) {
     });
   };
 
-  const imageUrl = post.featured_image?.startsWith('http') 
-    ? post.featured_image 
-    : `${SITE_URL}${post.featured_image || ''}`;
+  const imageUrl = optimizeImage(
+    post.featured_image?.startsWith('http')
+      ? post.featured_image
+      : `${SITE_URL}${post.featured_image || ''}`,
+    1200
+  );
 
   // Generate tags HTML
   const tagsHtml = post.tags?.length > 0 ? `
@@ -635,6 +638,13 @@ function escapeHtml(text = "") {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function optimizeImage(url, width) {
+  if (!url || !url.includes('res.cloudinary.com') || !url.includes('/upload/')) {
+    return url;
+  }
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
 }
 
 function escapeJson(obj) {
