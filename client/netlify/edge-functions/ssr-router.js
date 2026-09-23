@@ -45,9 +45,9 @@ export default async (request, context) => {
       }
 
       // Fetch post data
-      const post = await fetchPostData(slug);
+      const result = await fetchPostData(slug);
 
-      if (!post) {
+      if (result.status === "notfound") {
         return new Response(generateFallbackHtml(slug), {
           status: 404,
           headers: {
@@ -56,6 +56,20 @@ export default async (request, context) => {
           }
         });
       }
+
+      if (result.status === "error") {
+        const staleCache = await caches.open('post-cache');
+        const stale = await staleCache.match(`post-${slug}`);
+        if (stale) {
+          console.log(`[Edge-Post] Backend error, serving STALE cache for ${slug}`);
+          return stale;
+        }
+      
+        console.log(`[Edge-Post] Backend error, no stale cache, rewriting to SPA for ${slug}`);
+        return context.rewrite("/index.html");
+      }
+
+      const post = result.post;
 
       // Get the SPA template
       const spaResponse = await fetch(new URL('/index.html', request.url));
@@ -73,6 +87,7 @@ export default async (request, context) => {
       const tags = Array.isArray(post.tags) ? post.tags : [];
       const readingTime = Math.ceil((post.word_count || 1000) / 200);
 
+      // Remove ALL existing meta tags that might conflict
       // Remove title
       html = html.replace(/<title>.*?<\/title>/gis, '');
       
@@ -196,16 +211,16 @@ export default async (request, context) => {
   }
 };
 
-// Fetch post data
-async function fetchPostData(slug) {
-  if (!slug) return null;
-  
+// Fetch post data.
+async function fetchPostData(slug, attempt = 1) {
+  if (!slug) return { status: "notfound" };
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), 12000);
 
   try {
     const url = `https://techblogai-backend.onrender.com/api/posts/${slug}`;
-    
+
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
@@ -213,19 +228,31 @@ async function fetchPostData(slug) {
         "Accept": "application/json"
       }
     });
-    
+
     clearTimeout(timeout);
-    
+
+    if (response.status === 404) {
+      return { status: "notfound" };
+    }
+
     if (!response.ok) {
       throw new Error(`Backend status: ${response.status}`);
     }
-    
-    return await response.json();
-    
+
+    const post = await response.json();
+    return { status: "ok", post };
+
   } catch (error) {
     clearTimeout(timeout);
-    console.error("[Edge-Post] Fetch error:", error.message);
-    return null;
+    console.error(`[Edge-Post] Fetch error (attempt ${attempt}):`, error.message);
+
+    // One retry - covers the case where the first request woke the backend
+    // up but timed out waiting for it, and the second request hits it warm.
+    if (attempt === 1) {
+      return fetchPostData(slug, 2);
+    }
+
+    return { status: "error" };
   }
 }
 
