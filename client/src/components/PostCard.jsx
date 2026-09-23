@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Calendar, User, Eye } from 'lucide-react'
+import { optimizeImage } from '../utils/imageOptimize'
 
 const PostCard = ({ post }) => {
   const formatDate = (dateString) => {
@@ -16,7 +17,7 @@ const PostCard = ({ post }) => {
       {post.featured_image && (
         <Link to={`/post/${post.slug}`} className="block">
           <img
-            src={post.featured_image}
+            src={optimizeImage(post.featured_image, 800)}
             alt={post.title}
             className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
             width="800" 
