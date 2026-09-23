@@ -16,7 +16,7 @@
 
 [[edge_functions]]
   path = "/category/*"
-  function = "category-ssr"
+  function = "categories-ssr"
 
 [[edge_functions]]
   function = "ssr-router"
@@ -103,23 +103,11 @@
 
 
 # ================= SITEMAP & ROBOTS REDIRECTS =================
-[[redirects]]
-  from = "/sitemap.xml"
-  to = "/.netlify/functions/sitemap"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/sitemap-ai.xml"
-  to = "/.netlify/functions/sitemap"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/robots.txt"
-  to = "https://techblogai-backend.onrender.com/robots.txt"
-  status = 200
-  force = true
+# NOTE: there is no "sitemap" function in netlify/functions/ (only
+# get-stats.js and generate-media-kit.js exist), so these used to redirect
+# to a 404. The actual sitemap/robots redirects live in client/_redirects,
+# pointing straight at the backend - removed the dead duplicates here so
+# there's only one source of truth and no rule-ordering ambiguity.
 
 # Headers for sitemap
 [[headers]]
