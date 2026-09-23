@@ -332,12 +332,7 @@ const PublicDataset = () => {
           {/* Footer Note */}
           <div className="mt-16 text-center border-t border-gray-200 pt-8">
             <p className="text-sm text-gray-500">
-              TechBlog AI is committed to advancing AI research through open data. 
-              Last updated: {new Date().toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
+              TechBlog AI is committed to advancing AI research through open data.
             </p>
           </div>
         </div>
