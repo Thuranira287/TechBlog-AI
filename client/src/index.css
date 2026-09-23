@@ -98,9 +98,15 @@ ins[data-adsbygoogle-status="unfilled"]:not(:has(iframe)) {
   padding: 0 !important;
   display: none !important;
 }
-/* Hide empty ad containers */
+/* Hide empty ad containers WITHOUT collapsing their reserved space.
+   display:none here previously caused every unfilled ad slot to yank its
+   250px block out of the layout after up to 8s, which is what PageSpeed
+   was measuring as CLS - since synthetic bot traffic almost never gets a
+   real ad fill, this fired on nearly every run. visibility:hidden keeps
+   the box (and the space below it) exactly where it was. */
 .ad-container.ad-empty {
-  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Reserve space for images */
