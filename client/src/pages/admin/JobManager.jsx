@@ -244,6 +244,32 @@ const JobManager = () => {
     }
   };
 
+  // Separate from toggleJobStatus above: that one only ever flips is_active
+  // and is meant for jobs that are already live. A job discovered by the
+  // automation pipeline sits at status 'pending_review' with is_active
+  // false - approving it needs to go through the automation endpoint so
+  // status and is_active move together, rather than the legacy toggle
+  // which only knows about is_active.
+  const approveJob = async (id) => {
+    try {
+      await adminApi.post(`/automation/jobs/${id}/approve`);
+      fetchJobs();
+    } catch (error) {
+      console.error('Error approving job:', error);
+      alert('Failed to approve job.');
+    }
+  };
+
+  const rejectJob = async (id) => {
+    try {
+      await adminApi.post(`/automation/jobs/${id}/reject`);
+      fetchJobs();
+    } catch (error) {
+      console.error('Error rejecting job:', error);
+      alert('Failed to reject job.');
+    }
+  };
+
   const resetForm = () => {
     setFormData(formDataTemplate);
     setEditingJob(null);
@@ -709,16 +735,36 @@ const JobManager = () => {
                       {getJobTypeBadge(job.job_type)}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => toggleJobStatus(job.id, job.is_active)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          job.is_active && new Date(job.expires_at) >= new Date()
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {job.is_active && new Date(job.expires_at) >= new Date() ? 'Active' : 'Inactive'}
-                      </button>
+                      {job.status === 'pending_review' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Pending Review
+                          </span>
+                          <button
+                            onClick={() => approveJob(job.id)}
+                            className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => rejectJob(job.id)}
+                            className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => toggleJobStatus(job.id, job.is_active)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            job.is_active && new Date(job.expires_at) >= new Date()
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {job.is_active && new Date(job.expires_at) >= new Date() ? 'Active' : 'Inactive'}
+                        </button>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {formatDate(job.expires_at)}
