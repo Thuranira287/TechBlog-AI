@@ -579,6 +579,7 @@ router.get("/:slug", async (req, res) => {
       excerpt: post.excerpt,
       content: post.content,
       featured_image: getFullImageUrl(post.featured_image),
+      featured_image_alt: post.featured_image_alt || null,
       author_avatar: getFullImageUrl(post.author_avatar),
       status: post.status,
       view_count: post.view_count,
@@ -610,11 +611,12 @@ router.get("/:slug", async (req, res) => {
       author_url: post.author_id ? `/author/${post.author_id}` : null
     };
 
-    // Increment view count
-    await pool.execute(
-      `UPDATE posts SET view_count = view_count + 1 WHERE id = ?`, 
-      [completePost.id]
-    );
+    const userAgent = req.get('User-Agent') || '';
+    const isBotOrEdgeFetch = /TechBlogAI-Edge|bot|crawler|spider|googlebot|bingbot|slurp|lighthouse|pagespeed/i.test(userAgent);
+    if (!isBotOrEdgeFetch) {
+      pool.execute(`UPDATE posts SET view_count = view_count + 1 WHERE id = ?`, [completePost.id])
+        .catch((err) => console.error('[Posts] view_count increment failed (non-fatal):', err.message));
+    }
     // Fetch related posts & SEO fields
     const [relatedPosts] = await pool.execute(
       `SELECT 
