@@ -533,7 +533,7 @@ function generatePostSSR(post, slug) {
           ${post.featured_image ? `
             <img
               src="${imageUrl}"
-              alt="${escapeHtml(post.title)}"
+              alt="${escapeHtml(post.featured_image_alt || post.title)}"
               class="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
               width="1200"
               height="630"
