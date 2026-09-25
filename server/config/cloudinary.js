@@ -47,7 +47,7 @@ const uploadBufferToCloudinary = (fileBuffer, folder = 'techblogai/featured-imag
   });
 };
 
-// 1. Job/Company Logos Upload (optimized for logos)
+// Job/Company Logos Upload (optimized for logos)
 const uploadJobLogoToCloudinary = (fileBuffer, companyName = '') => {
   const sanitizedName = companyName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   const folder = `techblogai/job-logos/${sanitizedName || 'general'}`;
@@ -62,7 +62,7 @@ const uploadJobLogoToCloudinary = (fileBuffer, companyName = '') => {
   });
 };
 
-// 2. Featured Images Upload (for blog posts)
+// Featured Images Upload (for blog posts)
 const uploadFeaturedImageToCloudinary = (fileBuffer, postTitle = '') => {
   const sanitizedTitle = postTitle.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   const folder = 'techblogai/featured-images';
@@ -76,7 +76,35 @@ const uploadFeaturedImageToCloudinary = (fileBuffer, postTitle = '') => {
   });
 };
 
-// 3. Partner Logos Upload (for advertise page)
+// AI-generated article featured images.
+const uploadGeneratedArticleImage = (fileBuffer, slug, { attempt = 1 } = {}) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const folder = `techblog-ai/articles/${year}/${month}`;
+  const publicId = attempt > 1 ? `${slug}-v${attempt}` : slug;
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        public_id: publicId,
+        overwrite: false,
+        transformation: [
+          { width: 1200, height: 630, crop: 'fill', gravity: 'auto' },
+          { quality: 'auto:good', fetch_format: 'auto' }
+        ],
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    streamifier.createReadStream(fileBuffer).pipe(uploadStream);
+  });
+};
+
+// Partner Logos Upload (for advertise page)
 const uploadPartnerLogoToCloudinary = (fileBuffer, partnerName = '') => {
   const sanitizedName = partnerName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   const folder = 'techblogai/partner-logos';
@@ -91,7 +119,7 @@ const uploadPartnerLogoToCloudinary = (fileBuffer, partnerName = '') => {
   });
 };
 
-// 4. User Avatars Upload (for comments/authors)
+// User Avatars Upload (for comments/authors)
 const uploadAvatarToCloudinary = (fileBuffer, userId = '') => {
   const folder = 'techblogai/user-avatars';
   
@@ -105,7 +133,7 @@ const uploadAvatarToCloudinary = (fileBuffer, userId = '') => {
   });
 };
 
-// 5. General Content Images (for post content)
+// General Content Images (for post content)
 const uploadContentImageToCloudinary = (fileBuffer, postId = '') => {
   const folder = `techblogai/content-images/${postId || 'general'}`;
   
@@ -117,7 +145,7 @@ const uploadContentImageToCloudinary = (fileBuffer, postId = '') => {
   });
 };
 
-// 6. Ad Banner Images (for advertising)
+// Ad Banner Images (for advertising)
 const uploadAdBannerToCloudinary = (fileBuffer, adName = '') => {
   const sanitizedName = adName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   const folder = 'techblogai/ad-banners';
@@ -131,7 +159,7 @@ const uploadAdBannerToCloudinary = (fileBuffer, adName = '') => {
   });
 };
 
-// 7. Document Upload (PDF, DOC - for media kits, resumes)
+// Document Upload (PDF, DOC - for media kits, resumes)
 const uploadDocumentToCloudinary = (fileBuffer, fileName = '', resourceType = 'raw') => {
   const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-').toLowerCase();
   const folder = 'techblogai/documents';
@@ -153,7 +181,7 @@ const uploadDocumentToCloudinary = (fileBuffer, fileName = '', resourceType = 'r
   });
 };
 
-// 8. Delete image from Cloudinary
+// Delete image from Cloudinary
 const deleteFromCloudinary = async (publicId, resourceType = 'image') => {
   try {
     const result = await cloudinary.uploader.destroy(publicId, {
@@ -167,7 +195,7 @@ const deleteFromCloudinary = async (publicId, resourceType = 'image') => {
   }
 };
 
-// 9. Batch upload for multiple images
+// Batch upload for multiple images
 const uploadMultipleToCloudinary = async (files, folder = 'techblogai/uploads', type = 'general') => {
   const uploadPromises = files.map((file, index) => {
     const options = {};
@@ -215,6 +243,7 @@ export {
   uploadBufferToCloudinary,
   uploadJobLogoToCloudinary,
   uploadFeaturedImageToCloudinary,
+  uploadGeneratedArticleImage,
   uploadPartnerLogoToCloudinary,
   uploadAvatarToCloudinary,
   uploadContentImageToCloudinary,
