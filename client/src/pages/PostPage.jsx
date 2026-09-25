@@ -621,7 +621,7 @@ const PostPage = () => {
               <>
                 <img
                   src={optimizeImage(post.featured_image, 1200)}
-                  alt={post.title}
+                  alt={post.featured_image_alt || post.title}
                   className="w-full h-64 md:h-96 object-cover rounded-lg shadow-sm"
                   width="1200"
                   height="630"
