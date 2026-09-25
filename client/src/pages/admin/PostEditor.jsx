@@ -439,7 +439,10 @@ const PostEditor = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 >
                   <option value="draft">Draft</option>
+                  <option value="pending_review">Pending Review</option>
+                  <option value="approved">Approved</option>
                   <option value="published">Published</option>
+                  <option value="rejected">Rejected</option>
                 </select>
               </div>
 
