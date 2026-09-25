@@ -302,9 +302,16 @@ const AdminDashboard = () => {
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         post.status === 'published'
                           ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                          : post.status === 'pending_review'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : post.status === 'rejected' || post.status === 'failed'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {post.status || 'draft'}
+                        {post.status === 'pending_review' ? 'Pending Review' : (post.status || 'draft')}
+                        {post.generation_source === 'ai' && (
+                          <span className="ml-1 text-purple-700" title="AI-generated">✦</span>
+                        )}
                       </span>
                       <Link
                         to={`/admin/posts/edit/${post.id}`}
