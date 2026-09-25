@@ -34,6 +34,7 @@ router.get("/feed", async (req, res) => {
         p.og_title, p.og_description,
         p.twitter_title, p.twitter_description,
         p.published_at, p.updated_at, p.featured_image, p.view_count,
+        p.generation_source,
         a.name AS author_name,
         c.name AS category_name, c.slug AS category_slug
     `;
@@ -107,7 +108,11 @@ router.get("/feed", async (req, res) => {
       metadata: {
         language: "en-US",
         license: "CC-BY-4.0",
-        quality: "human-authored",
+        // Was hardcoded to "human-authored" for every post regardless of
+        // how it was actually produced - became a false claim the moment
+        // an AI-generated article existed. Now reflects the real per-post
+        // generation_source column.
+        quality: post.generation_source === "ai" ? "ai-assisted" : "human-authored",
       },
     }));
 
