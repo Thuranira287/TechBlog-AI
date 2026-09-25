@@ -423,9 +423,17 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       });
     }
 
+    const existingStatus = existingJobs[0].status;
+    let newStatus = existingStatus;
+    if (is_active) {
+      newStatus = 'published';
+    } else if (!['rejected', 'expired', 'removed'].includes(existingStatus)) {
+      newStatus = 'removed';
+    }
+
     await pool.execute(
-      'UPDATE job_listings SET is_active = ? WHERE id = ?',
-      [is_active ? 1 : 0, id]
+      'UPDATE job_listings SET is_active = ?, status = ? WHERE id = ?',
+      [is_active ? 1 : 0, newStatus, id]
     );
 
     res.json({
