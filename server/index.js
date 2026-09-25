@@ -14,6 +14,8 @@ import adminRouter from './routes/admin.js';
 import jobsRouter from './routes/jobs.js';
 import aiRouter from './routes/ai.js';
 import feedRouter from './routes/feed.js';
+import automationRouter from './routes/automation.js';
+import { startScheduler } from './services/automation/scheduler.js';
 
 dotenv.config();
 
@@ -261,6 +263,7 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', authenticate, adminRouter);
+app.use('/api/automation', authenticate, automationRouter);
 app.use('/api/jobs', jobsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api', feedRouter);
@@ -681,16 +684,27 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-    
+
+    // Scheduler starts only after the DB pool is confirmed connected -
+    // starting it earlier risks the first automation tick firing against a
+    // pool that isn't ready yet. A failure inside here must never prevent
+    // the server itself from coming up (per spec: automation failures must
+    // not break the website), so it's wrapped defensively.
+    try {
+      startScheduler(pool);
+    } catch (schedulerError) {
+      console.error('[Startup] Failed to start automation scheduler (server will continue running):', schedulerError);
+    }
+
     const server = app.listen(PORT, () => {
       console.log(`
-🚀 Server running on port ${PORT}
-📝 Environment: ${process.env.NODE_ENV || 'development'}
-🌐 API: http://localhost:${PORT}/api
-🔒 Rate Limiting: ${rateLimitConfig.max} requests per ${rateLimitConfig.windowMs / 60000} minutes
-📊 Health: http://localhost:${PORT}/api/health
-📄 Sitemap: http://localhost:${PORT}/sitemap.xml
-📄 Sitemap: http://localhost:${PORT}/sitemap-ai.xml
+Server running on port ${PORT}
+Environment: ${process.env.NODE_ENV || 'development'}
+API: http://localhost:${PORT}/api
+Rate Limiting: ${rateLimitConfig.max} requests per ${rateLimitConfig.windowMs / 60000} minutes
+Health: http://localhost:${PORT}/api/health
+Sitemap: http://localhost:${PORT}/sitemap.xml
+Sitemap: http://localhost:${PORT}/sitemap-ai.xml
       `);
     });
 
