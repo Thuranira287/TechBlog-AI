@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "npm ci"
+    "build": "npm install"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
