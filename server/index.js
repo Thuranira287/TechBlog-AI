@@ -124,7 +124,8 @@ const rateLimitConfig = {
            req.path === '/sitemap.xml' ||
            req.path === '/sitemap-ai.xml' ||
            req.path === '/robots.txt' ||
-           req.path === '/api/rss.xml';
+           req.path === '/api/rss.xml' ||
+           req.path === '/api/jobs-feed.xml';
   },
   handler: (req, res, options) => {
     res.status(429).json({
@@ -308,6 +309,11 @@ app.get('/sitemap.xml', async (req, res) => {
     const [categories] = await pool.execute(
       `SELECT slug FROM categories ORDER BY name ASC`
     );
+    const [jobs] = await pool.execute(
+      `SELECT id, posted_at, updated_at FROM job_listings
+       WHERE is_active = TRUE AND (expires_at IS NULL OR expires_at >= CURDATE())
+       ORDER BY posted_at DESC LIMIT 1000`
+    );
 
     const STATIC_PAGES = [
       { path: "/about", changefreq: "monthly", priority: 0.6 },
@@ -353,6 +359,16 @@ app.get('/sitemap.xml', async (req, res) => {
     <lastmod>${new Date(post.updated_at).toISOString().split('T')[0]}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>`;
+    });
+
+    jobs.forEach(job => {
+      sitemap += `
+  <url>
+    <loc>${baseUrl}/jobs/${job.id}</loc>
+    <lastmod>${new Date(job.updated_at || job.posted_at).toISOString().split('T')[0]}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
   </url>`;
     });
 
@@ -684,12 +700,6 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-
-    // Scheduler starts only after the DB pool is confirmed connected -
-    // starting it earlier risks the first automation tick firing against a
-    // pool that isn't ready yet. A failure inside here must never prevent
-    // the server itself from coming up (per spec: automation failures must
-    // not break the website), so it's wrapped defensively.
     try {
       startScheduler(pool);
     } catch (schedulerError) {
