@@ -21,10 +21,10 @@ export default async (request, context) => {
     });
   }
 
-  const { slug, categorySlug } = body || {};
+  const { slug, categorySlug, jobId } = body || {};
 
-  if (!slug && !categorySlug) {
-    return new Response(JSON.stringify({ error: 'slug or categorySlug is required' }), {
+  if (!slug && !categorySlug && !jobId) {
+    return new Response(JSON.stringify({ error: 'slug, categorySlug, or jobId is required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -46,6 +46,12 @@ export default async (request, context) => {
         const deleted = await categoryCache.delete(key);
         purged.push({ key, deleted });
       }
+    }
+
+    if (jobId) {
+      const jobCache = await caches.open('job-cache');
+      const deleted = await jobCache.delete(`job-${jobId}`);
+      purged.push({ key: `job-${jobId}`, deleted });
     }
 
     return new Response(JSON.stringify({ success: true, purged }), {
