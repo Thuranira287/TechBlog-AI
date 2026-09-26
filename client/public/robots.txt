@@ -3,6 +3,7 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/admin/
+Disallow: /api/automation/
 Disallow: /internal/
 Disallow: /_edge/
 Disallow: /server/
