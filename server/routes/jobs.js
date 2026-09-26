@@ -3,6 +3,7 @@ import multer from 'multer';
 import { pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { uploadJobLogoToCloudinary } from '../config/cloudinary.js';
+import { purgeSsrCache } from '../services/automation/cache-purge.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -356,6 +357,8 @@ router.put('/:id', authenticate, upload.single('company_logo'), async (req, res)
       [id]
     );
 
+    purgeSsrCache({ jobId: id }).catch(() => {});
+
     res.json({
       success: true,
       message: 'Job updated successfully',
@@ -390,6 +393,8 @@ router.delete('/:id', authenticate, async (req, res) => {
     }
 
     await pool.execute('DELETE FROM job_listings WHERE id = ?', [id]);
+
+    purgeSsrCache({ jobId: id }).catch(() => {});
 
     res.json({
       success: true,
@@ -435,6 +440,8 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       'UPDATE job_listings SET is_active = ?, status = ? WHERE id = ?',
       [is_active ? 1 : 0, newStatus, id]
     );
+
+    purgeSsrCache({ jobId: id }).catch(() => {});
 
     res.json({
       success: true,
