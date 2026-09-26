@@ -2,15 +2,12 @@
 /sitemap.xml     https://techblogai-backend.onrender.com/sitemap.xml    200
 /sitemap-ai.xml  https://techblogai-backend.onrender.com/sitemap-ai.xml  200
 /rss.xml  https://techblogai-backend.onrender.com/api/rss.xml  200
+/jobs-feed.xml  https://techblogai-backend.onrender.com/api/jobs-feed.xml  200
 /api/*    https://techblogai-backend.onrender.com/api/:splat  200
 /robots.txt      /robots.txt      200
 
-# Real server-side 301s for the policy pages, instead of the client-side
-# React Router <Navigate> that used to handle these. A JS-only redirect
-# means Netlify serves a 200 for /privacy etc. and the hop only happens
-# after hydration - any backlinks to the old URLs don't cleanly pass their
-# ranking signal through, and Google explicitly prefers a real redirect
-# over a client-side one here.
+# Real server-side 301s for the policy pages,
+
 /privacy  /policy/privacy  301
 /terms    /policy/terms    301
 /cookie   /policy/cookie   301
