@@ -1,12 +1,12 @@
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://aitechblogs.netlify.app';
 
-export async function purgeSsrCache({ slug, categorySlug } = {}) {
+export async function purgeSsrCache({ slug, categorySlug, jobId } = {}) {
   const secret = process.env.CACHE_PURGE_SECRET;
   if (!secret) {
     console.warn('[CachePurge] CACHE_PURGE_SECRET not configured, skipping purge');
     return { skipped: true };
   }
-  if (!slug && !categorySlug) return { skipped: true };
+  if (!slug && !categorySlug && !jobId) return { skipped: true };
 
   try {
     const controller = new AbortController();
@@ -19,7 +19,7 @@ export async function purgeSsrCache({ slug, categorySlug } = {}) {
         'Content-Type': 'application/json',
         'x-purge-secret': secret,
       },
-      body: JSON.stringify({ slug, categorySlug }),
+      body: JSON.stringify({ slug, categorySlug, jobId }),
     });
 
     clearTimeout(timeout);
@@ -36,4 +36,3 @@ export async function purgeSsrCache({ slug, categorySlug } = {}) {
     return { success: false, error: error.message };
   }
 }
-
