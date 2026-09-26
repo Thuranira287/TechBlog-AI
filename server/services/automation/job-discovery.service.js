@@ -1,4 +1,3 @@
-
 import Parser from 'rss-parser';
 import { normalizeJob, validateNormalizedJob } from '../ai/job-normalizer.service.js';
 import { computeJobFingerprint, isSafePublicUrl } from './utils.js';
@@ -39,8 +38,6 @@ async function fetchSourceItems(source) {
       clearTimeout(timeout);
       if (!response.ok) throw new Error(`Source returned HTTP ${response.status}`);
       const data = await response.json();
-      // JSON API sources vary in shape; expect either an array or a
-      // { jobs: [...] } / { results: [...] } wrapper.
       const items = Array.isArray(data) ? data : (data.jobs || data.results || data.data || []);
       return items.map((item) => ({
         raw: item,
@@ -54,8 +51,6 @@ async function fetchSourceItems(source) {
       clearTimeout(timeout);
     }
   }
-
-  
   throw new Error(`source_type "${source.source_type}" has no automated fetcher configured`);
 }
 
@@ -75,7 +70,7 @@ async function processSource(pool, source, runId) {
     return stats;
   }
 
-  // Freshness: 
+  // Freshness
   const freshnessCutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
   const freshItems = items.filter((item) => {
     if (!item.posted_at) return true; // no date info - process it, dedupe will still catch repeats
@@ -91,7 +86,7 @@ async function processSource(pool, source, runId) {
       continue;
     }
 
-    // ---- Normalize via Claude ----
+    // Normalize via Claude
     let normalized;
     try {
       normalized = await normalizeJob(item.raw);
@@ -105,7 +100,7 @@ async function processSource(pool, source, runId) {
     normalized.source_url = item.source_url;
     normalized.source_name = source.name;
 
-    // ---- Validate (including anti-hallucination check against raw text) ----
+    // Validate
     const validationErrors = validateNormalizedJob(normalized, item.raw);
     if (validationErrors.length > 0) {
       console.warn(`[JobDiscovery] Rejected "${item.title}": ${validationErrors.join('; ')}`);
@@ -113,7 +108,7 @@ async function processSource(pool, source, runId) {
       continue;
     }
 
-    // ---- Fingerprint dedupe ----
+    // Fingerprint dedupe
     const fingerprint = computeJobFingerprint({
       company: normalized.company_name,
       title: normalized.title,
@@ -127,14 +122,14 @@ async function processSource(pool, source, runId) {
       continue;
     }
 
-    // ---- Determine status ----
+    // Determine status
     const autoPublish = process.env.AUTO_PUBLISH_JOBS === 'true';
     const status = (autoPublish && source.trusted) ? 'published' : 'pending_review';
 
     const salaryRange = formatSalaryRange(normalized.salary_min, normalized.salary_max, normalized.salary_currency);
 
     try {
-      await pool.execute(
+      const [insertResult] = await pool.execute(
         `INSERT INTO job_listings (
           title, company_name, location, job_type, category, description, requirements,
           salary_range, salary_min, salary_max, salary_currency, application_url,
@@ -157,7 +152,10 @@ async function processSource(pool, source, runId) {
         ]
       );
 
-      if (status === 'published') stats.published++;
+      if (status === 'published') {
+        stats.published++;
+        purgeSsrCache({ jobId: insertResult.insertId }).catch(() => {});
+      }
     } catch (error) {
       console.error(`[JobDiscovery] Insert failed for "${normalized.title}":`, error.message);
       stats.failed++;
@@ -176,7 +174,6 @@ export async function runJobDiscovery(pool, { runId } = {}) {
   const [sources] = await pool.execute('SELECT * FROM job_sources WHERE enabled = TRUE');
 
   const totals = { sourcesChecked: 0, discovered: 0, duplicates: 0, published: 0, rejected: 0, failed: 0 };
-  let anyPublished = false;
 
   for (const source of sources) {
     const stats = await processSource(pool, source, runId);
@@ -186,16 +183,7 @@ export async function runJobDiscovery(pool, { runId } = {}) {
     totals.published += stats.published;
     totals.rejected += stats.rejected;
     totals.failed += stats.failed;
-    if (stats.published > 0) anyPublished = true;
   }
-
-  if (anyPublished) {
-    // Job listing pages aren't individually SSR-cached the way posts are
-    // (no /job/:slug edge function exists), so there's no per-item cache
-    // to purge - the public jobs list is fetched live on each request.
-    await purgeSsrCache({ categorySlug: null }).catch(() => {});
-  }
-
   return totals;
 }
 
