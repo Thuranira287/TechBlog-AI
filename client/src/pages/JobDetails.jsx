@@ -178,13 +178,7 @@ const JobDetails = () => {
   if (error || !job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        {/* This route returns HTTP 200 regardless (client-rendered, no SSR
-            for /jobs/*), so without an explicit noindex here an expired or
-            removed job - which happens routinely on a jobs board - reads
-            to Google as a real 200 page with "not found" content: a soft
-            404. This matters more now that job URLs are in the sitemap
-            (see the sitemap fix earlier), actively inviting crawls here.
-            Same fix already applied to PostPage.jsx and NotFoundPage.jsx. */}
+       
         <Helmet>
           <meta name="robots" content="noindex, follow" />
         </Helmet>
