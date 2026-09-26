@@ -22,6 +22,10 @@
   function = "ssr-router"
   path = "/post/*"
 
+[[edge_functions]]
+  function = "jobs-ssr"
+  path = "/jobs/*"
+
 # ================= SECURITY HEADERS =================
 [[headers]]
   for = "/*"
