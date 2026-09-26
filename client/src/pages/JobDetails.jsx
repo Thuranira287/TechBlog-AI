@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { 
   MapPin, Briefcase, Clock, DollarSign, Globe, 
   Calendar, ChevronLeft, ExternalLink, Building, 
@@ -177,6 +178,16 @@ const JobDetails = () => {
   if (error || !job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        {/* This route returns HTTP 200 regardless (client-rendered, no SSR
+            for /jobs/*), so without an explicit noindex here an expired or
+            removed job - which happens routinely on a jobs board - reads
+            to Google as a real 200 page with "not found" content: a soft
+            404. This matters more now that job URLs are in the sitemap
+            (see the sitemap fix earlier), actively inviting crawls here.
+            Same fix already applied to PostPage.jsx and NotFoundPage.jsx. */}
+        <Helmet>
+          <meta name="robots" content="noindex, follow" />
+        </Helmet>
         <div className="text-center max-w-md">
           <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Job Not Found</h2>
