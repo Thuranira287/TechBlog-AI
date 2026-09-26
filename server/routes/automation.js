@@ -17,6 +17,7 @@ const triggerLimiter = rateLimit({
 });
 
 // Manual controls
+
 router.post('/articles/run', triggerLimiter, async (req, res) => {
   const result = await tickArticleAutomation(pool);
   res.json(result);
@@ -96,6 +97,7 @@ router.get('/runs', async (req, res) => {
 });
 
 // Job source management
+
 router.get('/job-sources', async (req, res) => {
   try {
     const [sources] = await pool.execute('SELECT * FROM job_sources ORDER BY name');
@@ -199,6 +201,8 @@ router.post('/articles/:id/reject', async (req, res) => {
     if (!post) return res.status(404).json({ error: 'Post not found' });
 
     await pool.execute(`UPDATE posts SET status = 'rejected' WHERE id = ?`, [id]);
+
+    // Cleanup
     if (post.generation_source === 'ai' && post.featured_image_public_id) {
       deleteFromCloudinary(post.featured_image_public_id).catch((err) => {
         console.warn(`[Automation] Cloudinary cleanup failed for rejected post ${id} (non-fatal):`, err.message);
@@ -213,6 +217,7 @@ router.post('/articles/:id/reject', async (req, res) => {
 });
 
 // Featured image regeneration
+
 router.post('/articles/:id/regenerate-image', triggerLimiter, async (req, res) => {
   try {
     const { id } = req.params;
@@ -256,6 +261,7 @@ router.post('/articles/:id/regenerate-image', triggerLimiter, async (req, res) =
       );
 
       await purgeSsrCache({ slug: post.slug });
+
       res.json({
         success: true,
         id,
@@ -277,6 +283,7 @@ router.post('/articles/:id/regenerate-image', triggerLimiter, async (req, res) =
 });
 
 // Job approve/reject
+
 router.post('/jobs/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
@@ -285,6 +292,8 @@ router.post('/jobs/:id/approve', async (req, res) => {
       [id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Job not found' });
+    // Purges any cached
+    purgeSsrCache({ jobId: id }).catch(() => {});
     res.json({ success: true, id, status: 'published' });
   } catch (error) {
     console.error('[Automation] approve job error:', error);
@@ -300,6 +309,7 @@ router.post('/jobs/:id/reject', async (req, res) => {
       [id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Job not found' });
+    purgeSsrCache({ jobId: id }).catch(() => {});
     res.json({ success: true, id, status: 'rejected' });
   } catch (error) {
     console.error('[Automation] reject job error:', error);
@@ -308,4 +318,3 @@ router.post('/jobs/:id/reject', async (req, res) => {
 });
 
 export default router;
-
