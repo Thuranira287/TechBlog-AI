@@ -1,19 +1,20 @@
 import React from 'react';
-import { Facebook, MessageSquare, Link as LinkIcon, Copy, Check } from 'lucide-react';
+import { Facebook, MessageSquare, Link as LinkIcon, Check } from 'lucide-react';
 
 const SocialShare = ({ job }) => {
   const [copied, setCopied] = React.useState(false);
-  
+
   const shareUrl = window.location.href;
-  const jobTitle = encodeURIComponent(`${job.title} at ${job.company_name}`);
-  const jobDescription = encodeURIComponent(job.description?.substring(0, 200) || 'Check out this job opportunity!');
-  const hashtags = 'TechJobs,Hiring,Jobs';
+  // A message for WhatsApp
+  const whatsappMessage = encodeURIComponent(
+    `Check out this job: ${job.title} at ${job.company_name}\n\n${shareUrl}`
+  );
 
-  // Facebook Share URL
-  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${jobTitle}`;
+  // WhatsApp URL
+  const whatsappShareUrl = `https://wa.me/?text=${whatsappMessage}`;
 
-  // WhatsApp Share URL
-  const whatsappShareUrl = `https://wa.me/?text=${jobTitle}%0A%0A${jobDescription}%0A%0A${encodeURIComponent(shareUrl)}`;
+  // Facebook URL
+  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -25,7 +26,7 @@ const SocialShare = ({ job }) => {
   return (
     <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
       <span className="text-sm font-medium text-gray-700">Share this job:</span>
-      
+
       <div className="flex items-center space-x-2">
         {/* Facebook Share */}
         <a
@@ -62,7 +63,7 @@ const SocialShare = ({ job }) => {
           )}
         </button>
       </div>
-      
+
       {copied && (
         <span className="text-sm text-green-600 animate-pulse">
           Link copied!
