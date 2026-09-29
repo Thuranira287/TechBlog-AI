@@ -1,34 +1,69 @@
 import React from 'react';
-import { Facebook, MessageSquare, Link as LinkIcon, Check } from 'lucide-react';
+import {
+  Facebook,
+  MessageCircle,
+  Link as LinkIcon,
+  Check,
+  Briefcase,
+} from 'lucide-react';
 
 const SocialShare = ({ job }) => {
   const [copied, setCopied] = React.useState(false);
 
   const shareUrl = window.location.href;
-  // A message for WhatsApp
-  const whatsappMessage = encodeURIComponent(
-    `Check out this job: ${job.title} at ${job.company_name}\n\n${shareUrl}`
-  );
 
-  // WhatsApp URL
-  const whatsappShareUrl = `https://wa.me/?text=${whatsappMessage}`;
+  const jobTitle = job?.title || 'Job Opportunity';
+  const companyName = job?.company_name || 'a company';
+  const jobDescription =
+    job?.description?.substring(0, 200) ||
+    'Check out this job opportunity!';
 
-  // Facebook URL
-  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  // Facebook Share URL
+  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+    shareUrl
+  )}&quote=${encodeURIComponent(
+    `${jobTitle} at ${companyName}`
+  )}`;
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl).then(() => {
+  // WhatsApp message — no emojis
+  const whatsappMessage = `JOB OPPORTUNITY
+
+${jobTitle} at ${companyName}
+
+${jobDescription}
+
+View Job:
+${shareUrl}
+
+#TechJobs #Hiring #Jobs`;
+
+  // WhatsApp Share URL
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(
+    whatsappMessage
+  )}`;
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+    }
   };
 
   return (
-    <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-      <span className="text-sm font-medium text-gray-700">Share this job:</span>
+    <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg">
+      <span className="text-sm font-medium text-gray-700">
+        Share this job:
+      </span>
 
-      <div className="flex items-center space-x-2">
-        {/* Facebook Share */}
+      <div className="flex items-center gap-2">
+        {/* Facebook */}
         <a
           href={facebookShareUrl}
           target="_blank"
@@ -39,7 +74,7 @@ const SocialShare = ({ job }) => {
           <Facebook className="w-5 h-5" />
         </a>
 
-        {/* WhatsApp Share */}
+        {/* WhatsApp */}
         <a
           href={whatsappShareUrl}
           target="_blank"
@@ -47,14 +82,15 @@ const SocialShare = ({ job }) => {
           className="p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-colors"
           aria-label="Share on WhatsApp"
         >
-          <MessageSquare className="w-5 h-5" />
+          <MessageCircle className="w-5 h-5" />
         </a>
 
         {/* Copy Link */}
         <button
+          type="button"
           onClick={copyToClipboard}
           className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
-          aria-label="Copy link"
+          aria-label={copied ? 'Link copied' : 'Copy job link'}
         >
           {copied ? (
             <Check className="w-5 h-5 text-green-600" />
