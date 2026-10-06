@@ -26,6 +26,13 @@
   function = "jobs-ssr"
   path = "/jobs/*"
 
+# ================= ADSENSE ADS.TXT =================
+[[headers]]
+  for = "/ads.txt"
+  [headers.values]
+    Content-Type = "text/plain"
+    Cache-Control = "public, max-age=3600"
+
 # ================= SECURITY HEADERS =================
 [[headers]]
   for = "/*"
